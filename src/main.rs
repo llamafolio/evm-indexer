@@ -1,16 +1,22 @@
-use dotenv::dotenv;
-use mongodb::{ Client, options::ClientOptions };
+mod db;
+mod rpc;
 
-fn main() {
+use dotenv::dotenv;
+
+use crate::db::{ IndexerDB };
+use crate::rpc::{ IndexerRPC };
+
+#[tokio::main]
+async fn main() {
     dotenv().ok();
 
     // Load .env variables
-    let mongodb_url = std::env::var("DB_URL").expect("DB_URL must be set.");
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set.");
     let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set.");
 
-    // Initialize Web3 and DB services
-    let transport = web3::transports::Http::new(&rpc_url);
-    //let web3 = web3::Web3::new(transport);
+    let db = IndexerDB::new(&db_url).await.expect("Unable to connect to the database");
+    let rpc = IndexerRPC::new(&rpc_url);
 
-    let client = Client::with_uri_str(&mongodb_url);
+    // Get the last synced block and compare with the RPC
+    let last_synced_block = db.last_synced_block().await.unwrap();
 }
