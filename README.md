@@ -1,8 +1,10 @@
 # EVM Indexer
 
-A simple blockchain indexer writtern in rust.
+Minimalistic blockchain indexer written in rust.
 
-This code contains a minimalistic code to create a EVM capable blockchain indexer. It stores all blocks and transactions with minimal decode into a mongo database.
+This contains a program to parse all the blocks and transactions from a blockchain to organize them inside a mongo database.
+
+Uses an HTTPS RPC endpoint and a WSS RPC endpoint to subscribe to new blocks.
 
 # Disclaimer
 
