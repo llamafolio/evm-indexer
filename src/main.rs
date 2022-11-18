@@ -65,12 +65,15 @@ async fn main() {
     log::info!("==> Main: Last Chain Block: {}", last_chain_block);
 
     // Load blocks from last_synced_block to last_chain_block
-    fetch_blocks_range(
+    /* fetch_blocks_range(
         rpc,
         db,
         last_synced_block + 1,
         last_chain_block,
         DEFAULT_FETCHER_BATCH_SIZE,
     )
-    .await;
+    .await; */
+
+    // Subscribe for new blocks
+    rpc.subscribe_heads(&db).await;
 }

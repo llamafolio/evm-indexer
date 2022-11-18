@@ -2,9 +2,14 @@ use anyhow::Result;
 use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::{Client, NoTls};
-use web3::types::{Block, Transaction, H160};
+use web3::{
+    types::{Block, Transaction, H160},
+    Error,
+};
 
-use crate::utils::{format_address, format_bytes, format_hash, format_nonce, format_number};
+use crate::utils::{
+    format_address, format_block, format_bytes, format_hash, format_nonce, format_number,
+};
 
 #[derive(PostgresMapper)]
 #[pg_mapper(table = "state")]
@@ -165,11 +170,13 @@ impl IndexerDB {
         }
     }
 
-    pub async fn store_block_batch(&self, blocks: Vec<Block<Transaction>>) {
+    pub async fn store_block_batch(&self, blocks: Vec<Result<serde_json::Value, Error>>) {
         let mut query: String =
             String::from("INSERT INTO blocks (height, hash, txs, timestamp, size, nonce) VALUES ");
 
-        for block in blocks.iter() {
+        for block_raw in blocks.iter() {
+            let block: Block<Transaction> = format_block(block_raw);
+
             let block_db: DatabaseBlock = DatabaseBlock {
                 height: block.number.unwrap().as_u64() as i64,
                 hash: format_hash(block.hash.unwrap()),
@@ -194,21 +201,24 @@ impl IndexerDB {
 
         log::info!("==> IndexerDB: Stored {} blocks", blocks.len());
 
-        let last_block = blocks.last().unwrap().number.unwrap().as_u64() as i64;
+        let last_block: Block<Transaction> = format_block(blocks.last().unwrap());
 
-        self.update_sync_state(last_block).await;
+        self.update_sync_state(last_block.number.unwrap().as_u64() as i64)
+            .await;
 
         self.store_txs_batch(blocks).await;
     }
 
-    pub async fn store_txs_batch(&self, blocks: Vec<Block<Transaction>>) {
+    pub async fn store_txs_batch(&self, blocks: Vec<Result<serde_json::Value, Error>>) {
         let mut query: String = String::from(
             "INSERT INTO txs (from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
         );
 
         let mut count: usize = 0;
 
-        for block in blocks {
+        for block_raw in blocks.iter() {
+            let block = format_block(block_raw);
+
             for tx in block.transactions {
                 let to_address: String = match tx.to {
                     None => format_address(H160::zero()),
@@ -267,7 +277,9 @@ impl IndexerDB {
     }
 
     pub async fn store_block(&self, block: Block<Transaction>) {
-        let block: DatabaseBlock = DatabaseBlock {
+        log::info!("==> IndexerDB: Storing block {}", block.number.unwrap());
+
+        let block_db: DatabaseBlock = DatabaseBlock {
             height: block.number.unwrap().as_u64() as i64,
             hash: format_hash(block.hash.unwrap()),
             txs: block.transactions.len() as i64,
@@ -280,9 +292,59 @@ impl IndexerDB {
             .db
             .query(
                 "INSERT INTO blocks(height, hash, txs, timestamp, size, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
-                &[&block.height, &block.hash, &block.txs, &block.timestamp, &block.size, &block.nonce],
+                &[&block_db.height, &block_db.hash, &block_db.txs, &block_db.timestamp, &block_db.size, &block_db.nonce],
             )
             .await
             .expect("Unable to store block");
+
+        self.store_txs(block).await;
+    }
+
+    pub async fn store_txs(&self, block: Block<Transaction>) {
+        let mut query: String = String::from(
+            "INSERT INTO txs (from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
+        );
+
+        let mut count: usize = 0;
+
+        for tx in block.transactions {
+            let to_address: String = match tx.to {
+                None => format_address(H160::zero()),
+                Some(to) => format_address(to),
+            };
+
+            let tx_db = DatabaseTx {
+                from_address: format_address(tx.from.unwrap()),
+                create_contract: tx.to.is_none(),
+                to_address,
+                block: tx.block_number.unwrap().as_u64() as i64,
+                tx_value: format_number(tx.value),
+                timestamp: block.timestamp.as_u64() as i64,
+                tx_index: tx.transaction_index.unwrap().as_u64() as i64,
+                tx_type: tx.transaction_type.unwrap().as_u64() as i64,
+                data_input: format_bytes(&tx.input),
+                gas: format_number(tx.gas),
+                gas_price: format_number(tx.gas_price.unwrap()),
+            };
+
+            query.push_str(&tx_db.to_values());
+            query.push_str(&",");
+
+            count += 1;
+        }
+
+        query.pop();
+
+        if count > 0 {
+            // Remove the last comma
+
+            let _ = &self
+                .db
+                .query(&query, &[])
+                .await
+                .expect("Unable to store txs");
+
+            log::info!("==> IndexerDB: Stored {} txs", count);
+        }
     }
 }

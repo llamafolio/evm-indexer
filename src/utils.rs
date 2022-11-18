@@ -1,4 +1,7 @@
-use web3::types::{Bytes, H160, H256, H64, U256};
+use web3::{
+    types::{Block, BlockHeader, Bytes, Transaction, H160, H256, H64, U256},
+    Error,
+};
 
 pub fn format_nonce(h: H64) -> String {
     return format!("'{:?}'", h);
@@ -18,4 +21,8 @@ pub fn format_bytes(b: &Bytes) -> String {
 
 pub fn format_number(n: U256) -> String {
     return format!("'{}'", n.to_string());
+}
+
+pub fn format_block(b: &Result<serde_json::Value, Error>) -> Block<Transaction> {
+    return serde_json::from_value(b.clone().unwrap()).unwrap();
 }
