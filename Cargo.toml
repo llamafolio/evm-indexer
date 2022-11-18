@@ -6,8 +6,14 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 tokio = { version = "1.21.2", features = ["full"] }
-jsonrpsee-ws-client = "0.16.0"
 anyhow = "1.0.66"
 tokio-postgres = "0.7.7"
-postgres-native-tls = "0.5.0"
-native-tls = "0.2.11"
+tokio-pg-mapper = "0.2.0"
+tokio-pg-mapper-derive = "0.2.0"
+web3 = "0.18.0"
+serde_json = "1.0.87"
+log = "0.4.17"
+
+[dependencies.simple_logger]
+default-features = false
+features = ["colors"]
