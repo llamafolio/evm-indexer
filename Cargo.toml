@@ -13,6 +13,8 @@ tokio-pg-mapper-derive = "0.2.0"
 web3 = "0.18.0"
 serde_json = "1.0.87"
 log = "0.4.17"
+openssl = "0.10.42"
+postgres-openssl = "0.5.0"
 
 [dependencies.simple_logger]
 version = "4.0.0"

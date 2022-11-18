@@ -9,7 +9,7 @@ use crate::db::IndexerDB;
 use crate::rpc::IndexerRPC;
 use simple_logger::SimpleLogger;
 
-const DEFAULT_FETCHER_BATCH_SIZE: usize = 5000;
+const DEFAULT_FETCHER_BATCH_SIZE: usize = 500;
 
 async fn fetch_blocks_range(
     rpc: &IndexerRPC,

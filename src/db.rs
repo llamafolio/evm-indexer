@@ -1,7 +1,10 @@
 use anyhow::Result;
+use openssl::ssl::{SslConnector, SslMethod};
+use postgres_openssl::MakeTlsConnector;
+
 use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
-use tokio_postgres::{Client, NoTls};
+use tokio_postgres::Client;
 use web3::{
     types::{Block, Transaction, H160},
     Error,
@@ -115,7 +118,13 @@ impl IndexerDB {
     pub async fn new(db_url: &str) -> Result<Self> {
         log::info!("==> IndexerDB: Initializing IndexerDB");
 
-        let (client, connection) = tokio_postgres::connect(db_url, NoTls).await.unwrap();
+        let mut builder = SslConnector::builder(SslMethod::tls())?;
+        builder.set_ca_file("src/cert.crt")?;
+        let connector = MakeTlsConnector::new(builder.build());
+
+        let connector_future = tokio_postgres::connect(db_url, connector);
+
+        let (client, connection) = connector_future.await.unwrap();
 
         tokio::spawn(async move {
             if let Err(e) = connection.await {
