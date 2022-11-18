@@ -99,10 +99,11 @@ impl DatabaseTx {
 
 pub struct IndexerDB {
     pub db: Database,
+    pub initial_block: usize,
 }
 
 impl IndexerDB {
-    pub async fn new(db_url: &str, db_name: &str) -> Result<Self> {
+    pub async fn new(db_url: &str, db_name: &str, initial_block: usize) -> Result<Self> {
         log::info!("==> IndexerDB: Initializing IndexerDB");
 
         let client_options = ClientOptions::parse(db_url).await?;
@@ -111,7 +112,7 @@ impl IndexerDB {
 
         let db = client.database(db_name);
 
-        Ok(IndexerDB { db })
+        Ok(IndexerDB { db, initial_block })
     }
 
     pub async fn last_synced_block(&self) -> Result<i64> {
@@ -126,7 +127,7 @@ impl IndexerDB {
                 // If no data, initialize the table
                 let initial_state = State {
                     id: String::from(STATE_COLLECTION_ID),
-                    last_block: 0,
+                    last_block: 15990000,
                 };
 
                 collection
@@ -134,7 +135,7 @@ impl IndexerDB {
                     .await
                     .expect("Unable to write initial state data");
 
-                Ok(0)
+                Ok(15990000)
             }
             Some(state) => Ok(state.last_block),
         }
