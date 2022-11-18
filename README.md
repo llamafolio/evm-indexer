@@ -1,6 +1,6 @@
 # EVM Indexer
 
-Minimalistic blockchain indexer written in rust.
+> Minimalistic EVM compatible blockchain indexer written in rust.
 
 This contains a program to parse all the blocks and transactions from a blockchain to organize them inside a mongo database.
 
