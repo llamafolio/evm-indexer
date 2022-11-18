@@ -4,39 +4,69 @@ mod utils;
 
 use dotenv::dotenv;
 use log::LevelFilter;
+use web3::futures::future::join_all;
 
 use crate::db::IndexerDB;
 use crate::rpc::IndexerRPC;
 use simple_logger::SimpleLogger;
 
-const DEFAULT_FETCHER_BATCH_SIZE: usize = 5000;
+const DEFAULT_FETCHER_BATCH_SIZE: usize = 1000;
+const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
 
 async fn fetch_blocks_range(
+    rpc: &IndexerRPC,
+    db: &IndexerDB,
+    chunk: &[i64],
+    update_sync_state: bool,
+) {
+    log::info!(
+        "==> Main: Procesing chunk from block {} to {}",
+        chunk.first().unwrap(),
+        chunk.last().unwrap()
+    );
+
+    let blocks = rpc.fetch_block_batch(chunk).await.unwrap();
+
+    if blocks.len() > 0 {
+        db.store_block_batch(blocks, update_sync_state).await;
+    }
+}
+
+async fn fetch_blocks_range_workers(
     rpc: &IndexerRPC,
     db: &IndexerDB,
     from: i64,
     to: i64,
     batch_size: usize,
+    workers: usize,
 ) {
     log::info!(
-        "==> Main: Fetching block range from {} to {} with batches of {} blocks",
+        "==> Main: Fetching block range from {} to {} with batches of {} blocks with {} workers",
         from,
         to,
-        batch_size
+        batch_size,
+        workers
     );
 
-    let blocks_numbers: Vec<i64> = (from..to).collect();
+    let full_block_range: Vec<i64> = (from..to).collect();
 
-    for chunk in blocks_numbers.chunks(batch_size) {
-        log::info!(
-            "==> Main: Procesing chunk from block {} to {}",
-            chunk.first().unwrap(),
-            chunk.last().unwrap()
-        );
+    for work_chunk in full_block_range.chunks(batch_size * workers) {
+        let mut works = vec![];
 
-        let blocks = rpc.fetch_block_batch(chunk).await.unwrap();
+        let chunks = work_chunk.chunks(batch_size);
 
-        db.store_block_batch(blocks).await
+        let chunks_size = chunks.len();
+
+        for (i, worker_part) in chunks.enumerate() {
+            works.push(fetch_blocks_range(
+                rpc,
+                db,
+                worker_part,
+                i == chunks_size - 1,
+            ));
+        }
+
+        join_all(works).await;
     }
 }
 
@@ -53,10 +83,11 @@ async fn main() {
 
     // Load .env variables
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set.");
+    let db_name = std::env::var("DB_NAME").expect("DB_NAME must be set.");
     let rpc_ws_url = std::env::var("RPC_WS_URL").expect("RPC_WS_URL must be set.");
     let rpc_http_url = std::env::var("RPC_HTTPS_URL").expect("RPC_HTTPS_URL must be set.");
 
-    let db = IndexerDB::new(&db_url)
+    let db = IndexerDB::new(&db_url, &db_name)
         .await
         .expect("Unable to connect to the database");
     let rpc = IndexerRPC::new(&rpc_ws_url, &rpc_http_url)
@@ -72,12 +103,13 @@ async fn main() {
 
     tokio::join!(
         rpc.subscribe_heads(&db),
-        fetch_blocks_range(
+        fetch_blocks_range_workers(
             &rpc,
             &db,
             last_synced_block + 1,
             last_chain_block,
             DEFAULT_FETCHER_BATCH_SIZE,
+            DEFAULT_AMOUNT_OF_WORKERS
         ),
     );
 }

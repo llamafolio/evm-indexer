@@ -1,12 +1,9 @@
 use anyhow::Result;
-use openssl::ssl::{SslConnector, SslMethod};
-use postgres_openssl::MakeTlsConnector;
 
-use tokio_pg_mapper::FromTokioPostgresRow;
-use tokio_pg_mapper_derive::PostgresMapper;
-use tokio_postgres::Client;
+use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Database};
+use serde::{Deserialize, Serialize};
 use web3::{
-    types::{Block, Transaction, H160},
+    types::{Block, Transaction, H160, U256},
     Error,
 };
 
@@ -14,23 +11,22 @@ use crate::utils::{
     format_address, format_block, format_bytes, format_hash, format_nonce, format_number,
 };
 
-#[derive(PostgresMapper)]
-#[pg_mapper(table = "state")]
+const STATE_COLLECTION: &str = "state";
+const STATE_COLLECTION_ID: &str = "sync_state";
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct State {
+    #[serde(rename = "_id")]
     pub id: String,
     pub last_block: i64,
 }
 
-const CREATE_STATE_TABLE: &str = "CREATE TABLE IF NOT EXISTS sync_state (
-    id VARCHAR NOT NULL UNIQUE,
-    last_block BIGINT
-  ); 
-";
+const BLOCKS_COLLECTION: &str = "blocks";
 
-#[derive(PostgresMapper)]
-#[pg_mapper(table = "blocks")]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DatabaseBlock {
     pub height: i64,
+    #[serde(rename = "_id")]
     pub hash: String,
     pub txs: i64,
     pub timestamp: i64,
@@ -39,27 +35,23 @@ pub struct DatabaseBlock {
 }
 
 impl DatabaseBlock {
-    pub fn to_values(&self) -> String {
-        return format!(
-            "({},{},{},{},{},{})",
-            self.height, self.hash, self.txs, self.timestamp, self.size, self.nonce
-        );
+    pub fn from_web3_block(block: &Block<Transaction>) -> DatabaseBlock {
+        return DatabaseBlock {
+            height: block.number.unwrap().as_u64() as i64,
+            hash: format_hash(block.hash.unwrap()),
+            timestamp: block.timestamp.as_u64() as i64,
+            txs: block.transactions.len() as i64,
+            size: block.size.unwrap().as_u64() as i64,
+            nonce: format_nonce(block.nonce.unwrap()),
+        };
     }
 }
 
-const CREATE_BLOCKS_TABLE: &str = "CREATE TABLE IF NOT EXISTS blocks (
-        height BIGINT UNIQUE,
-        hash VARCHAR,
-        txs BIGINT,
-        timestamp BIGINT,
-        size BIGINT,
-        nonce VARCHAR
-  ); 
-";
+const TXS_COLLECTION: &str = "txs";
 
-#[derive(PostgresMapper)]
-#[pg_mapper(table = "txs")]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DatabaseTx {
+    #[serde(rename = "_id")]
     pub hash: String,
     pub from_address: String,
     pub to_address: String,
@@ -75,141 +67,98 @@ pub struct DatabaseTx {
 }
 
 impl DatabaseTx {
-    pub fn to_values(&self) -> String {
-        return format!(
-            "({},{},{},{},{},{},{},{},{},{},{}, {})",
-            self.hash,
-            self.from_address,
-            self.to_address,
-            self.create_contract,
-            self.block,
-            self.tx_value,
-            self.timestamp,
-            self.tx_index,
-            self.tx_type,
-            self.data_input,
-            self.gas,
-            self.gas_price
-        );
+    pub fn from_web3_tx(tx: Transaction, block_timestamp: U256) -> DatabaseTx {
+        let to_address: String = match tx.to {
+            None => format_address(H160::zero()),
+            Some(to) => format_address(to),
+        };
+
+        let tx_type: i64 = match tx.transaction_type {
+            None => 0,
+            Some(to) => to.as_u64() as i64,
+        };
+
+        let tx_db = DatabaseTx {
+            hash: format_hash(tx.hash),
+            from_address: format_address(tx.from.unwrap()),
+            create_contract: tx.to.is_none(),
+            to_address,
+            block: tx.block_number.unwrap().as_u64() as i64,
+            tx_value: format_number(tx.value),
+            timestamp: block_timestamp.as_u64() as i64,
+            tx_index: tx.transaction_index.unwrap().as_u64() as i64,
+            tx_type,
+            data_input: format_bytes(&tx.input),
+            gas: format_number(tx.gas),
+            gas_price: format_number(tx.gas_price.unwrap()),
+        };
+
+        return tx_db;
     }
 }
 
-const CREATE_TXS_TABLE: &str = "CREATE TABLE IF NOT EXISTS txs (
-    hash VARCHAR UNIQUE,
-    from_address VARCHAR,
-    to_address VARCHAR,
-    create_contract BOOL,
-    block BIGINT,
-    tx_value VARCHAR,
-    timestamp BIGINT,
-    tx_index BIGINT,
-    tx_type BIGINT,
-    data_input VARCHAR,
-    gas VARCHAR,
-    gas_price VARCHAR
-  ); 
-";
-
 pub struct IndexerDB {
-    pub db: Client,
+    pub db: Database,
 }
 
 impl IndexerDB {
-    pub async fn new(db_url: &str) -> Result<Self> {
+    pub async fn new(db_url: &str, db_name: &str) -> Result<Self> {
         log::info!("==> IndexerDB: Initializing IndexerDB");
 
-        let mut builder = SslConnector::builder(SslMethod::tls())?;
-        builder.set_ca_file("src/cert.crt")?;
-        let connector = MakeTlsConnector::new(builder.build());
+        let client_options = ClientOptions::parse(db_url).await?;
 
-        let connector_future = tokio_postgres::connect(db_url, connector);
+        let client = Client::with_options(client_options)?;
 
-        let (client, connection) = connector_future.await.unwrap();
+        let db = client.database(db_name);
 
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                eprintln!("connection error: {}", e);
-            }
-        });
-
-        // Create tables if required
-        client
-            .query(CREATE_STATE_TABLE, &[])
-            .await
-            .expect("Unable to run sync_state creation query");
-
-        client
-            .query(CREATE_BLOCKS_TABLE, &[])
-            .await
-            .expect("Unable to run blocks creation query");
-
-        client
-            .query(CREATE_TXS_TABLE, &[])
-            .await
-            .expect("Unable to run txs creation query");
-
-        Ok(IndexerDB { db: client })
+        Ok(IndexerDB { db })
     }
 
     pub async fn last_synced_block(&self) -> Result<i64> {
-        let query = &self
-            .db
-            .query("SELECT * from sync_state", &[])
-            .await
-            .unwrap();
+        let collection: Collection<State> = self.db.collection(STATE_COLLECTION);
 
-        // Get the first row to fetch the data
-        let row = query.get(0);
+        let filter = doc! {"_id": STATE_COLLECTION_ID};
 
-        match row {
+        let state_raw = collection.find_one(filter, None).await.unwrap();
+
+        match state_raw {
             None => {
                 // If no data, initialize the table
-                let _ = &self
-                    .db
-                    .query(
-                        "INSERT INTO sync_state(id, last_block) VALUES ('sync_state', 100000)",
-                        &[],
-                    )
+                let initial_state = State {
+                    id: String::from(STATE_COLLECTION_ID),
+                    last_block: 0,
+                };
+
+                collection
+                    .insert_one(initial_state, None)
                     .await
                     .expect("Unable to write initial state data");
 
-                Ok(100000)
+                Ok(0)
             }
-            Some(row) => {
-                let state = State::from_row_ref(row).unwrap();
-                Ok(state.last_block)
-            }
+            Some(state) => Ok(state.last_block),
         }
     }
 
-    pub async fn store_block_batch(&self, blocks: Vec<Result<serde_json::Value, Error>>) {
-        let mut query: String =
-            String::from("INSERT INTO blocks (height, hash, txs, timestamp, size, nonce) VALUES ");
+    pub async fn store_block_batch(
+        &self,
+        blocks: Vec<Result<serde_json::Value, Error>>,
+        update_sync_state: bool,
+    ) {
+        let mut blocks_db: Vec<DatabaseBlock> = Vec::new();
+
+        let collection: Collection<DatabaseBlock> = self.db.collection(BLOCKS_COLLECTION);
 
         for block_raw in blocks.iter() {
             let block: Block<Transaction> = format_block(block_raw);
 
-            let block_db: DatabaseBlock = DatabaseBlock {
-                height: block.number.unwrap().as_u64() as i64,
-                hash: format_hash(block.hash.unwrap()),
-                txs: block.transactions.len() as i64,
-                timestamp: block.timestamp.as_u64() as i64,
-                size: block.size.unwrap().as_u64() as i64,
-                nonce: format_nonce(block.nonce.unwrap()),
-            };
+            let block_db = DatabaseBlock::from_web3_block(&block);
 
-            query.push_str(&block_db.to_values());
-            query.push_str(&",");
+            blocks_db.push(block_db);
         }
 
-        // Remove the last comma
-        query.pop();
-
-        query.push_str(&"ON CONFLICT (height) DO NOTHING;");
-
-        let _ = &self
-            .db
-            .query(&query, &[])
+        collection
+            .insert_many(blocks_db, None)
             .await
             .expect("Unable to store block batch");
 
@@ -217,154 +166,100 @@ impl IndexerDB {
 
         let last_block: Block<Transaction> = format_block(blocks.last().unwrap());
 
-        self.update_sync_state(last_block.number.unwrap().as_u64() as i64)
-            .await;
+        if update_sync_state {
+            self.update_sync_state(last_block.number.unwrap().as_u64() as i64)
+                .await;
+        }
 
         self.store_txs_batch(blocks).await;
     }
 
     pub async fn store_txs_batch(&self, blocks: Vec<Result<serde_json::Value, Error>>) {
-        let mut query: String = String::from(
-            "INSERT INTO txs (hash, from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
-        );
+        let collection: Collection<DatabaseTx> = self.db.collection(TXS_COLLECTION);
 
-        let mut count: usize = 0;
+        let mut txs: Vec<DatabaseTx> = Vec::new();
 
         for block_raw in blocks.iter() {
             let block = format_block(block_raw);
 
             for tx in block.transactions {
-                let to_address: String = match tx.to {
-                    None => format_address(H160::zero()),
-                    Some(to) => format_address(to),
-                };
+                let tx_db = DatabaseTx::from_web3_tx(tx, block.timestamp);
 
-                let tx_db = DatabaseTx {
-                    hash: format_hash(tx.hash),
-                    from_address: format_address(tx.from.unwrap()),
-                    create_contract: tx.to.is_none(),
-                    to_address,
-                    block: tx.block_number.unwrap().as_u64() as i64,
-                    tx_value: format_number(tx.value),
-                    timestamp: block.timestamp.as_u64() as i64,
-                    tx_index: tx.transaction_index.unwrap().as_u64() as i64,
-                    tx_type: tx.transaction_type.unwrap().as_u64() as i64,
-                    data_input: format_bytes(&tx.input),
-                    gas: format_number(tx.gas),
-                    gas_price: format_number(tx.gas_price.unwrap()),
-                };
-
-                query.push_str(&tx_db.to_values());
-                query.push_str(&",");
-
-                count += 1;
+                txs.push(tx_db);
             }
         }
 
-        query.pop();
+        let txs_amount = txs.len();
 
-        query.push_str(&"ON CONFLICT (hash) DO NOTHING;");
-
-        if count > 0 {
-            // Remove the last comma
-
-            let _ = &self
-                .db
-                .query(&query, &[])
+        if txs_amount > 0 {
+            collection
+                .insert_many(txs, None)
                 .await
                 .expect("Unable to store txs batch");
 
-            log::info!("==> IndexerDB: Stored {} txs", count);
+            log::info!("==> IndexerDB: Stored {} txs", txs_amount);
         }
     }
 
     pub async fn update_sync_state(&self, last_block: i64) {
-        let query = format!(
-            "UPDATE sync_state SET last_block = {} WHERE id = 'sync_state' ",
-            last_block
-        );
+        let collection: Collection<State> = self.db.collection(STATE_COLLECTION);
 
-        let _ = &self
-            .db
-            .query(&query, &[])
-            .await
-            .expect("Unable to update last block sync state");
+        let filter = doc! {"_id": STATE_COLLECTION_ID};
 
-        log::info!("==> IndexerDB: Updated sync state to block {}", last_block);
+        let state = collection.find_one(filter, None).await.unwrap();
+
+        match state {
+            None => return,
+            Some(mut state) => {
+                state.last_block = last_block;
+
+                let filter = doc! {"_id": STATE_COLLECTION_ID};
+
+                collection
+                    .replace_one(filter, state, None)
+                    .await
+                    .expect("Unable to write initial state data");
+
+                log::info!("==> IndexerDB: Updated sync state to block {}", last_block);
+            }
+        }
     }
 
     pub async fn store_block(&self, block: Block<Transaction>) {
         log::info!("==> IndexerDB: Storing block {}", block.number.unwrap());
 
-        let block_db: DatabaseBlock = DatabaseBlock {
-            height: block.number.unwrap().as_u64() as i64,
-            hash: format_hash(block.hash.unwrap()),
-            txs: block.transactions.len() as i64,
-            timestamp: block.timestamp.as_u64() as i64,
-            size: block.size.unwrap().as_u64() as i64,
-            nonce: format_nonce(block.nonce.unwrap()),
-        };
+        let block_db: DatabaseBlock = DatabaseBlock::from_web3_block(&block);
 
-        let _ = &self
-            .db
-            .query(
-                "INSERT INTO blocks (height, hash, txs, timestamp, size, nonce) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (height) DO NOTHING;",
-                &[&block_db.height, &block_db.hash, &block_db.txs, &block_db.timestamp, &block_db.size, &block_db.nonce],
-            )
+        let collection: Collection<DatabaseBlock> = self.db.collection(BLOCKS_COLLECTION);
+
+        collection
+            .insert_one(block_db, None)
             .await
             .expect("Unable to store block");
 
-        self.store_txs(block).await;
+        self.store_block_txs(block).await;
     }
 
-    pub async fn store_txs(&self, block: Block<Transaction>) {
-        let mut query: String = String::from(
-            "INSERT INTO txs (hash, from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
-        );
+    pub async fn store_block_txs(&self, block: Block<Transaction>) {
+        let collection: Collection<DatabaseTx> = self.db.collection(TXS_COLLECTION);
 
-        let mut count: usize = 0;
+        let mut txs: Vec<DatabaseTx> = Vec::new();
 
         for tx in block.transactions {
-            let to_address: String = match tx.to {
-                None => format_address(H160::zero()),
-                Some(to) => format_address(to),
-            };
+            let tx_db = DatabaseTx::from_web3_tx(tx, block.timestamp);
 
-            let tx_db = DatabaseTx {
-                hash: format_hash(tx.hash),
-                from_address: format_address(tx.from.unwrap()),
-                create_contract: tx.to.is_none(),
-                to_address,
-                block: tx.block_number.unwrap().as_u64() as i64,
-                tx_value: format_number(tx.value),
-                timestamp: block.timestamp.as_u64() as i64,
-                tx_index: tx.transaction_index.unwrap().as_u64() as i64,
-                tx_type: tx.transaction_type.unwrap().as_u64() as i64,
-                data_input: format_bytes(&tx.input),
-                gas: format_number(tx.gas),
-                gas_price: format_number(tx.gas_price.unwrap()),
-            };
-
-            query.push_str(&tx_db.to_values());
-            query.push_str(&",");
-
-            count += 1;
+            txs.push(tx_db);
         }
 
-        query.pop();
+        let txs_amount = txs.len();
 
-        query.push_str(&"ON CONFLICT (hash) DO NOTHING;");
-
-        if count > 0 {
-            // Remove the last comma
-
-            let _ = &self
-                .db
-                .query(&query, &[])
+        if txs_amount > 0 {
+            collection
+                .insert_many(txs, None)
                 .await
                 .expect("Unable to store txs");
 
-            log::info!("==> IndexerDB: Stored {} txs", count);
+            log::info!("==> IndexerDB: Stored {} txs", txs_amount);
         }
     }
 }

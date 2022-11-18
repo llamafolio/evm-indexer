@@ -51,9 +51,12 @@ impl IndexerRPC {
             self.batch.eth().block_with_txs(block_id);
         }
 
-        let result = self.batch.transport().submit_batch().await.unwrap();
+        let result = self.batch.transport().submit_batch().await;
 
-        Ok(result)
+        match result {
+            Ok(result) => Ok(result),
+            Err(_) => Ok(Vec::new()),
+        }
     }
 
     pub async fn subscribe_heads(&self, db: &IndexerDB) {
@@ -70,24 +73,36 @@ impl IndexerRPC {
         );
 
         loop {
-            let new_block = sub.next().await.unwrap().unwrap();
+            let new_block = sub.next().await;
 
-            log::info!(
-                "==> IndexerRPC: New block header with height {:?}",
-                new_block.number.unwrap()
-            );
+            match new_block {
+                Some(block_header) => match block_header {
+                    Ok(block_header) => {
+                        log::info!(
+                            "==> IndexerRPC: New block header with height {:?}",
+                            block_header.number.unwrap()
+                        );
 
-            let block_id = <BlockId as From<H256>>::from(new_block.hash.unwrap());
+                        let block_id = <BlockId as From<H256>>::from(block_header.hash.unwrap());
 
-            let block = self
-                .wss
-                .eth()
-                .block_with_txs(block_id)
-                .await
-                .unwrap()
-                .unwrap();
+                        let block = self
+                            .wss
+                            .eth()
+                            .block_with_txs(block_id)
+                            .await
+                            .unwrap()
+                            .expect("Unable to deserialize block response");
 
-            db.store_block(block).await;
+                        db.store_block(block).await;
+                    }
+                    Err(_) => {
+                        continue;
+                    }
+                },
+                None => {
+                    continue;
+                }
+            }
         }
     }
 }
