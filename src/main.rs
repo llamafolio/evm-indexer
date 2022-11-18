@@ -11,7 +11,13 @@ use simple_logger::SimpleLogger;
 
 const DEFAULT_FETCHER_BATCH_SIZE: usize = 5000;
 
-async fn fetch_blocks_range(rpc: IndexerRPC, db: IndexerDB, from: i64, to: i64, batch_size: usize) {
+async fn fetch_blocks_range(
+    rpc: &IndexerRPC,
+    db: &IndexerDB,
+    from: i64,
+    to: i64,
+    batch_size: usize,
+) {
     log::info!(
         "==> Main: Fetching block range from {} to {} with batches of {} blocks",
         from,
@@ -34,7 +40,7 @@ async fn fetch_blocks_range(rpc: IndexerRPC, db: IndexerDB, from: i64, to: i64, 
     }
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 2)]
 async fn main() {
     SimpleLogger::new()
         .with_level(LevelFilter::Info)
@@ -64,16 +70,14 @@ async fn main() {
     log::info!("==> Main: Last DB Synced Block: {}", last_synced_block);
     log::info!("==> Main: Last Chain Block: {}", last_chain_block);
 
-    // Load blocks from last_synced_block to last_chain_block
-    /* fetch_blocks_range(
-        rpc,
-        db,
-        last_synced_block + 1,
-        last_chain_block,
-        DEFAULT_FETCHER_BATCH_SIZE,
-    )
-    .await; */
-
-    // Subscribe for new blocks
-    rpc.subscribe_heads(&db).await;
+    tokio::join!(
+        rpc.subscribe_heads(&db),
+        fetch_blocks_range(
+            &rpc,
+            &db,
+            last_synced_block + 1,
+            last_chain_block,
+            DEFAULT_FETCHER_BATCH_SIZE,
+        ),
+    );
 }

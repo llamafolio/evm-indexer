@@ -1,5 +1,5 @@
 use web3::{
-    types::{Block, BlockHeader, Bytes, Transaction, H160, H256, H64, U256},
+    types::{Block, Bytes, Transaction, H160, H256, H64, U256},
     Error,
 };
 

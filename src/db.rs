@@ -57,6 +57,7 @@ const CREATE_BLOCKS_TABLE: &str = "CREATE TABLE IF NOT EXISTS blocks (
 #[derive(PostgresMapper)]
 #[pg_mapper(table = "txs")]
 pub struct DatabaseTx {
+    pub hash: String,
     pub from_address: String,
     pub to_address: String,
     pub create_contract: bool,
@@ -73,7 +74,8 @@ pub struct DatabaseTx {
 impl DatabaseTx {
     pub fn to_values(&self) -> String {
         return format!(
-            "({},{},{},{},{},{},{},{},{},{}, {})",
+            "({},{},{},{},{},{},{},{},{},{},{}, {})",
+            self.hash,
             self.from_address,
             self.to_address,
             self.create_contract,
@@ -90,6 +92,7 @@ impl DatabaseTx {
 }
 
 const CREATE_TXS_TABLE: &str = "CREATE TABLE IF NOT EXISTS txs (
+    hash VARCHAR UNIQUE,
     from_address VARCHAR,
     to_address VARCHAR,
     create_contract BOOL,
@@ -193,6 +196,8 @@ impl IndexerDB {
         // Remove the last comma
         query.pop();
 
+        query.push_str(&"ON CONFLICT (height) DO NOTHING;");
+
         let _ = &self
             .db
             .query(&query, &[])
@@ -211,7 +216,7 @@ impl IndexerDB {
 
     pub async fn store_txs_batch(&self, blocks: Vec<Result<serde_json::Value, Error>>) {
         let mut query: String = String::from(
-            "INSERT INTO txs (from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
+            "INSERT INTO txs (hash, from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
         );
 
         let mut count: usize = 0;
@@ -226,6 +231,7 @@ impl IndexerDB {
                 };
 
                 let tx_db = DatabaseTx {
+                    hash: format_hash(tx.hash),
                     from_address: format_address(tx.from.unwrap()),
                     create_contract: tx.to.is_none(),
                     to_address,
@@ -247,6 +253,8 @@ impl IndexerDB {
         }
 
         query.pop();
+
+        query.push_str(&"ON CONFLICT (hash) DO NOTHING;");
 
         if count > 0 {
             // Remove the last comma
@@ -291,7 +299,7 @@ impl IndexerDB {
         let _ = &self
             .db
             .query(
-                "INSERT INTO blocks(height, hash, txs, timestamp, size, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
+                "INSERT INTO blocks (height, hash, txs, timestamp, size, nonce) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (height) DO NOTHING;",
                 &[&block_db.height, &block_db.hash, &block_db.txs, &block_db.timestamp, &block_db.size, &block_db.nonce],
             )
             .await
@@ -302,7 +310,7 @@ impl IndexerDB {
 
     pub async fn store_txs(&self, block: Block<Transaction>) {
         let mut query: String = String::from(
-            "INSERT INTO txs (from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
+            "INSERT INTO txs (hash, from_address, to_address, create_contract, block, tx_value, timestamp, tx_index, tx_type, data_input, gas, gas_price) VALUES "
         );
 
         let mut count: usize = 0;
@@ -314,6 +322,7 @@ impl IndexerDB {
             };
 
             let tx_db = DatabaseTx {
+                hash: format_hash(tx.hash),
                 from_address: format_address(tx.from.unwrap()),
                 create_contract: tx.to.is_none(),
                 to_address,
@@ -334,6 +343,8 @@ impl IndexerDB {
         }
 
         query.pop();
+
+        query.push_str(&"ON CONFLICT (hash) DO NOTHING;");
 
         if count > 0 {
             // Remove the last comma
