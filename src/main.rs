@@ -1,20 +1,22 @@
-mod config;
-mod db;
-mod fetcher;
-mod rpc;
-mod utils;
+pub mod config;
+pub mod db;
+pub mod fetcher;
+pub mod rpc;
+pub mod utils;
 
 use dotenv::dotenv;
 use log::LevelFilter;
 
 use crate::config::IndexerConfig;
 use crate::db::IndexerDB;
+
 use crate::fetcher::fetch_blocks_range_workers;
 use crate::rpc::IndexerRPC;
 
 use simple_logger::SimpleLogger;
 
 #[tokio::main(worker_threads = 2)]
+
 async fn main() {
     SimpleLogger::new()
         .with_level(LevelFilter::Info)

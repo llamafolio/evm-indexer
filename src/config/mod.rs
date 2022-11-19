@@ -9,6 +9,8 @@ pub struct IndexerConfig {
     pub initial_block: usize,
     pub workers: usize,
     pub batch_size: usize,
+    pub listen_addr: String,
+    pub listen_port: String,
 }
 
 impl IndexerConfig {
@@ -54,6 +56,8 @@ impl IndexerConfig {
             initial_block,
             batch_size,
             workers,
+            listen_addr: String::from("0.0.0.0"),
+            listen_port: String::from("9000"),
         }
     }
 }
