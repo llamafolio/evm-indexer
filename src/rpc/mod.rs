@@ -1,6 +1,6 @@
 use anyhow::Result;
 use web3::{
-    futures::StreamExt,
+    futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
     types::{BlockId, H256, U64},
     Error, Web3,
@@ -8,6 +8,7 @@ use web3::{
 
 use crate::db::IndexerDB;
 
+#[derive(Debug, Clone)]
 pub struct IndexerRPC {
     pub batch: Web3<Batch<Http>>,
     pub wss: Web3<WebSocket>,
@@ -17,8 +18,8 @@ impl IndexerRPC {
     pub async fn new(rpc_ws_url: &str, rpc_http_url: &str) -> Result<Self> {
         log::info!("==> IndexerRPC: Initializing IndexerRPC");
 
-        let http = Http::new(rpc_http_url)?;
-        let ws = WebSocket::new(rpc_ws_url).await?;
+        let http = Http::new(rpc_http_url).unwrap();
+        let ws = WebSocket::new(rpc_ws_url).await.unwrap();
 
         Ok(IndexerRPC {
             wss: Web3::new(ws),
@@ -103,6 +104,56 @@ impl IndexerRPC {
                     continue;
                 }
             }
+        }
+    }
+
+    async fn fetch_blocks_range(self, db: &IndexerDB, chunk: &[i64], update_sync_state: bool) {
+        log::info!(
+            "==> Main: Procesing chunk from block {} to {}",
+            chunk.first().unwrap(),
+            chunk.last().unwrap()
+        );
+
+        let blocks = self.fetch_block_batch(chunk).await.unwrap();
+
+        if blocks.len() > 0 {
+            db.store_block_batch(blocks, update_sync_state).await;
+        }
+    }
+
+    pub async fn fetch_blocks_range_workers(
+        &self,
+        db: &IndexerDB,
+        from: i64,
+        to: i64,
+        batch_size: &usize,
+        workers: &usize,
+    ) {
+        log::info!(
+            "==> Main: Fetching block range from {} to {} with batches of {} blocks with {} workers",
+            from,
+            to,
+            batch_size,
+            workers
+        );
+
+        let full_block_range: Vec<i64> = (from..to).collect();
+
+        for work_chunk in full_block_range.chunks(batch_size * workers) {
+            let mut works = vec![];
+
+            let chunks = work_chunk.chunks(batch_size.clone());
+
+            let chunks_size = chunks.len();
+
+            for (i, worker_part) in chunks.enumerate() {
+                works.push(
+                    self.clone()
+                        .fetch_blocks_range(db, worker_part, i == chunks_size - 1),
+                );
+            }
+
+            join_all(works).await;
         }
     }
 }

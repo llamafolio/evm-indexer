@@ -17,3 +17,7 @@ serde = "1.0.147"
 version = "4.0.0"
 default-features = false
 features = ["colors"]
+
+[[bin]]
+path = "bin/evm-indexer.rs"
+name = "evm-indexer"

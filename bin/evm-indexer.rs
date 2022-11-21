@@ -1,17 +1,6 @@
-pub mod config;
-pub mod db;
-pub mod fetcher;
-pub mod rpc;
-pub mod utils;
-
 use dotenv::dotenv;
+use evm_indexer::{config::Config, db::IndexerDB, rpc::IndexerRPC};
 use log::LevelFilter;
-
-use crate::config::IndexerConfig;
-use crate::db::IndexerDB;
-
-use crate::fetcher::fetch_blocks_range_workers;
-use crate::rpc::IndexerRPC;
 
 use simple_logger::SimpleLogger;
 
@@ -27,7 +16,7 @@ async fn main() {
 
     log::info!("Starting EVM Indexer");
 
-    let config = IndexerConfig::new();
+    let config = Config::new();
 
     let db = IndexerDB::new(&config.db_url, &config.db_name, config.initial_block)
         .await
@@ -43,15 +32,12 @@ async fn main() {
     log::info!("==> Main: Last DB Synced Block: {}", last_synced_block);
     log::info!("==> Main: Last Chain Block: {}", last_chain_block);
 
-    tokio::join!(
-        rpc.subscribe_heads(&db),
-        fetch_blocks_range_workers(
-            &rpc,
-            &db,
-            last_synced_block + 1,
-            last_chain_block,
-            &config.batch_size,
-            &config.workers
-        ),
-    );
+    rpc.fetch_blocks_range_workers(
+        &db,
+        last_synced_block + 1,
+        last_chain_block,
+        &config.batch_size,
+        &config.workers,
+    )
+    .await;
 }

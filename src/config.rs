@@ -1,7 +1,7 @@
 const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
 const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
 
-pub struct IndexerConfig {
+pub struct Config {
     pub db_url: String,
     pub db_name: String,
     pub rpc_http_url: String,
@@ -9,11 +9,9 @@ pub struct IndexerConfig {
     pub initial_block: usize,
     pub workers: usize,
     pub batch_size: usize,
-    pub listen_addr: String,
-    pub listen_port: String,
 }
 
-impl IndexerConfig {
+impl Config {
     pub fn new() -> Self {
         let initial_sync_variable = std::env::var("INITIAL_SYNC_START_BLOCK");
 
@@ -48,16 +46,14 @@ impl IndexerConfig {
             Err(_) => (),
         };
 
-        IndexerConfig {
-            db_url: std::env::var("DB_URL").expect("DB_URL must be set."),
-            db_name: std::env::var("DB_NAME").expect("DB_NAME must be set."),
+        Self {
+            db_url: std::env::var("DATABASE_URL").expect("DB_URL must be set."),
+            db_name: std::env::var("DATABASE_NAME").expect("DB_NAME must be set."),
             rpc_http_url: std::env::var("RPC_HTTPS_URL").expect("RPC_HTTPS_URL must be set."),
             rpc_ws_url: std::env::var("RPC_WS_URL").expect("RPC_WS_URL must be set."),
             initial_block,
             batch_size,
             workers,
-            listen_addr: String::from("0.0.0.0"),
-            listen_port: String::from("9000"),
         }
     }
 }
