@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::*;
 use web3::{
     futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
@@ -6,22 +7,22 @@ use web3::{
     Error, Web3,
 };
 
-use crate::db::IndexerDB;
+use crate::{config::Config, db::Database};
 
 #[derive(Debug, Clone)]
-pub struct IndexerRPC {
+pub struct Rpc {
     pub batch: Web3<Batch<Http>>,
     pub wss: Web3<WebSocket>,
 }
 
-impl IndexerRPC {
-    pub async fn new(rpc_ws_url: &str, rpc_http_url: &str) -> Result<Self> {
-        log::info!("==> IndexerRPC: Initializing IndexerRPC");
+impl Rpc {
+    pub async fn new(config: Config) -> Result<Self> {
+        info!("Initializing Rpc");
 
-        let http = Http::new(rpc_http_url).unwrap();
-        let ws = WebSocket::new(rpc_ws_url).await.unwrap();
+        let http = Http::new(&config.rpc_http_url).unwrap();
+        let ws = WebSocket::new(&config.rpc_ws_url).await.unwrap();
 
-        Ok(IndexerRPC {
+        Ok(Self {
             wss: Web3::new(ws),
             batch: Web3::new(web3::transports::Batch::new(http)),
         })
@@ -60,7 +61,7 @@ impl IndexerRPC {
         }
     }
 
-    pub async fn subscribe_heads(&self, db: &IndexerDB) {
+    pub async fn subscribe_heads(&self, db: &Database) {
         let mut sub = self
             .wss
             .eth_subscribe()
@@ -68,10 +69,7 @@ impl IndexerRPC {
             .await
             .unwrap();
 
-        log::info!(
-            "==> IndexerRPC: Initializing new heads listener with id {:?}",
-            sub.id()
-        );
+        info!("Initializing new heads listener with id {:?}", sub.id());
 
         loop {
             let new_block = sub.next().await;
@@ -79,8 +77,8 @@ impl IndexerRPC {
             match new_block {
                 Some(block_header) => match block_header {
                     Ok(block_header) => {
-                        log::info!(
-                            "==> IndexerRPC: New block header with height {:?}",
+                        info!(
+                            "New block header with height {:?}",
                             block_header.number.unwrap()
                         );
 
@@ -107,9 +105,9 @@ impl IndexerRPC {
         }
     }
 
-    async fn fetch_blocks_range(self, db: &IndexerDB, chunk: &[i64], update_sync_state: bool) {
-        log::info!(
-            "==> Main: Procesing chunk from block {} to {}",
+    async fn fetch_blocks_range(self, db: &Database, chunk: &[i64], update_sync_state: bool) {
+        info!(
+            "Procesing chunk from block {} to {}",
             chunk.first().unwrap(),
             chunk.last().unwrap()
         );
@@ -123,18 +121,15 @@ impl IndexerRPC {
 
     pub async fn fetch_blocks_range_workers(
         &self,
-        db: &IndexerDB,
+        db: &Database,
         from: i64,
         to: i64,
-        batch_size: &usize,
-        workers: &usize,
+        batch_size: usize,
+        workers: usize,
     ) {
-        log::info!(
-            "==> Main: Fetching block range from {} to {} with batches of {} blocks with {} workers",
-            from,
-            to,
-            batch_size,
-            workers
+        info!(
+            "Fetching block range from {} to {} with batches of {} blocks with {} workers",
+            from, to, batch_size, workers
         );
 
         let full_block_range: Vec<i64> = (from..to).collect();
