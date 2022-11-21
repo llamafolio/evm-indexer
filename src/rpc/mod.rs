@@ -3,7 +3,7 @@ use log::*;
 use web3::{
     futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
-    types::{BlockId, H256, U64},
+    types::{BlockId, U64},
     Error, Web3,
 };
 
@@ -28,7 +28,7 @@ impl Rpc {
         })
     }
 
-    pub async fn last_block(&self) -> Result<i64> {
+    pub async fn get_last_block(&self) -> Result<i64> {
         let last_block = self
             .wss
             .eth()
@@ -40,9 +40,9 @@ impl Rpc {
         Ok(last_block as i64)
     }
 
-    pub async fn fetch_block_batch(
+    pub async fn get_block_batch(
         &self,
-        range: &[i64],
+        range: Vec<i64>,
     ) -> Result<Vec<Result<serde_json::Value, Error>>> {
         for block_height in range.iter() {
             let block_number = U64::from_str_radix(&block_height.to_string(), 10)
@@ -77,22 +77,18 @@ impl Rpc {
             match new_block {
                 Some(block_header) => match block_header {
                     Ok(block_header) => {
+                        let block_number = block_header.number.unwrap();
                         info!(
-                            "New block header with height {:?}",
+                            "Received new block header with height {:?}",
                             block_header.number.unwrap()
                         );
+                        let from = block_number.as_u64() as i64 - 20;
+                        let to = block_number.as_u64() as i64;
 
-                        let block_id = <BlockId as From<H256>>::from(block_header.hash.unwrap());
+                        let range: Vec<i64> = (from..to).collect();
+                        let blocks = self.get_block_batch(range).await.unwrap();
 
-                        let block = self
-                            .wss
-                            .eth()
-                            .block_with_txs(block_id)
-                            .await
-                            .unwrap()
-                            .expect("Unable to deserialize block response");
-
-                        db.store_block(block).await;
+                        db.store_blocks(blocks, false).await;
                     }
                     Err(_) => {
                         continue;
@@ -105,17 +101,17 @@ impl Rpc {
         }
     }
 
-    async fn fetch_blocks_range(self, db: &Database, chunk: &[i64], update_sync_state: bool) {
+    async fn fetch_blocks_worker(self, db: &Database, chunk: Vec<i64>, update_sync_state: bool) {
         info!(
             "Procesing chunk from block {} to {}",
             chunk.first().unwrap(),
             chunk.last().unwrap()
         );
 
-        let blocks = self.fetch_block_batch(chunk).await.unwrap();
+        let blocks = self.get_block_batch(chunk).await.unwrap();
 
         if blocks.len() > 0 {
-            db.store_block_batch(blocks, update_sync_state).await;
+            db.store_blocks(blocks, update_sync_state).await;
         }
     }
 
@@ -142,10 +138,11 @@ impl Rpc {
             let chunks_size = chunks.len();
 
             for (i, worker_part) in chunks.enumerate() {
-                works.push(
-                    self.clone()
-                        .fetch_blocks_range(db, worker_part, i == chunks_size - 1),
-                );
+                works.push(self.clone().fetch_blocks_worker(
+                    db,
+                    worker_part.to_vec(),
+                    i == chunks_size - 1,
+                ));
             }
 
             join_all(works).await;

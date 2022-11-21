@@ -8,6 +8,12 @@ Uses an HTTPS RPC endpoint and a WSS RPC endpoint to subscribe to new blocks.
 
 The purpose of this program is to serve as a boilerplate for a real blockchain indexer.
 
+# Installing
+
+TODO
+
+Requires diesel-cli
+
 # Disclaimer
 
 This code is highly experimental and not meant to be used for production.

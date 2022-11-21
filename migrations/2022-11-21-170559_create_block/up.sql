@@ -7,8 +7,8 @@ CREATE TABLE blocks (
   gas_limit VARCHAR NOT NULL,
   gas_used VARCHAR NOT NULL,
   txs BIGINT NOT NULL,
-  timestamp BIGINT NOT NULL,
-  size BIGINT NOT NULL,
+  timestamp VARCHAR NOT NULL,
+  size VARCHAR NOT NULL,
   nonce VARCHAR NOT NULL,
   base_fee_per_gas VARCHAR NOT NULL
 )

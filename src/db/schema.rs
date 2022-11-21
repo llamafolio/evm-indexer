@@ -10,8 +10,8 @@ diesel::table! {
         gas_limit -> Varchar,
         gas_used -> Varchar,
         txs -> Int8,
-        timestamp -> Int8,
-        size -> Int8,
+        timestamp -> Varchar,
+        size -> Varchar,
         nonce -> Varchar,
         base_fee_per_gas -> Varchar,
     }

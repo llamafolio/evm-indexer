@@ -59,7 +59,7 @@ async fn main() {
 
     // Get the last synced block and compare with the RPC
     let last_synced_block: i64 = db.last_synced_block().await.unwrap();
-    let last_chain_block: i64 = rpc.last_block().await.unwrap();
+    let last_chain_block: i64 = rpc.get_last_block().await.unwrap();
 
     info!("Last DB Synced Block: {}", last_synced_block);
     info!("Last Chain Block: {}", last_chain_block);
