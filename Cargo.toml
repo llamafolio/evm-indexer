@@ -14,8 +14,13 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 web3 = "0.18"
+diesel_migrations = "2.0.0"
 
 [dependencies.simple_logger]
 version = "4.0.0"
 default-features = false
 features = ["colors"]
+
+[[bin]]
+path = "bin/evm-indexer.rs"
+name = "evm-indexer"

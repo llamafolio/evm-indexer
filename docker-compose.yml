@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=indexerdb
+    ports:
+      - '5432:5432'
+    volumes: 
+      - /mnt/indexer_db/:/var/lib/postgresql/data
+
+  evm-indexer:
+    init: true
+    container_name: indexer
+    image: ghcr.io/eabz/evm-indexer:main
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://postgres@127.0.0.1:5432/indexerdb
+    env_file:
+      - .env
+    command: "evm-indexer"
