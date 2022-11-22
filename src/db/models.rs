@@ -1,9 +1,11 @@
 use diesel::prelude::*;
-use web3::types::{Block, Transaction, H160};
+use web3::types::{Block, Log, Transaction, TransactionReceipt, H160};
 
-use crate::utils::{format_address, format_bytes, format_hash, format_nonce, format_number};
+use crate::utils::{
+    format_address, format_bool, format_bytes, format_hash, format_nonce, format_number,
+};
 
-use super::schema::{blocks, state, txs};
+use super::schema::{blocks, logs, state, txs, txs_receipts};
 
 #[derive(Queryable, Insertable)]
 #[diesel(table_name = blocks)]
@@ -23,7 +25,7 @@ pub struct DatabaseBlock {
 }
 
 impl DatabaseBlock {
-    pub fn from_web3_block(block: &Block<Transaction>) -> Self {
+    pub fn from_web3(block: &Block<Transaction>) -> Self {
         let base_fee_per_gas: String = match block.base_fee_per_gas {
             None => String::from("0"),
             Some(base_fee_per_gas) => format_number(base_fee_per_gas),
@@ -64,7 +66,7 @@ pub struct DatabaseTx {
 }
 
 impl DatabaseTx {
-    pub fn from_web3_tx(tx: Transaction) -> Self {
+    pub fn from_web3(tx: &Transaction) -> Self {
         let max_fee_per_gas: String = match tx.max_fee_per_gas {
             None => String::from("0"),
             Some(max_fee_per_gas) => format_number(max_fee_per_gas),
@@ -107,4 +109,50 @@ impl DatabaseTx {
 pub struct DatabaseState {
     pub id: String,
     pub last_block: i64,
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = txs_receipts)]
+pub struct DatabaseTxReceipt {
+    pub hash: String,
+    pub success: bool,
+}
+
+impl DatabaseTxReceipt {
+    pub fn from_web3(receipt: &TransactionReceipt) -> Self {
+        Self {
+            hash: format_hash(receipt.transaction_hash),
+            success: format_bool(receipt.status.unwrap()),
+        }
+    }
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = logs)]
+pub struct DatabaseTxLogs {
+    pub hash: String,
+    pub address: String,
+    pub topics: Vec<String>,
+    pub data: String,
+    pub log_index: i64,
+    pub transaction_log_index: i64,
+    pub log_type: String,
+}
+
+impl DatabaseTxLogs {
+    pub fn from_web3(log: Log) -> Self {
+        Self {
+            hash: format_hash(log.transaction_hash.unwrap()),
+            address: format_address(log.address),
+            data: format_bytes(&log.data),
+            log_index: log.log_index.unwrap().as_u64() as i64,
+            transaction_log_index: log.transaction_log_index.unwrap().as_u64() as i64,
+            log_type: log.log_type.unwrap(),
+            topics: log
+                .topics
+                .into_iter()
+                .map(|topic| format_hash(topic))
+                .collect(),
+        }
+    }
 }

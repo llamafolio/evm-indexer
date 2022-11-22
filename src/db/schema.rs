@@ -18,6 +18,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    logs (hash) {
+        hash -> Varchar,
+        address -> Nullable<Varchar>,
+        topics -> Nullable<Array<Nullable<Text>>>,
+        data -> Nullable<Varchar>,
+        log_index -> Nullable<Int8>,
+        transaction_log_index -> Nullable<Int8>,
+        log_type -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
     state (id) {
         id -> Varchar,
         last_block -> Int8,
@@ -41,8 +53,11 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    blocks,
-    state,
-    txs,
-);
+diesel::table! {
+    txs_receipts (hash) {
+        hash -> Varchar,
+        success -> Nullable<Bool>,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(blocks, logs, state, txs, txs_receipts,);

@@ -3,11 +3,15 @@ use log::*;
 use web3::{
     futures::StreamExt,
     transports::{Batch, Http, WebSocket},
-    types::{BlockId, U64},
+    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
     Error, Web3,
 };
 
-use crate::{config::Config, db::Database};
+use crate::{
+    config::Config,
+    db::Database,
+    utils::{format_block, format_receipt},
+};
 
 #[derive(Debug, Clone)]
 pub struct Rpc {
@@ -40,10 +44,7 @@ impl Rpc {
         Ok(last_block as i64)
     }
 
-    pub async fn get_block_batch(
-        &self,
-        range: Vec<i64>,
-    ) -> Result<Vec<Result<serde_json::Value, Error>>> {
+    pub async fn get_block_batch(&self, range: Vec<i64>) -> Result<Vec<Block<Transaction>>> {
         for block_height in range.iter() {
             let block_number = U64::from_str_radix(&block_height.to_string(), 10)
                 .expect("Unable to parse block number");
@@ -56,7 +57,25 @@ impl Rpc {
         let result = self.batch.transport().submit_batch().await;
 
         match result {
-            Ok(result) => Ok(result),
+            Ok(result) => Ok(result
+                .into_iter()
+                .map(|block| format_block(&block))
+                .collect()),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn get_txs_receipts(&self, txs: Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
+        for tx in txs.iter() {
+            self.batch.eth().transaction_receipt(tx.hash);
+        }
+        let result = self.batch.transport().submit_batch().await;
+
+        match result {
+            Ok(result) => Ok(result
+                .into_iter()
+                .map(|receipt| format_receipt(&receipt))
+                .collect()),
             Err(_) => Ok(Vec::new()),
         }
     }
@@ -86,9 +105,10 @@ impl Rpc {
                         let to = block_number.as_u64() as i64;
 
                         let range: Vec<i64> = (from..to).collect();
-                        let blocks = self.get_block_batch(range).await.unwrap();
 
-                        db.store_blocks(blocks, false).await;
+                        let web3_blocks = self.get_block_batch(range).await.unwrap();
+
+                        //db.store_blocks(&web3_blocks).await;
                     }
                     Err(_) => {
                         continue;

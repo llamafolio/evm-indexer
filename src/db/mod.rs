@@ -1,21 +1,24 @@
-mod models;
+pub mod models;
 mod schema;
+
+use std::future::Future;
 
 use anyhow::Result;
 use diesel::prelude::*;
 use diesel::PgConnection;
 use log::*;
-use web3::types::Block;
-use web3::types::Transaction;
-use web3::Error;
+use web3::futures::future;
+use web3::futures::future::join_all;
+use web3::futures::future::BoxFuture;
 
 use crate::config::Config;
-use crate::utils::format_block;
 
 use self::models::DatabaseBlock;
 
 use self::models::DatabaseState;
 use self::models::DatabaseTx;
+use self::models::DatabaseTxLogs;
+use self::models::DatabaseTxReceipt;
 use self::schema::state::dsl::state;
 use self::schema::state::id;
 use self::schema::state::last_block;
@@ -63,57 +66,96 @@ impl Database {
         Ok(last_block_number)
     }
 
-    pub async fn store_blocks(
+    pub async fn store_blocks_and_txs(
         &self,
-        res_blocks: Vec<Result<serde_json::Value, Error>>,
-        update_sync_state: bool,
+        blocks: Vec<DatabaseBlock>,
+        txs: Vec<DatabaseTx>,
+        receipts: Vec<DatabaseTxReceipt>,
+        logs: Vec<DatabaseTxLogs>,
     ) {
-        let web3_blocks: Vec<Block<Transaction>> =
-            res_blocks.iter().map(|block| format_block(block)).collect();
+        self.store_tx_receipts(&receipts).await;
+        self.store_tx_logs(&logs).await;
 
-        let db_blocks: Vec<DatabaseBlock> = web3_blocks
-            .iter()
-            .map(|block| DatabaseBlock::from_web3_block(block))
-            .collect();
+        let mut stores: Vec<BoxFuture<_>> = vec![];
 
+        if blocks.len() > 0 {
+            stores.push(Box::pin(self.store_blocks(&blocks)))
+        }
+
+        if txs.len() > 0 {
+            stores.push(Box::pin(self.store_txs(&txs)));
+        }
+
+        if receipts.len() > 0 {
+            stores.push(Box::pin(self.store_tx_receipts(&receipts)));
+        }
+
+        if logs.len() > 0 {
+            stores.push(Box::pin(self.store_tx_logs(&logs)));
+        }
+
+        join_all(stores).await;
+
+        self.update_sync_state(blocks.last().unwrap().number).await;
+    }
+
+    async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
         let mut connection = self.establish_connection();
 
         diesel::insert_into(schema::blocks::dsl::blocks)
-            .values(&db_blocks)
+            .values(blocks)
             .on_conflict_do_nothing()
             .execute(&mut connection)
             .expect("Unable to store blocks in the database");
 
-        info!("Inserted {} blocks to the database", db_blocks.len());
+        info!("Inserted {} blocks to the database", blocks.len());
 
-        if update_sync_state {
-            let last_block_number = db_blocks.last().unwrap().number;
-            self.update_sync_state(last_block_number).await;
-        }
-
-        let txs = web3_blocks
-            .into_iter()
-            .map(|block| block.transactions)
-            .flatten()
-            .map(|tx| DatabaseTx::from_web3_tx(tx))
-            .collect();
-
-        self.store_txs(txs, &mut connection).await;
+        Ok(())
     }
 
-    async fn store_txs(&self, txs: Vec<DatabaseTx>, conn: &mut PgConnection) {
-        if txs.len() > 0 {
-            diesel::insert_into(schema::txs::dsl::txs)
-                .values(&txs)
-                .on_conflict_do_nothing()
-                .execute(conn)
-                .expect("Unable to store txs in the database");
+    async fn store_txs(&self, txs: &Vec<DatabaseTx>) -> Result<()> {
+        let mut connection = self.establish_connection();
 
-            info!("Inserted {} txs to the database", txs.len());
-        }
+        diesel::insert_into(schema::txs::dsl::txs)
+            .values(txs)
+            .on_conflict_do_nothing()
+            .execute(&mut connection)
+            .expect("Unable to store txs in the database");
+
+        info!("Inserted {} txs to the database", txs.len());
+
+        Ok(())
     }
 
-    pub async fn update_sync_state(&self, last_block_number: i64) {
+    async fn store_tx_receipts(&self, tx_receipts: &Vec<DatabaseTxReceipt>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        diesel::insert_into(schema::txs_receipts::dsl::txs_receipts)
+            .values(tx_receipts)
+            .on_conflict_do_nothing()
+            .execute(&mut connection)
+            .expect("Unable to store tx_receipts in the database");
+
+        info!("Inserted {} tx_receipts to the database", tx_receipts.len());
+
+        Ok(())
+    }
+
+    async fn store_tx_logs(&self, logs: &Vec<DatabaseTxLogs>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        diesel::insert_into(schema::logs::dsl::logs)
+            .values(logs)
+            .on_conflict_do_nothing()
+            .execute(&mut connection)
+            .expect("Unable to store logs in the database");
+
+        info!("Inserted {} logs to the database", logs.len());
+
+        Ok(())
+    }
+
+    pub async fn update_sync_state(&self, last_block_number: i64) -> Result<()> {
         let mut connection = self.establish_connection();
 
         let state_data = DatabaseState {
@@ -130,5 +172,7 @@ impl Database {
             .expect("Unable to update sync state last blocks");
 
         info!("Updated last sync state to block {}", last_block_number);
+
+        Ok(())
     }
 }
