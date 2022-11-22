@@ -6,7 +6,6 @@ use diesel::prelude::*;
 use diesel::PgConnection;
 use diesel_migrations::embed_migrations;
 use diesel_migrations::EmbeddedMigrations;
-use diesel_migrations::MigrationHarness;
 use log::*;
 use web3::futures::future::join_all;
 use web3::futures::future::BoxFuture;
@@ -39,6 +38,11 @@ pub struct Database {
 impl Database {
     pub async fn new(config: Config, initial_block: usize) -> Result<Self> {
         info!("Initializing Database");
+
+        let connection =
+            PgConnection::establish(&config.db_url).expect("Unable to connect to the database");
+
+        //connection.run_pending_migrations(MIGRATIONS).unwrap();
 
         Ok(Self {
             initial_block,
