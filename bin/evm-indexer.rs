@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use evm_indexer::{
     config::{Config, DEFAULT_AMOUNT_OF_WORKERS, DEFAULT_FETCHER_BATCH_SIZE},
     db::Database,
+    fetcher,
     rpc::Rpc,
 };
 use log::*;
@@ -68,14 +69,16 @@ async fn main() {
         let rpc = rpc.clone();
         let db = db.clone();
         async move {
-            rpc.fetch_blocks_range_workers(
+            fetcher::fetch_blocks(
+                &rpc,
                 &db,
                 last_synced_block + 1,
                 last_chain_block,
                 args.batch_size,
                 args.workers,
             )
-            .await;
+            .await
+            .unwrap();
         }
     });
 

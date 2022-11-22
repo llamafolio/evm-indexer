@@ -91,19 +91,17 @@ impl Database {
             self.update_sync_state(last_block_number).await;
         }
 
-        self.store_txs(web3_blocks, &mut connection).await;
+        let txs = web3_blocks
+            .into_iter()
+            .map(|block| block.transactions)
+            .flatten()
+            .map(|tx| DatabaseTx::from_web3_tx(tx))
+            .collect();
+
+        self.store_txs(txs, &mut connection).await;
     }
 
-    async fn store_txs(&self, blocks: Vec<Block<Transaction>>, conn: &mut PgConnection) {
-        let mut txs: Vec<DatabaseTx> = Vec::new();
-
-        for block in blocks {
-            for tx in block.transactions {
-                let db_tx = DatabaseTx::from_web3_tx(tx);
-                txs.push(db_tx);
-            }
-        }
-
+    async fn store_txs(&self, txs: Vec<DatabaseTx>, conn: &mut PgConnection) {
         if txs.len() > 0 {
             diesel::insert_into(schema::txs::dsl::txs)
                 .values(&txs)

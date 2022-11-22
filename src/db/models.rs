@@ -80,6 +80,11 @@ impl DatabaseTx {
             Some(to) => format_address(to),
         };
 
+        let transaction_type: i64 = match tx.transaction_type {
+            None => 0,
+            Some(transaction_type) => transaction_type.as_u64() as i64,
+        };
+
         Self {
             block_number: tx.block_number.unwrap().as_u64() as i64,
             from_address: format_address(tx.from.unwrap()),
@@ -89,7 +94,7 @@ impl DatabaseTx {
             gas_price: format_number(tx.gas_price.unwrap()),
             hash: format_hash(tx.hash),
             transaction_index: tx.transaction_index.unwrap().as_u64() as i64,
-            transaction_type: tx.transaction_type.unwrap().as_u64() as i64,
+            transaction_type,
             max_fee_per_gas,
             max_priority_fee_per_gas,
             input: format_bytes(&tx.input),
