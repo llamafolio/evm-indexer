@@ -8,12 +8,12 @@ COPY Cargo.toml Cargo.lock /app/
 WORKDIR /app/
 RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
 
-COPY ./src /app/src
-COPY ./bin /app/bin
+COPY ./src /app/src/
+COPY ./bin /app/bin/
 
 RUN ls 
-RUN ls ./app/src
-RUN ls ./app/bin
+RUN ls /app/src/
+RUN ls /app/bin/
 
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
