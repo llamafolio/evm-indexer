@@ -60,10 +60,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    blocks,
-    logs,
-    state,
-    txs,
-    txs_receipts,
-);
+diesel::allow_tables_to_appear_in_same_query!(blocks, logs, state, txs, txs_receipts,);
