@@ -19,6 +19,4 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: user/app:latest
-          tags: |
-            ghcr.io/user/app:latest
+          tags: ghcr.io/user/app:latest
