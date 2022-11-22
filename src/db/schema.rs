@@ -20,7 +20,7 @@ diesel::table! {
 diesel::table! {
     state (id) {
         id -> Varchar,
-        last_block -> Nullable<Int8>,
+        last_block -> Int8,
     }
 }
 
