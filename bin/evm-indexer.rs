@@ -64,20 +64,20 @@ async fn main() {
     info!("Last DB Synced Block: {}", last_synced_block);
     info!("Last Chain Block: {}", last_chain_block);
 
-    /* tokio::spawn({
-           let rpc = rpc.clone();
-           let db = db.clone();
-           async move {
-               rpc.fetch_blocks_range_workers(
-                   &db,
-                   last_synced_block + 1,
-                   last_chain_block,
-                   args.batch_size,
-                   args.workers,
-               )
-               .await;
-           }
-       });
-    */
+    tokio::spawn({
+        let rpc = rpc.clone();
+        let db = db.clone();
+        async move {
+            rpc.fetch_blocks_range_workers(
+                &db,
+                last_synced_block + 1,
+                last_chain_block,
+                args.batch_size,
+                args.workers,
+            )
+            .await;
+        }
+    });
+
     rpc.subscribe_heads(&db).await;
 }

@@ -18,6 +18,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    state (id) {
+        id -> Varchar,
+        last_block -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
     txs (hash) {
         hash -> Varchar,
         block_number -> Int8,
@@ -26,17 +33,16 @@ diesel::table! {
         value -> Varchar,
         gas_used -> Varchar,
         gas_price -> Varchar,
-        transaction_index -> Varchar,
-        transaction_type -> Nullable<Varchar>,
+        transaction_index -> Int8,
+        transaction_type -> Nullable<Int8>,
         max_fee_per_gas -> Nullable<Varchar>,
         max_priority_fee_per_gas -> Nullable<Varchar>,
         input -> Varchar,
-        timestamp -> Varchar,
-        success -> Bool,
     }
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
     blocks,
+    state,
     txs,
 );

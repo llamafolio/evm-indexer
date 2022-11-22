@@ -82,7 +82,7 @@ impl Rpc {
                             "Received new block header with height {:?}",
                             block_header.number.unwrap()
                         );
-                        let from = block_number.as_u64() as i64 - 20;
+                        let from = block_number.as_u64() as i64 - 5;
                         let to = block_number.as_u64() as i64;
 
                         let range: Vec<i64> = (from..to).collect();

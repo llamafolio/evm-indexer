@@ -1,9 +1,9 @@
 use diesel::prelude::*;
-use web3::types::{Block, Transaction};
+use web3::types::{Block, Transaction, H160};
 
-use crate::utils::{format_address, format_hash, format_nonce, format_number};
+use crate::utils::{format_address, format_bytes, format_hash, format_nonce, format_number};
 
-use super::schema::blocks;
+use super::schema::{blocks, state, txs};
 
 #[derive(Queryable, Insertable)]
 #[diesel(table_name = blocks)]
@@ -23,7 +23,12 @@ pub struct DatabaseBlock {
 }
 
 impl DatabaseBlock {
-    pub fn from_web3_block(block: Block<Transaction>) -> Self {
+    pub fn from_web3_block(block: &Block<Transaction>) -> Self {
+        let base_fee_per_gas: String = match block.base_fee_per_gas {
+            None => String::from("0"),
+            Some(base_fee_per_gas) => format_number(base_fee_per_gas),
+        };
+
         Self {
             number: block.number.unwrap().as_u64() as i64,
             hash: format_hash(block.hash.unwrap()),
@@ -36,12 +41,13 @@ impl DatabaseBlock {
             timestamp: format_number(block.timestamp),
             size: format_number(block.size.unwrap()),
             nonce: format_nonce(block.nonce.unwrap()),
-            base_fee_per_gas: format_number(block.base_fee_per_gas.unwrap()),
+            base_fee_per_gas,
         }
     }
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = txs)]
 pub struct DatabaseTx {
     pub block_number: i64,
     pub from_address: String,
@@ -55,6 +61,45 @@ pub struct DatabaseTx {
     pub max_fee_per_gas: String,
     pub max_priority_fee_per_gas: String,
     pub input: String,
-    pub timestamp: i64,
-    pub success: bool,
+}
+
+impl DatabaseTx {
+    pub fn from_web3_tx(tx: Transaction) -> Self {
+        let max_fee_per_gas: String = match tx.max_fee_per_gas {
+            None => String::from("0"),
+            Some(max_fee_per_gas) => format_number(max_fee_per_gas),
+        };
+
+        let max_priority_fee_per_gas: String = match tx.max_priority_fee_per_gas {
+            None => String::from("0"),
+            Some(max_priority_fee_per_gas) => format_number(max_priority_fee_per_gas),
+        };
+
+        let to_address: String = match tx.to {
+            None => format_address(H160::zero()),
+            Some(to) => format_address(to),
+        };
+
+        Self {
+            block_number: tx.block_number.unwrap().as_u64() as i64,
+            from_address: format_address(tx.from.unwrap()),
+            to_address,
+            value: format_number(tx.value),
+            gas_used: format_number(tx.gas),
+            gas_price: format_number(tx.gas_price.unwrap()),
+            hash: format_hash(tx.hash),
+            transaction_index: tx.transaction_index.unwrap().as_u64() as i64,
+            transaction_type: tx.transaction_type.unwrap().as_u64() as i64,
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+            input: format_bytes(&tx.input),
+        }
+    }
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = state)]
+pub struct DatabaseState {
+    pub id: String,
+    pub last_block: i64,
 }

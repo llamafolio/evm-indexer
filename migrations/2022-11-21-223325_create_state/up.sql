@@ -1,0 +1,4 @@
+CREATE TABLE state (
+  id VARCHAR PRIMARY KEY UNIQUE,
+  last_block BIGINT
+)
