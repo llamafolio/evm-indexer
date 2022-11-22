@@ -120,9 +120,14 @@ pub struct DatabaseTxReceipt {
 
 impl DatabaseTxReceipt {
     pub fn from_web3(receipt: TransactionReceipt) -> Self {
+        let success: bool = match receipt.status {
+            None => false,
+            Some(success) => format_bool(success),
+        };
+
         Self {
             hash: format_hash(receipt.transaction_hash),
-            success: format_bool(receipt.status.unwrap()),
+            success,
         }
     }
 }

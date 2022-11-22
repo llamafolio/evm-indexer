@@ -98,9 +98,9 @@ impl Database {
 
         join_all(stores).await;
 
-        self.update_sync_state(blocks.last().unwrap().number)
-            .await
-            .unwrap();
+        /* self.update_sync_state(blocks.last().unwrap().number)
+        .await
+        .unwrap(); */
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
