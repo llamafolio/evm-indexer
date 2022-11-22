@@ -12,7 +12,7 @@ COPY ./bin /app/bin
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
   set -e
-  touch /app/game/src/lib.rs /app/api/src/main.rs
+  touch /app/src/lib.rs /app/bin/evm-indexer.rs
   cargo build --release
 EOF
 
