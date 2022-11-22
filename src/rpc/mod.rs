@@ -3,13 +3,16 @@ use log::*;
 use web3::{
     futures::StreamExt,
     transports::{Batch, Http, WebSocket},
-    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
-    Error, Web3,
+    types::{Block, BlockId, Log, Transaction, TransactionReceipt, U64},
+    Web3,
 };
 
 use crate::{
     config::Config,
-    db::Database,
+    db::{
+        models::{DatabaseBlock, DatabaseTx, DatabaseTxLogs, DatabaseTxReceipt},
+        Database,
+    },
     utils::{format_block, format_receipt},
 };
 
@@ -44,7 +47,7 @@ impl Rpc {
         Ok(last_block as i64)
     }
 
-    pub async fn get_block_batch(&self, range: Vec<i64>) -> Result<Vec<Block<Transaction>>> {
+    async fn get_block_batch(&self, range: Vec<i64>) -> Result<Vec<Block<Transaction>>> {
         for block_height in range.iter() {
             let block_number = U64::from_str_radix(&block_height.to_string(), 10)
                 .expect("Unable to parse block number");
@@ -54,9 +57,9 @@ impl Rpc {
             self.batch.eth().block_with_txs(block_id);
         }
 
-        let result = self.batch.transport().submit_batch().await;
+        let blocks_res = self.batch.transport().submit_batch().await;
 
-        match result {
+        match blocks_res {
             Ok(result) => Ok(result
                 .into_iter()
                 .map(|block| format_block(&block))
@@ -65,7 +68,7 @@ impl Rpc {
         }
     }
 
-    pub async fn get_txs_receipts(&self, txs: Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
+    async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
         for tx in txs.iter() {
             self.batch.eth().transaction_receipt(tx.hash);
         }
@@ -106,9 +109,11 @@ impl Rpc {
 
                         let range: Vec<i64> = (from..to).collect();
 
-                        let web3_blocks = self.get_block_batch(range).await.unwrap();
+                        let (db_blocks, db_txs, db_tx_receipts, db_tx_logs) =
+                            self.get_blocks(range).await.unwrap();
 
-                        //db.store_blocks(&web3_blocks).await;
+                        db.store_blocks_and_txs(db_blocks, db_txs, db_tx_receipts, db_tx_logs)
+                            .await;
                     }
                     Err(_) => {
                         continue;
@@ -119,5 +124,50 @@ impl Rpc {
                 }
             }
         }
+    }
+
+    pub async fn get_blocks(
+        &self,
+        range: Vec<i64>,
+    ) -> Result<(
+        Vec<DatabaseBlock>,
+        Vec<DatabaseTx>,
+        Vec<DatabaseTxReceipt>,
+        Vec<DatabaseTxLogs>,
+    )> {
+        let blocks = self.get_block_batch(range).await.unwrap();
+
+        let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
+            .into_iter()
+            .map(|block| (DatabaseBlock::from_web3(&block), block.transactions))
+            .unzip();
+
+        let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
+
+        let web3_receipts = self.get_txs_receipts(&web3_txs).await.into_iter().flatten();
+
+        let db_txs: Vec<DatabaseTx> = web3_txs
+            .into_iter()
+            .map(|tx| DatabaseTx::from_web3(&tx))
+            .collect();
+
+        let (db_tx_receipts, web3_vec_tx_logs): (Vec<DatabaseTxReceipt>, Vec<Vec<Log>>) =
+            web3_receipts
+                .into_iter()
+                .map(|tx_receipt| {
+                    (
+                        DatabaseTxReceipt::from_web3(tx_receipt.clone()),
+                        tx_receipt.logs,
+                    )
+                })
+                .unzip();
+
+        let db_tx_logs: Vec<DatabaseTxLogs> = web3_vec_tx_logs
+            .into_iter()
+            .flatten()
+            .map(|log| DatabaseTxLogs::from_web3(log))
+            .collect();
+
+        Ok((db_blocks, db_txs, db_tx_receipts, db_tx_logs))
     }
 }

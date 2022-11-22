@@ -1,13 +1,10 @@
 pub mod models;
 mod schema;
 
-use std::future::Future;
-
 use anyhow::Result;
 use diesel::prelude::*;
 use diesel::PgConnection;
 use log::*;
-use web3::futures::future;
 use web3::futures::future::join_all;
 use web3::futures::future::BoxFuture;
 
@@ -73,9 +70,6 @@ impl Database {
         receipts: Vec<DatabaseTxReceipt>,
         logs: Vec<DatabaseTxLogs>,
     ) {
-        self.store_tx_receipts(&receipts).await;
-        self.store_tx_logs(&logs).await;
-
         let mut stores: Vec<BoxFuture<_>> = vec![];
 
         if blocks.len() > 0 {
@@ -96,7 +90,9 @@ impl Database {
 
         join_all(stores).await;
 
-        self.update_sync_state(blocks.last().unwrap().number).await;
+        self.update_sync_state(blocks.last().unwrap().number)
+            .await
+            .unwrap();
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
