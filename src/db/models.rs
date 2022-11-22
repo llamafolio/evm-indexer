@@ -141,13 +141,23 @@ pub struct DatabaseTxLogs {
 
 impl DatabaseTxLogs {
     pub fn from_web3(log: Log) -> Self {
+        let transaction_log_index: i64 = match log.transaction_log_index {
+            None => 0,
+            Some(transaction_log_index) => transaction_log_index.as_u64() as i64,
+        };
+
+        let log_type: String = match log.log_type {
+            None => String::from(""),
+            Some(log_type) => log_type,
+        };
+
         Self {
             hash: format_hash(log.transaction_hash.unwrap()),
             address: format_address(log.address),
             data: format_bytes(&log.data),
             log_index: log.log_index.unwrap().as_u64() as i64,
-            transaction_log_index: log.transaction_log_index.unwrap().as_u64() as i64,
-            log_type: log.log_type.unwrap(),
+            transaction_log_index,
+            log_type,
             topics: log
                 .topics
                 .into_iter()

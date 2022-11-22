@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
 
 COPY ./src /app/src/
 COPY ./bin /app/bin/
+COPY ./migrations /app/migrations/
 
 # Copy the cargo file again to build the bin
 COPY Cargo.toml Cargo.lock /app/
