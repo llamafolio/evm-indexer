@@ -3,6 +3,7 @@ FROM rust:latest as builder
 WORKDIR /
 
 COPY Cargo.toml Cargo.lock /app/
+RUN cargo new --lib /app/
 
 WORKDIR /app/
 RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
