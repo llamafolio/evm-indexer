@@ -20,3 +20,5 @@ jobs:
         with:
           push: true
           tags: ghcr.io/user/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
