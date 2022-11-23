@@ -21,3 +21,5 @@ services:
     env_file:
       - .env
     command: "evm-indexer"
+    depends_on:
+      - "db"
