@@ -5,9 +5,9 @@ use crate::utils::{
     format_address, format_bool, format_bytes, format_hash, format_nonce, format_number,
 };
 
-use super::schema::{blocks, logs, state, txs, txs_receipts};
+use super::schema::{blocks, logs, txs, txs_receipts};
 
-#[derive(Queryable, Insertable)]
+#[derive(Selectable, Queryable, Insertable, Debug)]
 #[diesel(table_name = blocks)]
 pub struct DatabaseBlock {
     pub number: i64,
@@ -102,13 +102,6 @@ impl DatabaseTx {
             input: format_bytes(&tx.input),
         }
     }
-}
-
-#[derive(Queryable, Insertable)]
-#[diesel(table_name = state)]
-pub struct DatabaseState {
-    pub id: String,
-    pub last_block: i64,
 }
 
 #[derive(Queryable, Insertable)]

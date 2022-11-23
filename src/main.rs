@@ -5,6 +5,8 @@ use simple_logger::SimpleLogger;
 
 #[tokio::main()]
 async fn main() {
+    dotenv().ok();
+
     let log = SimpleLogger::new().with_level(LevelFilter::Info);
 
     let config = Config::new();
@@ -15,11 +17,9 @@ async fn main() {
         log.init().unwrap();
     }
 
-    dotenv().ok();
-
     info!("Starting EVM Indexer");
 
-    let db = Database::new(config.clone(), config.initial_block)
+    let db = Database::new(config.clone())
         .await
         .expect("Unable to connect to the database");
 
@@ -27,11 +27,8 @@ async fn main() {
         .await
         .expect("Unable to connect to the rpc url");
 
-    // Get the last synced block and compare with the RPC
-    let last_synced_block: i64 = db.last_synced_block().await.unwrap();
     let last_chain_block: i64 = rpc.get_last_block().await.unwrap();
 
-    info!("Last DB Synced Block: {}", last_synced_block);
     info!("Last Chain Block: {}", last_chain_block);
 
     tokio::spawn({
@@ -41,8 +38,8 @@ async fn main() {
             fetcher::fetch_blocks(
                 &rpc,
                 &db,
-                last_synced_block + 1,
                 last_chain_block,
+                config.start_block as i64,
                 config.batch_size,
                 config.workers,
             )

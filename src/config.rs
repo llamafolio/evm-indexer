@@ -1,7 +1,7 @@
 use clap::Parser;
 
-pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 500;
-pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
+pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
+pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 5;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -18,7 +18,7 @@ pub struct Args {
     )]
     pub workers: usize,
     #[arg(short, long, help = "Initial block to fetch from", default_value_t = 0)]
-    pub initial_block: usize,
+    pub start_block: usize,
     #[arg(
         short, long,
         help = "Amount of blocks to fetch by batch",
@@ -33,7 +33,7 @@ pub struct Config {
     pub rpc_http_url: String,
     pub rpc_ws_url: String,
     pub debug: bool,
-    pub initial_block: usize,
+    pub start_block: usize,
     pub workers: usize,
     pub batch_size: usize,
 }
@@ -47,7 +47,7 @@ impl Config {
             rpc_http_url: std::env::var("RPC_HTTP_URL").expect("RPC_HTTP_URL must be set."),
             rpc_ws_url: std::env::var("RPC_WS_URL").expect("RPC_WS_URL must be set."),
             debug: args.debug,
-            initial_block: args.initial_block,
+            start_block: args.start_block,
             workers: args.workers,
             batch_size: args.batch_size,
         }

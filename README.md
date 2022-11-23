@@ -64,20 +64,10 @@ Migrations are executed each time the program is started.
 
 There are 5 tables created on the database
 
-- [State (sate)](#state-table)
 - [Blocks (blocks)](#blocks-table)
 - [Transactions (txs)](#transactions-table)
 - [Transactions Receipts (txs_receipts)](#transactions-receipts-table)
 - [Logs (logs)](#logs-table)
-
-#### State Table
-
-Just contains a single row with the following information.
-
-| Column       | PostgreSQL type | Rust type |
-| ------------ | --------------- | --------- |
-| `id `        | `VARCHAR`       | `String ` |
-| `last_block` | `BIGINT `       | `i64 `    |
 
 #### Blocks Table
 

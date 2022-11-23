@@ -17,7 +17,7 @@ pub async fn fetch_blocks(
         from, to, batch_size, workers
     );
 
-    let range: Vec<i64> = (from..to).collect();
+    let range: Vec<i64> = (to..from).rev().collect();
 
     for work_chunk in range.chunks(batch_size * workers) {
         let mut works = vec![];

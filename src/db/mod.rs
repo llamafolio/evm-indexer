@@ -13,13 +13,11 @@ use crate::config::Config;
 
 use self::models::DatabaseBlock;
 
-use self::models::DatabaseState;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxReceipt;
-use self::schema::state::dsl::state;
-use self::schema::state::id;
-use self::schema::state::last_block;
+use self::schema::blocks;
+use self::schema::blocks::table as blocks_table;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -31,11 +29,10 @@ pub struct State {
 #[derive(Debug, Clone)]
 pub struct Database {
     pub db_url: String,
-    pub initial_block: usize,
 }
 
 impl Database {
-    pub async fn new(config: Config, initial_block: usize) -> Result<Self> {
+    pub async fn new(config: Config) -> Result<Self> {
         info!("Initializing Database");
 
         let mut connection =
@@ -44,7 +41,6 @@ impl Database {
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
         Ok(Self {
-            initial_block,
             db_url: config.db_url,
         })
     }
@@ -56,16 +52,16 @@ impl Database {
         return connection;
     }
 
-    pub async fn last_synced_block(&self) -> Result<i64> {
+    pub async fn get_last_block(&self) -> Result<i64> {
         let mut connection = self.establish_connection();
 
-        let state_data: Result<DatabaseState, diesel::result::Error> = state
-            .filter(id.eq(String::from("state")))
+        let last_block: Result<DatabaseBlock, diesel::result::Error> = blocks_table
+            .order_by(blocks::number.desc())
             .first(&mut connection);
 
-        let last_block_number: i64 = match state_data {
-            Ok(data) => data.last_block,
-            Err(_) => self.initial_block as i64,
+        let last_block_number: i64 = match last_block {
+            Ok(data) => data.number,
+            Err(_) => 0,
         };
 
         Ok(last_block_number)
@@ -163,27 +159,6 @@ impl Database {
         }
 
         info!("Inserted {} logs to the database", logs.len());
-
-        Ok(())
-    }
-
-    pub async fn update_sync_state(&self, last_block_number: i64) -> Result<()> {
-        let mut connection = self.establish_connection();
-
-        let state_data = DatabaseState {
-            id: String::from("state"),
-            last_block: last_block_number,
-        };
-
-        diesel::insert_into(state)
-            .values(state_data)
-            .on_conflict(id)
-            .do_update()
-            .set(last_block.eq(last_block_number))
-            .execute(&mut connection)
-            .expect("Unable to update sync state last blocks");
-
-        info!("Updated last sync state to block {}", last_block_number);
 
         Ok(())
     }

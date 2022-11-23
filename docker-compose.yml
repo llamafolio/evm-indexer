@@ -9,7 +9,7 @@ services:
     ports:
       - '5432:5432'
     volumes: 
-      - /mnt/indexer_db/:/var/lib/postgresql/data
+      - ./database/:/var/lib/postgresql/data
     networks:
       - postgres
 
