@@ -14,7 +14,7 @@ services:
   evm-indexer:
     init: true
     container_name: indexer
-    image: ghcr.io/eabz/evm-indexer:main
+    image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://postgres@127.0.0.1:5432/indexerdb
