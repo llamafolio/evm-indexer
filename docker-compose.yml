@@ -6,11 +6,10 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=indexerdb
-      - PGDATA: /data/postgres
     ports:
       - '5432:5432'
     volumes: 
-      - /mnt/indexer_db/:/data/postgres
+      - /mnt/indexer_db/:/var/lib/postgresql/data
     networks:
       - postgres
 
