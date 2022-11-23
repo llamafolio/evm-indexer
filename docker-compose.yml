@@ -10,6 +10,8 @@ services:
       - '5432:5432'
     volumes: 
       - /mnt/indexer_db/:/var/lib/postgresql/data
+    networks:
+      - postgres
 
   evm-indexer:
     init: true
@@ -21,5 +23,11 @@ services:
     env_file:
       - .env
     command: "evm-indexer"
+    networks:
+      - postgres
     depends_on:
       - "db"
+
+networks:
+  postgres:
+    driver: bridge
