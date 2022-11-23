@@ -106,11 +106,13 @@ impl Database {
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::blocks::dsl::blocks)
-            .values(blocks)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store blocks in the database");
+        for chunk in blocks.chunks(500) {
+            diesel::insert_into(schema::blocks::dsl::blocks)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store blocks in the database");
+        }
 
         info!("Inserted {} blocks to the database", blocks.len());
 
@@ -120,11 +122,13 @@ impl Database {
     async fn store_txs(&self, txs: &Vec<DatabaseTx>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::txs::dsl::txs)
-            .values(txs)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store txs in the database");
+        for chunk in txs.chunks(500) {
+            diesel::insert_into(schema::txs::dsl::txs)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store txs in the database");
+        }
 
         info!("Inserted {} txs to the database", txs.len());
 
@@ -134,11 +138,13 @@ impl Database {
     async fn store_tx_receipts(&self, tx_receipts: &Vec<DatabaseTxReceipt>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::txs_receipts::dsl::txs_receipts)
-            .values(tx_receipts)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store tx_receipts in the database");
+        for chunk in tx_receipts.chunks(500) {
+            diesel::insert_into(schema::txs_receipts::dsl::txs_receipts)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store tx_receipts in the database");
+        }
 
         info!("Inserted {} tx_receipts to the database", tx_receipts.len());
 
@@ -148,11 +154,13 @@ impl Database {
     async fn store_tx_logs(&self, logs: &Vec<DatabaseTxLogs>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::logs::dsl::logs)
-            .values(logs)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store logs in the database");
+        for chunk in logs {
+            diesel::insert_into(schema::logs::dsl::logs)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store logs in the database");
+        }
 
         info!("Inserted {} logs to the database", logs.len());
 
