@@ -19,7 +19,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://postgres@127.0.0.1:5432/indexerdb
+      - DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/indexerdb
     env_file:
       - .env
     command: "evm-indexer"
