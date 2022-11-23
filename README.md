@@ -55,3 +55,26 @@ For docker-compose, you can use
 ```bash
 docker-compose up
 ```
+
+### Database Structure
+
+The database are built using the migrations on the code through the [diesel](https://crates.io/crates/diesel) crate.
+
+Migrations are executed each time the program is started.
+
+There are 5 tables created on the database
+
+- [State (sate)](#state-table)
+- [Blocks (blocks)](#blocks-table)
+- [Transactions (txs)](#blocks-table)
+- [Transactions Receipts (txs_receipts)](#txs-receipts-table)
+- [Logs (logs)](#logs-table)
+
+#### State Table
+
+Just contains a single row with the following information
+
+| Column     | PostgreSQL type | Rust type |
+| ---------- | --------------- | --------- |
+| id         | `VARCHAR`       | `String ` |
+| last_block | `BIGINT `       | `i64 `    |
