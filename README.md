@@ -4,6 +4,8 @@
 
 This repository contains a program to parse all blocks and transactions into a PostgreSQL database. It also includes all the transaction receipts and logs for contract execution.
 
+- [Database Structure](./doc/DATABASE.md)
+
 ## Disclaimer
 
 This program is highly experimental and not meant to be used for production.
