@@ -16,21 +16,21 @@ There are 5 tables created on the database
 
 #### Blocks Table
 
-| Column           | PostgreSQL type | Rust type |
-| ---------------- | --------------- | --------- |
-| number           | `BIGINT`        | `i64 `    |
-| hash             | `VARCHAR `      | `String ` |
-| difficulty       | `VARCHAR `      | `String ` |
-| total_difficulty | `VARCHAR `      | `String ` |
-| miner            | `VARCHAR `      | `String ` |
-| gas_limit        | `VARCHAR `      | `String ` |
-| gas_used         | `VARCHAR `      | `String ` |
-| txs              | `BIGINT `       | `i64 `    |
-| timestamp        | `VARCHAR `      | `String ` |
-| size             | `VARCHAR `      | `String ` |
-| nonce            | `VARCHAR `      | `String ` |
-| base_fee_per_gas | `VARCHAR `      | `String ` |
-| chain            | `VARCHAR `      | `String ` |
+| Column             | PostgreSQL type | Rust type |
+| ------------------ | --------------- | --------- |
+| `number`           | `BIGINT`        | `i64 `    |
+| `hash`             | `VARCHAR `      | `String ` |
+| `difficulty`       | `VARCHAR `      | `String ` |
+| `total_difficulty` | `VARCHAR `      | `String ` |
+| `miner`            | `VARCHAR `      | `String ` |
+| `gas_limit`        | `VARCHAR `      | `String ` |
+| `gas_used`         | `VARCHAR `      | `String ` |
+| `txs`              | `BIGINT `       | `i64 `    |
+| `timestamp`        | `VARCHAR `      | `String ` |
+| `size`             | `VARCHAR `      | `String ` |
+| `nonce`            | `VARCHAR `      | `String ` |
+| `base_fee_per_gas` | `VARCHAR `      | `String ` |
+| `chain`            | `VARCHAR `      | `String ` |
 
 #### Transactions Table
 
@@ -79,3 +79,26 @@ There are 5 tables created on the database
 | `block`    | `BIGINT`        | `i64 `    |
 | `contract` | `VARCHAR`       | `String`  |
 | `chain`    | `VARCHAR `      | `String ` |
+
+#### Contract Interactions Table
+
+| Column     | PostgreSQL type | Rust type |
+| ---------- | --------------- | --------- |
+| `hash `    | `VARCHAR`       | `String ` |
+| `address`  | `VARCHAR`       | `String ` |
+| `block`    | `BIGINT`        | `i64 `    |
+| `contract` | `VARCHAR`       | `String`  |
+| `chain`    | `VARCHAR `      | `String ` |
+
+#### Token Transfers Table
+
+| Column         | PostgreSQL type | Rust type |
+| -------------- | --------------- | --------- |
+| `hash `        | `VARCHAR`       | `String ` |
+| `block`        | `BIGINT`        | `i64 `    |
+| `from_address` | `VARCHAR`       | `String ` |
+| `to_address`   | `VARCHAR`       | `String ` |
+| `value`        | `VARCHAR`       | `String ` |
+| `token`        | `VARCHAR`       | `String`  |
+| `log_index`    | `BIGINT`        | `i64`     |
+| `chain`        | `VARCHAR `      | `String ` |
