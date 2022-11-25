@@ -20,13 +20,13 @@ To use the program locally, make sure you have [rust](https://www.rust-lang.org/
 
 1. Clone the repository
 
-```bash
+```
 git clone https://github.com/eabz/evm-indexer && cd evm-indexer
 ```
 
 2. Build the program
 
-```bash
+```
 cargo build --release
 ```
 
@@ -40,7 +40,7 @@ RPC_HTTPS_URL -> HTTP URL for the EVM-blockchain RPC endpoint (to fetch past blo
 
 4. Run the program
 
-```bash
+```
 ./target/release/evm-indexer
 ```
 
@@ -48,12 +48,12 @@ RPC_HTTPS_URL -> HTTP URL for the EVM-blockchain RPC endpoint (to fetch past blo
 
 The code has a builtin docker file that you can build through it, or you can use the constructed automatically image from
 
-```bash
+```
 docker pull ghcr.io/eabz/evm-indexer:latest
 ```
 
 For docker-compose, you can use
 
-```bash
+```
 docker-compose up
 ```
