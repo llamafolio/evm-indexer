@@ -22,7 +22,7 @@ pub struct Args {
     )]
     pub workers: usize,
 
-    #[arg(short, long, help = "Initial block to fetch from", default_value_t = 0)]
+    #[arg(short, long, help = "Initial block to fetch from", default_value_t = 1)]
     pub start_block: i64,
 
     #[arg(
