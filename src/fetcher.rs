@@ -1,28 +1,34 @@
+use std::collections::HashSet;
+
 use anyhow::Result;
 use log::*;
 use web3::futures::future::join_all;
 
-use crate::{db::Database, rpc::Rpc};
+use crate::{config::Config, db::Database, rpc::Rpc};
 
-pub async fn fetch_blocks(
-    rpc: &Rpc,
-    db: &Database,
-    from: i64,
-    to: i64,
-    batch_size: usize,
-    workers: usize,
-) -> Result<()> {
+pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()> {
+    let rpc_last_block = rpc.get_last_block().await.unwrap();
+
+    let full_blocks_set: Vec<i64> = (config.start_block..rpc_last_block).collect();
+
+    let db_blocks_set = vec_to_set(db.get_block_numbers().await.unwrap());
+
+    let missing_blocks_set: Vec<i64> = full_blocks_set
+        .into_iter()
+        .filter(|n| !db_blocks_set.contains(n))
+        .collect();
+
     info!(
-        "Fetching block range from {} to {} with batches of {} blocks with {} workers",
-        from, to, batch_size, workers
+        "Fetching {} blocks with batches of {} blocks with {} workers",
+        missing_blocks_set.len(),
+        config.batch_size,
+        config.workers
     );
 
-    let range: Vec<i64> = (to..from).rev().collect();
-
-    for work_chunk in range.chunks(batch_size * workers) {
+    for work_chunk in missing_blocks_set.chunks(config.batch_size * config.workers) {
         let mut works = vec![];
 
-        let chunks = work_chunk.chunks(batch_size.clone());
+        let chunks = work_chunk.chunks(config.batch_size);
 
         info!(
             "Procesing chunk from block {} to {}",
@@ -63,4 +69,8 @@ pub async fn fetch_blocks(
     }
 
     Ok(())
+}
+
+fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {
+    HashSet::from_iter(vec)
 }

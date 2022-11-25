@@ -28,7 +28,7 @@ pub struct Rpc {
 
 impl Rpc {
     pub async fn new(config: Config) -> Result<Self> {
-        info!("Initializing Rpc");
+        info!("Initializing RPC");
 
         let http = Http::new(&config.rpc_http_url).unwrap();
         let ws = WebSocket::new(&config.rpc_ws_url).await.unwrap();
@@ -96,7 +96,7 @@ impl Rpc {
             .await
             .unwrap();
 
-        info!("Initializing new heads listener with id {:?}", sub.id());
+        info!("Initializing new blocks listener");
 
         loop {
             let new_block = sub.next().await;
@@ -109,6 +109,7 @@ impl Rpc {
                             "Received new block header with height {:?}",
                             block_header.number.unwrap()
                         );
+
                         let from = block_number.as_u64() as i64 - 5;
                         let to = block_number.as_u64() as i64;
 
@@ -193,7 +194,12 @@ impl Rpc {
 
             db_tx_receipts.push(db_tx_receipt);
 
-            if format_bool(tx_receipt.status.unwrap()) {
+            let success: bool = match tx_receipt.status {
+                None => false,
+                Some(success) => format_bool(success),
+            };
+
+            if success {
                 match tx_receipt.contract_address {
                     Some(contract) => db_contract_creations.push(DatabaseContractCreation {
                         hash: format_hash(tx_receipt.transaction_hash),

@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    blocks (number) {
+    blocks (hash) {
         number -> Int8,
         hash -> Varchar,
         difficulty -> Varchar,

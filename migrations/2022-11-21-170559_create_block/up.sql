@@ -1,6 +1,6 @@
 CREATE TABLE blocks (
-  number BIGINT PRIMARY KEY,
-  hash VARCHAR NOT NULL,
+  number BIGINT NOT NULL,
+  hash VARCHAR NOT NULL PRIMARY KEY,
   difficulty  VARCHAR NOT NULL,
   total_difficulty  VARCHAR NOT NULL,
   miner VARCHAR NOT NULL,

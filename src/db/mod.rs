@@ -32,6 +32,7 @@ pub struct State {
 #[derive(Debug, Clone)]
 pub struct Database {
     pub db_url: String,
+    pub chain: String,
 }
 
 impl Database {
@@ -45,6 +46,7 @@ impl Database {
 
         Ok(Self {
             db_url: config.db_url,
+            chain: config.chain,
         })
     }
 
@@ -55,19 +57,18 @@ impl Database {
         return connection;
     }
 
-    pub async fn get_last_block(&self) -> Result<i64> {
+    pub async fn get_block_numbers(&self) -> Result<Vec<i64>> {
         let mut connection = self.establish_connection();
 
-        let last_block: Result<DatabaseBlock, diesel::result::Error> = blocks_table
-            .order_by(blocks::number.desc())
-            .first(&mut connection);
+        let blocks = blocks_table
+            .select(blocks::number)
+            .filter(blocks::chain.eq(self.chain.clone()))
+            .load::<i64>(&mut connection);
 
-        let last_block_number: i64 = match last_block {
-            Ok(data) => data.number,
-            Err(_) => 0,
-        };
-
-        Ok(last_block_number)
+        match blocks {
+            Ok(blocks) => Ok(blocks),
+            Err(_) => Ok(Vec::new()),
+        }
     }
 
     pub async fn store_blocks_and_txs(
