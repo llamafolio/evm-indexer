@@ -1,10 +1,10 @@
 ### Database Structure
 
-The database are built using the migrations on the code through the [diesel](https://crates.io/crates/diesel) crate.
+The database structure and information use the [diesel](https://crates.io/crates/diesel) crate.
 
-Migrations are executed each time the program is started.
+Migrations for the database run every time you start the program.
 
-There are 5 tables created on the database
+There are seven tables created on the database.
 
 - [Blocks (blocks)](#blocks-table)
 - [Transactions (txs)](#transactions-table)
