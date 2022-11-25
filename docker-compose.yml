@@ -8,6 +8,9 @@ services:
       - POSTGRES_DB=indexer
     volumes: 
       - ./database/:/var/lib/postgresql/data
+    command: >
+      -c work_mem=2GB
+      -c max_wal_size=2GB  
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U indexer"]
       interval: 5s
