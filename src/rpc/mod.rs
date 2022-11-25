@@ -75,18 +75,30 @@ impl Rpc {
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
-        for tx in txs.iter() {
-            self.batch.eth().transaction_receipt(tx.hash);
-        }
-        let result = self.batch.transport().submit_batch().await;
+        let chunks = txs.chunks(1000);
 
-        match result {
-            Ok(result) => Ok(result
-                .into_iter()
-                .map(|receipt| format_receipt(&receipt))
-                .collect()),
-            Err(_) => Ok(Vec::new()),
+        let mut responses = Vec::new();
+
+        for chunk in chunks {
+            for tx in chunk.iter() {
+                self.batch.eth().transaction_receipt(tx.hash);
+            }
+            let result = self.batch.transport().submit_batch().await;
+
+            match result {
+                Ok(result) => responses.push(result),
+                Err(_) => continue,
+            };
         }
+
+        let receipts = responses
+            .into_iter()
+            .flatten()
+            .into_iter()
+            .map(|raw_receipt| format_receipt(&raw_receipt))
+            .collect();
+
+        Ok(receipts)
     }
 
     pub async fn subscribe_heads(&self, db: &Database) {
@@ -102,49 +114,55 @@ impl Rpc {
         loop {
             let new_block = sub.next().await;
 
-            match new_block {
-                Some(block_header) => match block_header {
-                    Ok(block_header) => {
-                        let block_number = block_header.number.unwrap();
-                        info!(
-                            "Received new block header with height {:?}",
-                            block_header.number.unwrap()
-                        );
+            let rpc = self.clone();
+            let spawn_db = db.clone();
 
-                        let from = block_number.as_u64() as i64 - 5;
-                        let to = block_number.as_u64() as i64;
+            tokio::spawn(async move {
+                match new_block {
+                    Some(block_header) => match block_header {
+                        Ok(block_header) => {
+                            let block_number = block_header.number.unwrap();
+                            info!(
+                                "Received new block header with height {:?}",
+                                block_header.number.unwrap()
+                            );
 
-                        let range: Vec<i64> = (from..to).collect();
+                            let from = block_number.as_u64() as i64 - 5;
+                            let to = block_number.as_u64() as i64;
 
-                        let (
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        ) = self.get_blocks(range).await.unwrap();
+                            let range: Vec<i64> = (from..to).collect();
 
-                        db.store_blocks_and_txs(
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        )
-                        .await;
+                            let (
+                                db_blocks,
+                                db_txs,
+                                db_tx_receipts,
+                                db_tx_logs,
+                                db_contract_creations,
+                                db_contract_interactions,
+                                db_token_transfers,
+                            ) = rpc.get_blocks(range).await.unwrap();
+
+                            spawn_db
+                                .store_blocks_and_txs(
+                                    db_blocks,
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creations,
+                                    db_contract_interactions,
+                                    db_token_transfers,
+                                )
+                                .await;
+                        }
+                        Err(_) => {
+                            return;
+                        }
+                    },
+                    None => {
+                        return;
                     }
-                    Err(_) => {
-                        continue;
-                    }
-                },
-                None => {
-                    continue;
                 }
-            }
+            });
         }
     }
 
