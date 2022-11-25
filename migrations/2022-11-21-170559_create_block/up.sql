@@ -10,5 +10,6 @@ CREATE TABLE blocks (
   timestamp VARCHAR NOT NULL,
   size VARCHAR NOT NULL,
   nonce VARCHAR NOT NULL,
-  base_fee_per_gas VARCHAR NOT NULL
+  base_fee_per_gas VARCHAR NOT NULL,
+  chain VARCHAR NOT NULL
 )

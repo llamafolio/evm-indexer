@@ -14,6 +14,26 @@ diesel::table! {
         size -> Varchar,
         nonce -> Varchar,
         base_fee_per_gas -> Varchar,
+        chain -> Varchar,
+    }
+}
+
+diesel::table! {
+    contract_creations (hash) {
+        hash -> Varchar,
+        block -> Int8,
+        contract -> Varchar,
+        chain -> Varchar,
+    }
+}
+
+diesel::table! {
+    contract_interactions (hash) {
+        hash -> Varchar,
+        block -> Int8,
+        address -> Varchar,
+        contract -> Varchar,
+        chain -> Varchar,
     }
 }
 
@@ -26,13 +46,20 @@ diesel::table! {
         log_index -> Nullable<Int8>,
         transaction_log_index -> Nullable<Int8>,
         log_type -> Nullable<Varchar>,
+        chain -> Varchar,
     }
 }
 
 diesel::table! {
-    state (id) {
-        id -> Varchar,
-        last_block -> Int8,
+    token_transfers (hash) {
+        hash -> Varchar,
+        block -> Int8,
+        token -> Varchar,
+        from_address -> Varchar,
+        to_address -> Varchar,
+        value -> Varchar,
+        log_index -> Int8,
+        chain -> Varchar,
     }
 }
 
@@ -50,6 +77,7 @@ diesel::table! {
         max_fee_per_gas -> Nullable<Varchar>,
         max_priority_fee_per_gas -> Nullable<Varchar>,
         input -> Varchar,
+        chain -> Varchar,
     }
 }
 
@@ -57,7 +85,16 @@ diesel::table! {
     txs_receipts (hash) {
         hash -> Varchar,
         success -> Nullable<Bool>,
+        chain -> Varchar,
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(blocks, logs, state, txs, txs_receipts,);
+diesel::allow_tables_to_appear_in_same_query!(
+    blocks,
+    contract_creations,
+    contract_interactions,
+    logs,
+    token_transfers,
+    txs,
+    txs_receipts,
+);

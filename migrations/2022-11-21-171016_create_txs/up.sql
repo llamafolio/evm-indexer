@@ -10,5 +10,6 @@ CREATE TABLE txs (
   transaction_type BIGINT,
   max_fee_per_gas VARCHAR,
   max_priority_fee_per_gas VARCHAR,
-  input VARCHAR NOT NULL
+  input VARCHAR NOT NULL,
+  chain VARCHAR NOT NULL
 )

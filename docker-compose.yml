@@ -3,30 +3,33 @@ services:
     image: postgres:14.1-alpine
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=indexerdb
-    ports:
-      - '5432:5432'
+      - POSTGRES_USER=indexer
+      - POSTGRES_PASSWORD=indexer
+      - POSTGRES_DB=indexer
     volumes: 
       - ./database/:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indexer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - postgres
 
   evm-indexer:
-    init: true
     container_name: indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db/indexerdb
+      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
     command: "evm-indexer"
     networks:
       - postgres
     depends_on:
-      - "db"
+      db:
+        condition: service_healthy
 
 networks:
   postgres:

@@ -11,6 +11,8 @@ pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 5;
 pub struct Args {
     #[arg(short, long, help = "Start log with debug", default_value_t = false)]
     pub debug: bool,
+    #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
+    pub chain: String,
     #[arg(
         short, long,
         help = "Amount of workers to fetch blocks",
@@ -36,6 +38,7 @@ pub struct Config {
     pub start_block: usize,
     pub workers: usize,
     pub batch_size: usize,
+    pub chain: String,
 }
 
 impl Config {
@@ -50,6 +53,7 @@ impl Config {
             start_block: args.start_block,
             workers: args.workers,
             batch_size: args.batch_size,
+            chain: args.chain,
         }
     }
 }

@@ -5,5 +5,6 @@ CREATE TABLE logs (
   data VARCHAR,
   log_index BIGINT,
   transaction_log_index BIGINT,
-  log_type VARCHAR
+  log_type VARCHAR,
+  chain VARCHAR NOT NULL
 )

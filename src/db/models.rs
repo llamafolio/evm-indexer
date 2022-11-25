@@ -5,7 +5,9 @@ use crate::utils::{
     format_address, format_bool, format_bytes, format_hash, format_nonce, format_number,
 };
 
-use super::schema::{blocks, logs, txs, txs_receipts};
+use super::schema::{
+    blocks, contract_creations, contract_interactions, logs, token_transfers, txs, txs_receipts,
+};
 
 #[derive(Selectable, Queryable, Insertable, Debug)]
 #[diesel(table_name = blocks)]
@@ -22,10 +24,11 @@ pub struct DatabaseBlock {
     pub size: String,
     pub nonce: String,
     pub base_fee_per_gas: String,
+    pub chain: String,
 }
 
 impl DatabaseBlock {
-    pub fn from_web3(block: &Block<Transaction>) -> Self {
+    pub fn from_web3(block: &Block<Transaction>, chain: String) -> Self {
         let base_fee_per_gas: String = match block.base_fee_per_gas {
             None => String::from("0"),
             Some(base_fee_per_gas) => format_number(base_fee_per_gas),
@@ -44,6 +47,7 @@ impl DatabaseBlock {
             size: format_number(block.size.unwrap()),
             nonce: format_nonce(block.nonce.unwrap()),
             base_fee_per_gas,
+            chain,
         }
     }
 }
@@ -63,10 +67,11 @@ pub struct DatabaseTx {
     pub max_fee_per_gas: String,
     pub max_priority_fee_per_gas: String,
     pub input: String,
+    pub chain: String,
 }
 
 impl DatabaseTx {
-    pub fn from_web3(tx: &Transaction) -> Self {
+    pub fn from_web3(tx: &Transaction, chain: String) -> Self {
         let max_fee_per_gas: String = match tx.max_fee_per_gas {
             None => String::from("0"),
             Some(max_fee_per_gas) => format_number(max_fee_per_gas),
@@ -100,6 +105,7 @@ impl DatabaseTx {
             max_fee_per_gas,
             max_priority_fee_per_gas,
             input: format_bytes(&tx.input),
+            chain,
         }
     }
 }
@@ -109,10 +115,11 @@ impl DatabaseTx {
 pub struct DatabaseTxReceipt {
     pub hash: String,
     pub success: bool,
+    pub chain: String,
 }
 
 impl DatabaseTxReceipt {
-    pub fn from_web3(receipt: TransactionReceipt) -> Self {
+    pub fn from_web3(receipt: TransactionReceipt, chain: String) -> Self {
         let success: bool = match receipt.status {
             None => false,
             Some(success) => format_bool(success),
@@ -121,6 +128,7 @@ impl DatabaseTxReceipt {
         Self {
             hash: format_hash(receipt.transaction_hash),
             success,
+            chain,
         }
     }
 }
@@ -135,10 +143,11 @@ pub struct DatabaseTxLogs {
     pub log_index: i64,
     pub transaction_log_index: i64,
     pub log_type: String,
+    pub chain: String,
 }
 
 impl DatabaseTxLogs {
-    pub fn from_web3(log: Log) -> Self {
+    pub fn from_web3(log: Log, chain: String) -> Self {
         let transaction_log_index: i64 = match log.transaction_log_index {
             None => 0,
             Some(transaction_log_index) => transaction_log_index.as_u64() as i64,
@@ -161,6 +170,39 @@ impl DatabaseTxLogs {
                 .into_iter()
                 .map(|topic| format_hash(topic))
                 .collect(),
+            chain,
         }
     }
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = contract_interactions)]
+pub struct DatabaseContractInteraction {
+    pub hash: String,
+    pub block: i64,
+    pub address: String,
+    pub contract: String,
+    pub chain: String,
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = contract_creations)]
+pub struct DatabaseContractCreation {
+    pub hash: String,
+    pub block: i64,
+    pub contract: String,
+    pub chain: String,
+}
+
+#[derive(Queryable, Insertable)]
+#[diesel(table_name = token_transfers)]
+pub struct DatabaseTokenTransfers {
+    pub hash: String,
+    pub block: i64,
+    pub token: String,
+    pub from_address: String,
+    pub to_address: String,
+    pub log_index: i64,
+    pub value: String,
+    pub chain: String,
 }

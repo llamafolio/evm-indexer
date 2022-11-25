@@ -20,6 +20,7 @@ use crate::{
 pub struct Rpc {
     pub batch: Web3<Batch<Http>>,
     pub wss: Web3<WebSocket>,
+    pub chain: String,
 }
 
 impl Rpc {
@@ -32,6 +33,7 @@ impl Rpc {
         Ok(Self {
             wss: Web3::new(ws),
             batch: Web3::new(web3::transports::Batch::new(http)),
+            chain: config.chain,
         })
     }
 
@@ -139,7 +141,12 @@ impl Rpc {
 
         let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
             .into_iter()
-            .map(|block| (DatabaseBlock::from_web3(&block), block.transactions))
+            .map(|block| {
+                (
+                    DatabaseBlock::from_web3(&block, self.chain.clone()),
+                    block.transactions,
+                )
+            })
             .unzip();
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
@@ -148,7 +155,7 @@ impl Rpc {
 
         let db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
-            .map(|tx| DatabaseTx::from_web3(&tx))
+            .map(|tx| DatabaseTx::from_web3(&tx, self.chain.clone()))
             .collect();
 
         let (db_tx_receipts, web3_vec_tx_logs): (Vec<DatabaseTxReceipt>, Vec<Vec<Log>>) =
@@ -156,7 +163,7 @@ impl Rpc {
                 .into_iter()
                 .map(|tx_receipt| {
                     (
-                        DatabaseTxReceipt::from_web3(tx_receipt.clone()),
+                        DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.clone()),
                         tx_receipt.logs,
                     )
                 })
@@ -165,7 +172,7 @@ impl Rpc {
         let db_tx_logs: Vec<DatabaseTxLogs> = web3_vec_tx_logs
             .into_iter()
             .flatten()
-            .map(|log| DatabaseTxLogs::from_web3(log))
+            .map(|log| DatabaseTxLogs::from_web3(log, self.chain.clone()))
             .collect();
 
         Ok((db_blocks, db_txs, db_tx_receipts, db_tx_logs))
