@@ -65,6 +65,11 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
                 continue;
             }
 
+            if db_txs.len() != db_tx_receipts.len() {
+                info!("Txs and txs_receipts don't match, omitting...");
+                continue;
+            }
+
             stores.push(db.store_blocks_and_txs(
                 db_blocks,
                 db_txs,
