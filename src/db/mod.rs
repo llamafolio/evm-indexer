@@ -13,6 +13,9 @@ use crate::config::Config;
 
 use self::models::DatabaseBlock;
 
+use self::models::DatabaseContractCreation;
+use self::models::DatabaseContractInteraction;
+use self::models::DatabaseTokenTransfers;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxReceipt;
@@ -73,6 +76,9 @@ impl Database {
         txs: Vec<DatabaseTx>,
         receipts: Vec<DatabaseTxReceipt>,
         logs: Vec<DatabaseTxLogs>,
+        contract_creations: Vec<DatabaseContractCreation>,
+        contract_interactions: Vec<DatabaseContractInteraction>,
+        token_transfers: Vec<DatabaseTokenTransfers>,
     ) {
         let mut stores: Vec<BoxFuture<_>> = vec![];
 
@@ -92,11 +98,21 @@ impl Database {
             stores.push(Box::pin(self.store_tx_logs(&logs)));
         }
 
-        join_all(stores).await;
+        if contract_creations.len() > 0 {
+            stores.push(Box::pin(self.store_contract_creations(&contract_creations)));
+        }
 
-        /* self.update_sync_state(blocks.last().unwrap().number)
-        .await
-        .unwrap(); */
+        if contract_interactions.len() > 0 {
+            stores.push(Box::pin(
+                self.store_contract_interactions(&contract_interactions),
+            ));
+        }
+
+        if token_transfers.len() > 0 {
+            stores.push(Box::pin(self.store_token_transfers(&token_transfers)));
+        }
+
+        join_all(stores).await;
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
@@ -150,7 +166,7 @@ impl Database {
     async fn store_tx_logs(&self, logs: &Vec<DatabaseTxLogs>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        for chunk in logs {
+        for chunk in logs.chunks(500) {
             diesel::insert_into(schema::logs::dsl::logs)
                 .values(chunk)
                 .on_conflict_do_nothing()
@@ -160,6 +176,70 @@ impl Database {
 
         info!("Inserted {} logs to the database", logs.len());
 
+        Ok(())
+    }
+
+    async fn store_contract_creations(
+        &self,
+        contract_creations: &Vec<DatabaseContractCreation>,
+    ) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        for chunk in contract_creations.chunks(500) {
+            diesel::insert_into(schema::contract_creations::dsl::contract_creations)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store contract creations in the database");
+        }
+
+        info!(
+            "Inserted {} contract creations to the database",
+            contract_creations.len()
+        );
+
+        Ok(())
+    }
+
+    async fn store_contract_interactions(
+        &self,
+        contract_interactions: &Vec<DatabaseContractInteraction>,
+    ) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        for chunk in contract_interactions.chunks(500) {
+            diesel::insert_into(schema::contract_interactions::dsl::contract_interactions)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store contract interactions in the database");
+        }
+
+        info!(
+            "Inserted {} contract interactions to the database",
+            contract_interactions.len()
+        );
+        Ok(())
+    }
+
+    async fn store_token_transfers(
+        &self,
+        token_transfers: &Vec<DatabaseTokenTransfers>,
+    ) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        for chunk in token_transfers.chunks(500) {
+            diesel::insert_into(schema::token_transfers::dsl::token_transfers)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store token transfers in the database");
+        }
+
+        info!(
+            "Inserted {} contract interactions to the database",
+            token_transfers.len()
+        );
         Ok(())
     }
 }

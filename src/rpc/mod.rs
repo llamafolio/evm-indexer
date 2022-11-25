@@ -10,10 +10,13 @@ use web3::{
 use crate::{
     config::Config,
     db::{
-        models::{DatabaseBlock, DatabaseTx, DatabaseTxLogs, DatabaseTxReceipt},
+        models::{
+            DatabaseBlock, DatabaseContractCreation, DatabaseContractInteraction,
+            DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxReceipt,
+        },
         Database,
     },
-    utils::{format_block, format_receipt},
+    utils::{format_address, format_block, format_bool, format_hash, format_receipt},
 };
 
 #[derive(Debug, Clone)]
@@ -111,11 +114,26 @@ impl Rpc {
 
                         let range: Vec<i64> = (from..to).collect();
 
-                        let (db_blocks, db_txs, db_tx_receipts, db_tx_logs) =
-                            self.get_blocks(range).await.unwrap();
+                        let (
+                            db_blocks,
+                            db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creations,
+                            db_contract_interactions,
+                            db_token_transfers,
+                        ) = self.get_blocks(range).await.unwrap();
 
-                        db.store_blocks_and_txs(db_blocks, db_txs, db_tx_receipts, db_tx_logs)
-                            .await;
+                        db.store_blocks_and_txs(
+                            db_blocks,
+                            db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creations,
+                            db_contract_interactions,
+                            db_token_transfers,
+                        )
+                        .await;
                     }
                     Err(_) => {
                         continue;
@@ -136,6 +154,9 @@ impl Rpc {
         Vec<DatabaseTx>,
         Vec<DatabaseTxReceipt>,
         Vec<DatabaseTxLogs>,
+        Vec<DatabaseContractCreation>,
+        Vec<DatabaseContractInteraction>,
+        Vec<DatabaseTokenTransfers>,
     )> {
         let blocks = self.get_block_batch(range).await.unwrap();
 
@@ -158,16 +179,44 @@ impl Rpc {
             .map(|tx| DatabaseTx::from_web3(&tx, self.chain.clone()))
             .collect();
 
-        let (db_tx_receipts, web3_vec_tx_logs): (Vec<DatabaseTxReceipt>, Vec<Vec<Log>>) =
-            web3_receipts
-                .into_iter()
-                .map(|tx_receipt| {
-                    (
-                        DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.clone()),
-                        tx_receipt.logs,
-                    )
-                })
-                .unzip();
+        let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
+
+        let mut web3_vec_tx_logs: Vec<Vec<Log>> = vec![];
+
+        let mut db_contract_creations: Vec<DatabaseContractCreation> = vec![];
+
+        let mut db_contract_interactions: Vec<DatabaseContractInteraction> = vec![];
+
+        for tx_receipt in web3_receipts {
+            let db_tx_receipt =
+                DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.clone());
+
+            db_tx_receipts.push(db_tx_receipt);
+
+            if format_bool(tx_receipt.status.unwrap()) {
+                match tx_receipt.contract_address {
+                    Some(contract) => db_contract_creations.push(DatabaseContractCreation {
+                        hash: format_hash(tx_receipt.transaction_hash),
+                        block: tx_receipt.block_number.unwrap().as_u64() as i64,
+                        contract: format_address(contract),
+                        chain: self.chain.clone(),
+                    }),
+                    None => {
+                        if tx_receipt.logs.len() > 0 {
+                            db_contract_interactions.push(DatabaseContractInteraction {
+                                hash: format_hash(tx_receipt.transaction_hash),
+                                block: tx_receipt.block_number.unwrap().as_u64() as i64,
+                                address: format_address(tx_receipt.from),
+                                contract: format_address(tx_receipt.to.unwrap()),
+                                chain: self.chain.clone(),
+                            })
+                        }
+                    }
+                }
+            }
+
+            web3_vec_tx_logs.push(tx_receipt.logs);
+        }
 
         let db_tx_logs: Vec<DatabaseTxLogs> = web3_vec_tx_logs
             .into_iter()
@@ -175,6 +224,14 @@ impl Rpc {
             .map(|log| DatabaseTxLogs::from_web3(log, self.chain.clone()))
             .collect();
 
-        Ok((db_blocks, db_txs, db_tx_receipts, db_tx_logs))
+        Ok((
+            db_blocks,
+            db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_contract_interactions,
+            Vec::new(),
+        ))
     }
 }

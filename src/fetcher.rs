@@ -38,8 +38,25 @@ pub async fn fetch_blocks(
 
         let mut stores = vec![];
 
-        for (db_blocks, db_txs, db_tx_receipts, db_tx_logs) in res {
-            stores.push(db.store_blocks_and_txs(db_blocks, db_txs, db_tx_receipts, db_tx_logs));
+        for (
+            db_blocks,
+            db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creation,
+            db_contract_interaction,
+            db_token_transfers,
+        ) in res
+        {
+            stores.push(db.store_blocks_and_txs(
+                db_blocks,
+                db_txs,
+                db_tx_receipts,
+                db_tx_logs,
+                db_contract_creation,
+                db_contract_interaction,
+                db_token_transfers,
+            ));
         }
 
         join_all(stores).await;
