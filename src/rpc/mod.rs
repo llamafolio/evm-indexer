@@ -1,10 +1,9 @@
 use anyhow::Result;
-use ethabi::ParamType;
 use log::*;
 use web3::{
     futures::StreamExt,
     transports::{Batch, Http, WebSocket},
-    types::{Block, BlockId, Log, Transaction, TransactionReceipt, U64},
+    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
     Web3,
 };
 
@@ -12,12 +11,13 @@ use crate::{
     config::Config,
     db::{
         models::{
-            DatabaseBlock, DatabaseContractCreation, DatabaseContractInteraction,
-            DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxReceipt,
+            token_transfers_from_logs, DatabaseBlock, DatabaseContractCreation,
+            DatabaseContractInteraction, DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs,
+            DatabaseTxReceipt,
         },
         Database,
     },
-    utils::{format_address, format_block, format_bool, format_hash, format_receipt},
+    utils::{format_address, format_block, format_bool, format_receipt},
 };
 
 #[derive(Debug, Clone)]
@@ -183,7 +183,7 @@ impl Rpc {
 
         let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
 
-        let mut web3_vec_tx_logs: Vec<Vec<Log>> = vec![];
+        let mut db_tx_logs: Vec<DatabaseTxLogs> = vec![];
 
         let mut db_contract_creations: Vec<DatabaseContractCreation> = vec![];
 
@@ -203,132 +203,45 @@ impl Rpc {
             };
 
             if success {
+                let logs = tx_receipt.logs.clone();
+
                 match tx_receipt.contract_address {
-                    Some(contract) => db_contract_creations.push(DatabaseContractCreation {
-                        hash: format_hash(tx_receipt.transaction_hash),
-                        block: tx_receipt.block_number.unwrap().as_u64() as i64,
-                        contract: format_address(contract),
-                        chain: self.chain.clone(),
-                    }),
+                    Some(contract) => {
+                        db_contract_creations.push(DatabaseContractCreation::from_receipt(
+                            &tx_receipt,
+                            self.chain.clone(),
+                            format_address(contract),
+                        ))
+                    }
                     None => {
-                        if tx_receipt.logs.len() > 0 {
-                            db_contract_interactions.push(DatabaseContractInteraction {
-                                hash: format_hash(tx_receipt.transaction_hash),
-                                block: tx_receipt.block_number.unwrap().as_u64() as i64,
-                                address: format_address(tx_receipt.from),
-                                contract: format_address(tx_receipt.to.unwrap()),
-                                chain: self.chain.clone(),
-                            });
+                        if logs.len() > 0 {
+                            let db_contract_interaction = DatabaseContractInteraction::from_receipt(
+                                &tx_receipt,
+                                self.chain.clone(),
+                            );
+
+                            db_contract_interactions.push(db_contract_interaction);
 
                             // Check for token transfers
-                            for log in tx_receipt.logs.clone() {
-                                if log.topics.len() != 3 {
-                                    continue;
-                                }
-
-                                let event = ethabi::Event {
-                                    name: "Transfer".to_owned(),
-                                    inputs: vec![
-                                        ethabi::EventParam {
-                                            name: "from".to_owned(),
-                                            kind: ParamType::Address,
-                                            indexed: false,
-                                        },
-                                        ethabi::EventParam {
-                                            name: "to".to_owned(),
-                                            kind: ParamType::Address,
-                                            indexed: false,
-                                        },
-                                        ethabi::EventParam {
-                                            name: "amount".to_owned(),
-                                            kind: ParamType::Uint(256),
-                                            indexed: false,
-                                        },
-                                    ],
-                                    anonymous: false,
-                                };
-
-                                // Check the first topic against keccak256(Transfer(address,address,uint256))
-                                if format_hash(log.topics[0]) != format!("{:?}", event.signature())
-                                {
-                                    continue;
-                                }
-
-                                let from_address: String = match ethabi::decode(
-                                    &[ParamType::Address],
-                                    log.topics[1].as_bytes(),
+                            for log in logs {
+                                match token_transfers_from_logs(
+                                    &log,
+                                    &tx_receipt,
+                                    self.chain.clone(),
                                 ) {
-                                    Ok(address) => {
-                                        if address.len() == 0 {
-                                            continue;
-                                        } else {
-                                            format!(
-                                                "{:?}",
-                                                address[0].clone().into_address().unwrap()
-                                            )
-                                        }
-                                    }
+                                    Ok(token_transfer) => db_token_transfers.push(token_transfer),
                                     Err(_) => continue,
                                 };
 
-                                let to_address = match ethabi::decode(
-                                    &[ParamType::Address],
-                                    log.topics[2].as_bytes(),
-                                ) {
-                                    Ok(address) => {
-                                        if address.len() == 0 {
-                                            continue;
-                                        } else {
-                                            format!(
-                                                "{:?}",
-                                                address[0].clone().into_address().unwrap()
-                                            )
-                                        }
-                                    }
-                                    Err(_) => continue,
-                                };
+                                let db_log = DatabaseTxLogs::from_web3(log, self.chain.clone());
 
-                                let value = match ethabi::decode(
-                                    &[ParamType::Uint(256)],
-                                    &log.data.0[..],
-                                ) {
-                                    Ok(value) => {
-                                        if value.len() == 0 {
-                                            continue;
-                                        } else {
-                                            format!("{:?}", value[0].clone().into_uint().unwrap())
-                                        }
-                                    }
-                                    Err(_) => continue,
-                                };
-
-                                db_token_transfers.push(DatabaseTokenTransfers {
-                                    hash_with_index: format!(
-                                        "{}-{}",
-                                        format_hash(tx_receipt.transaction_hash),
-                                        log.log_index.unwrap().as_u64()
-                                    ),
-                                    block: tx_receipt.block_number.unwrap().as_u64() as i64,
-                                    token: format_address(log.address),
-                                    from_address,
-                                    to_address,
-                                    value,
-                                    chain: self.chain.clone(),
-                                })
+                                db_tx_logs.push(db_log);
                             }
                         }
                     }
                 }
             }
-
-            web3_vec_tx_logs.push(tx_receipt.logs);
         }
-
-        let db_tx_logs: Vec<DatabaseTxLogs> = web3_vec_tx_logs
-            .into_iter()
-            .flatten()
-            .map(|log| DatabaseTxLogs::from_web3(log, self.chain.clone()))
-            .collect();
 
         Ok((
             db_blocks,

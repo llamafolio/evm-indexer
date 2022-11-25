@@ -40,7 +40,13 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
             works.push(rpc.get_blocks(worker_part.to_vec()));
         }
 
-        let res = join_all(works).await.into_iter().map(Result::unwrap);
+        let block_responses = join_all(works).await;
+
+        let res = block_responses.into_iter().map(Result::unwrap);
+
+        if res.len() < config.workers {
+            info!("Incomplete result returned, omitting...")
+        }
 
         let mut stores = vec![];
 
@@ -54,6 +60,11 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
             db_token_transfers,
         ) in res
         {
+            if db_blocks.len() < config.batch_size {
+                info!("Incomplete blocks returned, omitting...");
+                continue;
+            }
+
             stores.push(db.store_blocks_and_txs(
                 db_blocks,
                 db_txs,
