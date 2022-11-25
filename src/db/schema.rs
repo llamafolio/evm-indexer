@@ -51,14 +51,13 @@ diesel::table! {
 }
 
 diesel::table! {
-    token_transfers (hash) {
-        hash -> Varchar,
+    token_transfers (hash_with_index) {
+        hash_with_index -> Varchar,
         block -> Int8,
         token -> Varchar,
         from_address -> Varchar,
         to_address -> Varchar,
         value -> Varchar,
-        log_index -> Int8,
         chain -> Varchar,
     }
 }

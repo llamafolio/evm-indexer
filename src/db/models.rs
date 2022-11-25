@@ -197,12 +197,11 @@ pub struct DatabaseContractCreation {
 #[derive(Queryable, Insertable)]
 #[diesel(table_name = token_transfers)]
 pub struct DatabaseTokenTransfers {
-    pub hash: String,
+    pub hash_with_index: String,
     pub block: i64,
     pub token: String,
     pub from_address: String,
     pub to_address: String,
-    pub log_index: i64,
     pub value: String,
     pub chain: String,
 }

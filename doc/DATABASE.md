@@ -92,13 +92,12 @@ There are seven tables created on the database.
 
 #### Token Transfers Table
 
-| Column         | PostgreSQL type | Rust type |
-| -------------- | --------------- | --------- |
-| `hash `        | `VARCHAR`       | `String ` |
-| `block`        | `BIGINT`        | `i64 `    |
-| `from_address` | `VARCHAR`       | `String ` |
-| `to_address`   | `VARCHAR`       | `String ` |
-| `value`        | `VARCHAR`       | `String ` |
-| `token`        | `VARCHAR`       | `String`  |
-| `log_index`    | `BIGINT`        | `i64`     |
-| `chain`        | `VARCHAR `      | `String ` |
+| Column            | PostgreSQL type | Rust type |
+| ----------------- | --------------- | --------- |
+| `hash_with_index` | `VARCHAR`       | `String ` |
+| `block`           | `BIGINT`        | `i64 `    |
+| `from_address`    | `VARCHAR`       | `String ` |
+| `to_address`      | `VARCHAR`       | `String ` |
+| `value`           | `VARCHAR`       | `String ` |
+| `token`           | `VARCHAR`       | `String`  |
+| `chain`           | `VARCHAR `      | `String ` |

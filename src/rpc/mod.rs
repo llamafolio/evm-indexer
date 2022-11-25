@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ethabi::ParamType;
 use log::*;
 use web3::{
     futures::StreamExt,
@@ -188,6 +189,8 @@ impl Rpc {
 
         let mut db_contract_interactions: Vec<DatabaseContractInteraction> = vec![];
 
+        let mut db_token_transfers: Vec<DatabaseTokenTransfers> = vec![];
+
         for tx_receipt in web3_receipts {
             let db_tx_receipt =
                 DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.clone());
@@ -215,7 +218,104 @@ impl Rpc {
                                 address: format_address(tx_receipt.from),
                                 contract: format_address(tx_receipt.to.unwrap()),
                                 chain: self.chain.clone(),
-                            })
+                            });
+
+                            // Check for token transfers
+                            for log in tx_receipt.logs.clone() {
+                                if log.topics.len() != 3 {
+                                    continue;
+                                }
+
+                                let event = ethabi::Event {
+                                    name: "Transfer".to_owned(),
+                                    inputs: vec![
+                                        ethabi::EventParam {
+                                            name: "from".to_owned(),
+                                            kind: ParamType::Address,
+                                            indexed: false,
+                                        },
+                                        ethabi::EventParam {
+                                            name: "to".to_owned(),
+                                            kind: ParamType::Address,
+                                            indexed: false,
+                                        },
+                                        ethabi::EventParam {
+                                            name: "amount".to_owned(),
+                                            kind: ParamType::Uint(256),
+                                            indexed: false,
+                                        },
+                                    ],
+                                    anonymous: false,
+                                };
+
+                                // Check the first topic against keccak256(Transfer(address,address,uint256))
+                                if format_hash(log.topics[0]) != format!("{:?}", event.signature())
+                                {
+                                    continue;
+                                }
+
+                                let from_address: String = match ethabi::decode(
+                                    &[ParamType::Address],
+                                    log.topics[1].as_bytes(),
+                                ) {
+                                    Ok(address) => {
+                                        if address.len() == 0 {
+                                            continue;
+                                        } else {
+                                            format!(
+                                                "{:?}",
+                                                address[0].clone().into_address().unwrap()
+                                            )
+                                        }
+                                    }
+                                    Err(_) => continue,
+                                };
+
+                                let to_address = match ethabi::decode(
+                                    &[ParamType::Address],
+                                    log.topics[2].as_bytes(),
+                                ) {
+                                    Ok(address) => {
+                                        if address.len() == 0 {
+                                            continue;
+                                        } else {
+                                            format!(
+                                                "{:?}",
+                                                address[0].clone().into_address().unwrap()
+                                            )
+                                        }
+                                    }
+                                    Err(_) => continue,
+                                };
+
+                                let value = match ethabi::decode(
+                                    &[ParamType::Uint(256)],
+                                    &log.data.0[..],
+                                ) {
+                                    Ok(value) => {
+                                        if value.len() == 0 {
+                                            continue;
+                                        } else {
+                                            format!("{:?}", value[0].clone().into_uint().unwrap())
+                                        }
+                                    }
+                                    Err(_) => continue,
+                                };
+
+                                db_token_transfers.push(DatabaseTokenTransfers {
+                                    hash_with_index: format!(
+                                        "{}-{}",
+                                        format_hash(tx_receipt.transaction_hash),
+                                        log.log_index.unwrap().as_u64()
+                                    ),
+                                    block: tx_receipt.block_number.unwrap().as_u64() as i64,
+                                    token: format_address(log.address),
+                                    from_address,
+                                    to_address,
+                                    value,
+                                    chain: self.chain.clone(),
+                                })
+                            }
                         }
                     }
                 }
@@ -237,7 +337,7 @@ impl Rpc {
             db_tx_logs,
             db_contract_creations,
             db_contract_interactions,
-            Vec::new(),
+            db_token_transfers,
         ))
     }
 }
