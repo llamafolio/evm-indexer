@@ -69,14 +69,15 @@ impl Rpc {
             Ok(result) => Ok(result
                 .into_iter()
                 .map(Result::unwrap)
-                .map(|block| format_block(block))
+                .filter(|raw_block| !raw_block.is_null())
+                .map(|raw_block| format_block(raw_block))
                 .collect()),
             Err(_) => Ok(Vec::new()),
         }
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
-        let chunks = txs.chunks(200);
+        let chunks = txs.chunks(100);
 
         let mut responses = Vec::new();
 

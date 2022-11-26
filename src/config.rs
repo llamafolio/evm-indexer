@@ -1,7 +1,7 @@
 use clap::Parser;
 
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
-pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
+pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
 
 #[derive(Parser, Debug)]
 #[command(
