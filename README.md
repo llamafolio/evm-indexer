@@ -34,9 +34,12 @@ cargo build --release
 
 ```
 DATABASE_URL -> URL for postgresql database.
-RPC_WS_URL -> Websocket URL for the EVM-blockchain RPC endpoint (for new blocks).
-RPC_HTTPS_URL -> HTTP URL for the EVM-blockchain RPC endpoint (to fetch past blocks).
+PROVIDER_KEY -> API key for the RPC endpoint tested providers.
 ```
+
+The available providers for the indexer are:
+
+- [Ankr](https://www.ankr.com/rpc/)
 
 4. Run the program
 
