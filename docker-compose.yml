@@ -33,6 +33,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  polygon-indexer:
+    container_name: polygon-indexer
+    image: ghcr.io/eabz/evm-indexer:latest
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+    env_file:
+      - .env
+    command: "evm-indexer --chain polygon"
+    networks:
+      - postgres
+    depends_on:
+      db:
+        condition: service_healthy        
         
 networks:
   postgres:

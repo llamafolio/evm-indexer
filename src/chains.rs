@@ -1,4 +1,4 @@
-pub const AVAILABLE_CHAINS: &'static [&'static str] = &["mainnet", "bsc"];
+pub const AVAILABLE_CHAINS: &'static [&'static str] = &["mainnet", "polygon"];
 
 pub const AVAILABLE_PROVIDERS: &'static [&'static str] = &["llamanodes"];
 

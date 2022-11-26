@@ -219,7 +219,7 @@ impl Rpc {
 
         let mut web3_receipts: Vec<TransactionReceipt> = Vec::new();
 
-        if self.chain.clone() == "mainnet" {
+        if self.chain.clone() == "mainnet" || self.chain.clone() == "polygon" {
             let mut receipts = self.get_block_receipts(&blocks).await.unwrap();
             web3_receipts.append(&mut receipts);
         }
@@ -236,7 +236,7 @@ impl Rpc {
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
-        if self.chain.clone() != "mainnet" {
+        if self.chain.clone() != "mainnet" && self.chain.clone() != "polygon" {
             let mut receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
             web3_receipts.append(&mut receipts);
         }
