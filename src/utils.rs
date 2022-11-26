@@ -40,16 +40,20 @@ struct ReceiptsMap {
 }
 
 pub fn format_receipts(b: serde_json::Value) -> Vec<TransactionReceipt> {
-    let receipts: Result<Vec<TransactionReceipt>, serde_json::Error> =
+    let receipts_res: Result<Vec<TransactionReceipt>, serde_json::Error> =
         serde_json::from_value(b.clone());
 
-    match receipts {
+    match receipts_res {
         Ok(receipts) => return receipts,
-        Err(_) => {
+        Err(err) => {
+            println!("{:?}", err);
             let object: Result<ReceiptsMap, serde_json::Error> = serde_json::from_value(b.clone());
             match object {
                 Ok(receipts) => return receipts.receipts,
-                Err(_) => return Vec::new(),
+                Err(err) => {
+                    println!("{:?}", err);
+                    return Vec::new();
+                }
             }
         }
     }

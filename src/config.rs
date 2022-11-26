@@ -2,8 +2,8 @@ use clap::Parser;
 
 use crate::chains::{get_endpoints, Endpoints, AVAILABLE_CHAINS, AVAILABLE_PROVIDERS};
 
-pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
-pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
+pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
+pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
 
 #[derive(Parser, Debug)]
 #[command(

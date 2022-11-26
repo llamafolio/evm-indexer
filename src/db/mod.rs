@@ -92,7 +92,7 @@ impl Database {
 
         if txs.len() > 0 {
             stores.push(Box::pin(self.store_txs(&txs)));
-            log.push_str(&format!(" txs({}) ", txs.len()));
+            log.push_str(&format!(" txs({})", txs.len()));
         }
 
         if receipts.len() > 0 {
