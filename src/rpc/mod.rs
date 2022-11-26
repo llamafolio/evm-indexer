@@ -77,7 +77,7 @@ impl Rpc {
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
-        let chunks = txs.chunks(100);
+        let chunks = txs.chunks(25);
 
         let mut responses = Vec::new();
 
@@ -105,9 +105,9 @@ impl Rpc {
 
     async fn get_block_receipts(
         &self,
-        txs: &Vec<Block<Transaction>>,
+        blocks: &Vec<Block<Transaction>>,
     ) -> Result<Vec<TransactionReceipt>> {
-        let chunks = txs.chunks(100);
+        let chunks = blocks.chunks(25);
 
         let mut responses = Vec::new();
 
