@@ -87,28 +87,28 @@ impl Database {
 
         if blocks.len() > 0 {
             stores.push(Box::pin(self.store_blocks(&blocks)));
-            log.push_str(&format!("blocks({}) ", blocks.len()));
+            log.push_str(&format!("blocks({})", blocks.len()));
         }
 
         if txs.len() > 0 {
             stores.push(Box::pin(self.store_txs(&txs)));
-            log.push_str(&format!("txs({}) ", txs.len()));
+            log.push_str(&format!(" txs({}) ", txs.len()));
         }
 
         if receipts.len() > 0 {
             stores.push(Box::pin(self.store_tx_receipts(&receipts)));
-            log.push_str(&format!("receipts({}) ", receipts.len()));
+            log.push_str(&format!(" receipts({})", receipts.len()));
         }
 
         if logs.len() > 0 {
             stores.push(Box::pin(self.store_tx_logs(&logs)));
-            log.push_str(&format!("logs({}) ", logs.len()));
+            log.push_str(&format!(" logs({})", logs.len()));
         }
 
         if contract_creations.len() > 0 {
             stores.push(Box::pin(self.store_contract_creations(&contract_creations)));
             log.push_str(&format!(
-                "contract_creations({}) ",
+                " contract_creations({})",
                 contract_creations.len()
             ));
         }
@@ -118,14 +118,14 @@ impl Database {
                 self.store_contract_interactions(&contract_interactions),
             ));
             log.push_str(&format!(
-                "contract_interactions({}) ",
+                " contract_interactions({})",
                 contract_interactions.len()
             ));
         }
 
         if token_transfers.len() > 0 {
             stores.push(Box::pin(self.store_token_transfers(&token_transfers)));
-            log.push_str(&format!("token_transfers({})", token_transfers.len()));
+            log.push_str(&format!(" token_transfers({})", token_transfers.len()));
         }
 
         join_all(stores).await;

@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use web3::types::{Block, Bytes, Transaction, TransactionReceipt, H160, H256, H64, U256, U64};
 
 pub fn format_nonce(h: H64) -> String {
@@ -33,6 +34,23 @@ pub fn format_receipt(b: serde_json::Value) -> TransactionReceipt {
     return serde_json::from_value(b).unwrap();
 }
 
+#[derive(Deserialize, Debug)]
+struct ReceiptsMap {
+    receipts: Vec<TransactionReceipt>,
+}
+
 pub fn format_receipts(b: serde_json::Value) -> Vec<TransactionReceipt> {
-    return serde_json::from_value(b).unwrap();
+    let receipts: Result<Vec<TransactionReceipt>, serde_json::Error> =
+        serde_json::from_value(b.clone());
+
+    match receipts {
+        Ok(receipts) => return receipts,
+        Err(_) => {
+            let object: Result<ReceiptsMap, serde_json::Error> = serde_json::from_value(b.clone());
+            match object {
+                Ok(receipts) => return receipts.receipts,
+                Err(_) => return Vec::new(),
+            }
+        }
+    }
 }
