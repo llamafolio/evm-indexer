@@ -14,7 +14,7 @@ COPY ./migrations /app/migrations/
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
   set -e
-  touch /app/src/main.rs /app/src/lib.rs
+  touch /app/src/main.rs
   cargo build --release
 EOF
 

@@ -1,5 +1,7 @@
 use clap::Parser;
 
+use crate::chains::{get_endpoints, Endpoints, AVAILABLE_CHAINS, AVAILABLE_PROVIDERS};
+
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
 pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 10;
 
@@ -14,6 +16,9 @@ pub struct Args {
 
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
+
+    #[arg(short, long, help = "Name of the provider used to sync", default_value_t = String::from("ankr"))]
+    pub provider: String,
 
     #[arg(
         short, long,
@@ -52,13 +57,27 @@ impl Config {
         let mut chain = args.chain;
 
         if chain == "ethereum" {
-            chain = String::from("mainnet");
+            chain = "mainnet".to_string();
         }
+
+        if !AVAILABLE_CHAINS.contains(&&*chain.clone()) {
+            panic!("Chain not available");
+        }
+
+        let provider = String::from(args.provider);
+
+        if !AVAILABLE_PROVIDERS.contains(&&*provider) {
+            panic!("Provider not available");
+        }
+
+        let provider_key = std::env::var("PROVIDER_KEY").expect("PROVIDER_KEY must be set.");
+
+        let enpoints: Endpoints = get_endpoints(provider, chain.clone(), provider_key);
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
-            rpc_http_url: std::env::var("RPC_HTTP_URL").expect("RPC_HTTP_URL must be set."),
-            rpc_ws_url: std::env::var("RPC_WS_URL").expect("RPC_WS_URL must be set."),
+            rpc_http_url: enpoints.http,
+            rpc_ws_url: enpoints.wss,
             debug: args.debug,
             start_block: args.start_block,
             workers: args.workers,

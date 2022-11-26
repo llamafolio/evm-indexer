@@ -1,7 +1,15 @@
+pub mod chains;
+pub mod config;
+pub mod db;
+pub mod fetcher;
+pub mod rpc;
+pub mod utils;
+
 use dotenv::dotenv;
-use evm_indexer::{config::Config, db::Database, fetcher, rpc::Rpc};
 use log::*;
 use simple_logger::SimpleLogger;
+
+use crate::{config::Config, db::Database, rpc::Rpc};
 
 #[tokio::main()]
 async fn main() {
