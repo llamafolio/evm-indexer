@@ -32,3 +32,7 @@ pub fn format_block(b: serde_json::Value) -> Block<Transaction> {
 pub fn format_receipt(b: serde_json::Value) -> TransactionReceipt {
     return serde_json::from_value(b).unwrap();
 }
+
+pub fn format_receipts(b: serde_json::Value) -> Vec<TransactionReceipt> {
+    return serde_json::from_value(b).unwrap();
+}

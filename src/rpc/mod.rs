@@ -3,7 +3,7 @@ use log::*;
 use web3::{
     futures::StreamExt,
     transports::{Batch, Http, WebSocket},
-    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
+    types::{Block, BlockId, BlockNumber, Transaction, TransactionReceipt, U64},
     Web3,
 };
 
@@ -17,7 +17,7 @@ use crate::{
         },
         Database,
     },
-    utils::{format_address, format_block, format_bool, format_receipt},
+    utils::{format_address, format_block, format_bool, format_receipt, format_receipts},
 };
 
 #[derive(Debug, Clone)]
@@ -98,6 +98,39 @@ impl Rpc {
             .map(Result::unwrap)
             .filter(|raw_receipt| !raw_receipt.is_null())
             .map(|raw_receipt| format_receipt(raw_receipt))
+            .collect();
+
+        Ok(receipts)
+    }
+
+    async fn get_block_receipts(
+        &self,
+        txs: &Vec<Block<Transaction>>,
+    ) -> Result<Vec<TransactionReceipt>> {
+        let chunks = txs.chunks(100);
+
+        let mut responses = Vec::new();
+
+        for chunk in chunks {
+            for block in chunk.iter() {
+                self.batch
+                    .eth()
+                    .block_receipts(BlockNumber::Number(block.number.unwrap()));
+            }
+
+            let receipt_res = self.batch.transport().submit_batch().await;
+            match receipt_res {
+                Ok(mut result) => responses.append(&mut result),
+                Err(_) => continue,
+            };
+        }
+
+        let receipts = responses
+            .into_iter()
+            .map(Result::unwrap)
+            .filter(|raw_receipt| !raw_receipt.is_null())
+            .map(|raw_receipt| format_receipts(raw_receipt))
+            .flatten()
             .collect();
 
         Ok(receipts)
@@ -184,6 +217,13 @@ impl Rpc {
     )> {
         let blocks = self.get_block_batch(range).await.unwrap();
 
+        let mut web3_receipts: Vec<TransactionReceipt> = Vec::new();
+
+        if self.chain.clone() == "mainnet" {
+            let mut receipts = self.get_block_receipts(&blocks).await.unwrap();
+            web3_receipts.append(&mut receipts);
+        }
+
         let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
             .into_iter()
             .map(|block| {
@@ -196,7 +236,10 @@ impl Rpc {
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
-        let web3_receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
+        if self.chain.clone() != "mainnet" {
+            let mut receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
+            web3_receipts.append(&mut receipts);
+        }
 
         let db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()

@@ -1,6 +1,6 @@
 pub const AVAILABLE_CHAINS: &'static [&'static str] = &["mainnet", "bsc"];
 
-pub const AVAILABLE_PROVIDERS: &'static [&'static str] = &["ankr"];
+pub const AVAILABLE_PROVIDERS: &'static [&'static str] = &["llamanodes"];
 
 pub struct Endpoints {
     pub http: String,
@@ -8,8 +8,8 @@ pub struct Endpoints {
 }
 
 pub fn get_endpoints(provider: String, chain: String, key: String) -> Endpoints {
-    if provider == "ankr" {
-        return get_ankr_endpoint(chain, key);
+    if provider == "llamanodes" {
+        return get_llamanodes_endpoint(chain, key);
     }
 
     return Endpoints {
@@ -18,7 +18,7 @@ pub fn get_endpoints(provider: String, chain: String, key: String) -> Endpoints 
     };
 }
 
-fn get_ankr_endpoint(chain: String, key: String) -> Endpoints {
+fn get_llamanodes_endpoint(chain: String, key: String) -> Endpoints {
     let mut slug = chain.clone();
 
     if chain == String::from("mainnet") {
@@ -26,7 +26,7 @@ fn get_ankr_endpoint(chain: String, key: String) -> Endpoints {
     }
 
     return Endpoints {
-        http: format!("https://rpc.ankr.com/{}/{}", slug, key),
-        wss: format!("wss://rpc.ankr.com/{}/ws/{}", slug, key),
+        http: format!("https://{}-ski.llamarpc.com/rpc/{}", slug, key),
+        wss: format!("wss://{}-ski.llamarpc.com/rpc/{}", slug, key),
     };
 }

@@ -2,8 +2,8 @@ use clap::Parser;
 
 use crate::chains::{get_endpoints, Endpoints, AVAILABLE_CHAINS, AVAILABLE_PROVIDERS};
 
-pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 50;
-pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 50;
+pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 200;
+pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -17,7 +17,7 @@ pub struct Args {
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
 
-    #[arg(short, long, help = "Name of the provider used to sync", default_value_t = String::from("ankr"))]
+    #[arg(short, long, help = "Name of the provider used to sync", default_value_t = String::from("llamanodes"))]
     pub provider: String,
 
     #[arg(

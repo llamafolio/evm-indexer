@@ -55,7 +55,7 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
                     db_token_transfers,
                 ) = rpc.get_blocks(worker_part.to_vec()).await.unwrap();
 
-                if db_blocks.len() < config.batch_size {
+                if db_blocks.len() < worker_part.len() {
                     info!("Incomplete blocks returned, omitting...");
                     continue;
                 }
