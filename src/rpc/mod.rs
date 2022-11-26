@@ -68,14 +68,15 @@ impl Rpc {
         match blocks_res {
             Ok(result) => Ok(result
                 .into_iter()
-                .map(|block| format_block(&block))
+                .map(Result::unwrap)
+                .map(|block| format_block(block))
                 .collect()),
             Err(_) => Ok(Vec::new()),
         }
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
-        let chunks = txs.chunks(1000);
+        let chunks = txs.chunks(500);
 
         let mut responses = Vec::new();
 
@@ -85,22 +86,17 @@ impl Rpc {
             }
 
             let receipt_res = self.batch.transport().submit_batch().await;
-
             match receipt_res {
-                Ok(result) => {
-                    if result.len() > 0 {
-                        responses.push(result)
-                    }
-                }
+                Ok(mut result) => responses.append(&mut result),
                 Err(_) => continue,
             };
         }
 
         let receipts = responses
             .into_iter()
-            .flatten()
-            .into_iter()
-            .map(|raw_receipt| format_receipt(&raw_receipt))
+            .map(Result::unwrap)
+            .filter(|raw_receipt| !raw_receipt.is_null())
+            .map(|raw_receipt| format_receipt(raw_receipt))
             .collect();
 
         Ok(receipts)
@@ -197,7 +193,7 @@ impl Rpc {
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
-        let web3_receipts = self.get_txs_receipts(&web3_txs).await.into_iter().flatten();
+        let web3_receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
 
         let db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
