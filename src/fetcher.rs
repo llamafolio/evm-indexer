@@ -31,9 +31,10 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
         let chunks = work_chunk.chunks(config.batch_size);
 
         info!(
-            "Procesing chunk from block {} to {}",
+            "Procesing chunk from block {} to {} for chain {}",
             work_chunk.first().unwrap(),
-            work_chunk.last().unwrap()
+            work_chunk.last().unwrap(),
+            config.chain.clone()
         );
 
         for worker_part in chunks {

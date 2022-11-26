@@ -118,6 +118,7 @@ impl Rpc {
 
             let rpc = self.clone();
             let spawn_db = db.clone();
+            let chain = self.chain.clone();
 
             tokio::spawn(async move {
                 match new_block {
@@ -125,8 +126,9 @@ impl Rpc {
                         Ok(block_header) => {
                             let block_number = block_header.number.unwrap();
                             info!(
-                                "Received new block header with height {:?}",
-                                block_header.number.unwrap()
+                                "Received new block header with height {:?} for chain {}",
+                                block_header.number.unwrap(),
+                                chain
                             );
 
                             let from = block_number.as_u64() as i64 - 5;

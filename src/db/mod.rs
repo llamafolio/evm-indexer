@@ -130,7 +130,7 @@ impl Database {
 
         join_all(stores).await;
 
-        info!("{}", log);
+        info!("{} for chain {}", log, self.chain.clone());
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
