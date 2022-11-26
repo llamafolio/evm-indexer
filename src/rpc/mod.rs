@@ -83,10 +83,15 @@ impl Rpc {
             for tx in chunk.iter() {
                 self.batch.eth().transaction_receipt(tx.hash);
             }
-            let result = self.batch.transport().submit_batch().await;
 
-            match result {
-                Ok(result) => responses.push(result),
+            let receipt_res = self.batch.transport().submit_batch().await;
+
+            match receipt_res {
+                Ok(result) => {
+                    if result.len() > 0 {
+                        responses.push(result)
+                    }
+                }
                 Err(_) => continue,
             };
         }
