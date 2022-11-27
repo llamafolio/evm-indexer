@@ -15,12 +15,14 @@ use self::models::DatabaseBlock;
 
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
+use self::models::DatabaseState;
 use self::models::DatabaseTokenTransfers;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxReceipt;
 use self::schema::blocks;
 use self::schema::blocks::table as blocks_table;
+use self::schema::state;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -130,6 +132,8 @@ impl Database {
 
         join_all(stores).await;
 
+        self.update_chain_state().await.unwrap();
+
         info!("{} for chain {}", log, self.chain.clone());
     }
 
@@ -236,6 +240,27 @@ impl Database {
                 .execute(&mut connection)
                 .expect("Unable to store token transfers in the database");
         }
+
+        Ok(())
+    }
+
+    async fn update_chain_state(&self) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        let blocks = self.get_block_numbers().await.unwrap();
+
+        let state = DatabaseState {
+            chain: self.chain.clone(),
+            blocks: blocks.len() as i64,
+        };
+
+        diesel::insert_into(schema::state::dsl::state)
+            .values(&state)
+            .on_conflict(state::chain)
+            .do_update()
+            .set(schema::state::dsl::blocks.eq(state.blocks))
+            .execute(&mut connection)
+            .expect("Unable to update chain state");
 
         Ok(())
     }

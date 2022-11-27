@@ -51,6 +51,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    state (chain) {
+        chain -> Varchar,
+        blocks -> Int8,
+    }
+}
+
+diesel::table! {
     token_transfers (hash_with_index) {
         hash_with_index -> Varchar,
         hash -> Varchar,
@@ -95,6 +102,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     contract_creations,
     contract_interactions,
     logs,
+    state,
     token_transfers,
     txs,
     txs_receipts,
