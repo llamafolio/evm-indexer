@@ -30,7 +30,7 @@ services:
         HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
         HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
         HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:indexer@db/postgres
-        PG_DATABASE_URL: postgresql://indexer:indexer@db/indexer
+        HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:indexer@db/indexer
       networks:
         - postgres  
 
