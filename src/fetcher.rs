@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use log::*;
+use web3::futures::future::join_all;
 
 use crate::{config::Config, db::Database, rpc::Rpc};
 
@@ -24,19 +25,32 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
         missing_blocks_amount, config.batch_size, config.workers
     );
 
-    let chunks = missing_blocks.chunks(config.batch_size);
+    for work_chunk in missing_blocks.chunks(config.batch_size * config.workers) {
+        let mut works = vec![];
 
-    for chunk in chunks {
-        let chunk_vec = chunk.to_vec();
-
+        let chunks = work_chunk.chunks(config.batch_size);
         info!(
             "Procesing chunk from block {} to {} for chain {}",
-            chunk_vec.first().unwrap(),
-            chunk_vec.last().unwrap(),
-            config.chain
+            work_chunk.first().unwrap(),
+            work_chunk.last().unwrap(),
+            config.chain.clone()
         );
 
-        let (
+        for worker_part in chunks {
+            works.push(rpc.get_blocks(worker_part.to_vec()));
+        }
+
+        let block_responses = join_all(works).await;
+
+        let res = block_responses.into_iter().map(Result::unwrap);
+
+        if res.len() < config.workers {
+            info!("Incomplete result returned, omitting...")
+        }
+
+        let mut stores = vec![];
+
+        for (
             db_blocks,
             db_txs,
             db_tx_receipts,
@@ -44,28 +58,30 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
             db_contract_creation,
             db_contract_interaction,
             db_token_transfers,
-        ) = rpc.get_blocks(chunk_vec.to_vec()).await.unwrap();
+        ) in res
+        {
+            if db_blocks.len() < config.batch_size {
+                info!("Incomplete blocks returned, omitting...");
+                continue;
+            }
 
-        if db_blocks.len() < chunk_vec.len() {
-            info!("Incomplete blocks returned, omitting...");
-            continue;
+            if db_txs.len() != db_tx_receipts.len() {
+                info!("Txs and txs_receipts don't match, omitting...");
+                continue;
+            }
+
+            stores.push(db.store_blocks_and_txs(
+                db_blocks,
+                db_txs,
+                db_tx_receipts,
+                db_tx_logs,
+                db_contract_creation,
+                db_contract_interaction,
+                db_token_transfers,
+            ));
         }
 
-        if db_txs.len() != db_tx_receipts.len() {
-            info!("Txs and txs_receipts don't match, omitting...");
-            continue;
-        }
-
-        db.store_blocks_and_txs(
-            db_blocks,
-            db_txs,
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creation,
-            db_contract_interaction,
-            db_token_transfers,
-        )
-        .await;
+        join_all(stores).await;
     }
 
     Ok(())
