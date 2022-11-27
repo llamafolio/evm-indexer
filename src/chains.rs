@@ -1,4 +1,4 @@
-pub const AVAILABLE_CHAINS: &'static [&'static str] = &["mainnet", "polygon"];
+pub const AVAILABLE_CHAINS: &'static [&'static str] = &["mainnet", "polygon", "fantom"];
 
 pub const AVAILABLE_PROVIDERS: &'static [&'static str] = &["llamanodes"];
 
@@ -23,6 +23,10 @@ fn get_llamanodes_endpoint(chain: String, key: String) -> Endpoints {
 
     if chain == String::from("mainnet") {
         slug = String::from("eth");
+    }
+
+    if chain == String::from("fantom") {
+        slug = String::from("ftm");
     }
 
     return Endpoints {

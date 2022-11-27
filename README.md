@@ -39,7 +39,7 @@ PROVIDER_KEY -> API key for the RPC endpoint tested providers.
 
 The available providers for the indexer are:
 
-- [Ankr](https://www.ankr.com/rpc/)
+- [LlamaNodes](https://llamanodes.com)
 
 4. Run the program
 
