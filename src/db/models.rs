@@ -223,11 +223,13 @@ impl DatabaseContractCreation {
 #[diesel(table_name = token_transfers)]
 pub struct DatabaseTokenTransfers {
     pub hash_with_index: String,
+    pub hash: String,
     pub block: i64,
     pub token: String,
     pub from_address: String,
     pub to_address: String,
     pub value: String,
+    pub log_index: i64,
     pub chain: String,
 }
 
@@ -307,11 +309,13 @@ pub fn token_transfers_from_logs(
             format_hash(receipt.transaction_hash),
             log.log_index.unwrap().as_u64()
         ),
+        hash: format_hash(receipt.transaction_hash),
         block: receipt.block_number.unwrap().as_u64() as i64,
         token: format_address(log.address),
         from_address,
         to_address,
         value,
+        log_index: log.log_index.unwrap().as_u64() as i64,
         chain,
     });
 }

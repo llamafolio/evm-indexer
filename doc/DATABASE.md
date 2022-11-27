@@ -95,7 +95,9 @@ There are seven tables created on the database.
 | Column            | PostgreSQL type | Rust type |
 | ----------------- | --------------- | --------- |
 | `hash_with_index` | `VARCHAR`       | `String ` |
+| `hash`            | `VARCHAR`       | `String ` |
 | `block`           | `BIGINT`        | `i64 `    |
+| `log_index`       | `BIGINT`        | `i64 `    |
 | `from_address`    | `VARCHAR`       | `String ` |
 | `to_address`      | `VARCHAR`       | `String ` |
 | `value`           | `VARCHAR`       | `String ` |
