@@ -4,7 +4,7 @@ The database structure and information use the [diesel](https://crates.io/crates
 
 Migrations for the database run every time you start the program.
 
-There are seven tables created on the database.
+There are eight tables created on the database.
 
 - [Blocks (blocks)](#blocks-table)
 - [Transactions (txs)](#transactions-table)
@@ -13,6 +13,7 @@ There are seven tables created on the database.
 - [Contract Creation (contract_creation)](#contract-creation-table)
 - [Contract Interactions (contract_interactions)](#contract-interactions-table)
 - [Token Transfers (token_transfers)](#token-transfers-table)
+- [State (state)](#state-table)
 
 #### Blocks Table
 
@@ -103,3 +104,10 @@ There are seven tables created on the database.
 | `value`           | `VARCHAR`       | `String ` |
 | `token`           | `VARCHAR`       | `String`  |
 | `chain`           | `VARCHAR `      | `String ` |
+
+#### State Table
+
+| Column   | PostgreSQL type | Rust type |
+| -------- | --------------- | --------- |
+| `chain`  | `VARCHAR`       | `String ` |
+| `blocks` | `BIGINT`        | `String ` |
