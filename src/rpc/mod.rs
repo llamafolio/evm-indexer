@@ -66,12 +66,21 @@ impl Rpc {
         let blocks_res = self.batch.transport().submit_batch().await;
 
         match blocks_res {
-            Ok(result) => Ok(result
-                .into_iter()
-                .map(Result::unwrap)
-                .filter(|raw_block| !raw_block.is_null())
-                .map(|raw_block| format_block(raw_block))
-                .collect()),
+            Ok(result) => {
+                let mut blocks: Vec<Block<Transaction>> = Vec::new();
+
+                for block in result.into_iter() {
+                    match block {
+                        Ok(block) => match format_block(block) {
+                            Ok(block_formated) => blocks.push(block_formated),
+                            Err(_) => continue,
+                        },
+                        Err(_) => continue,
+                    }
+                }
+
+                Ok(blocks)
+            }
             Err(_) => Ok(Vec::new()),
         }
     }
@@ -93,14 +102,19 @@ impl Rpc {
             };
         }
 
-        let receipts = responses
-            .into_iter()
-            .map(Result::unwrap)
-            .filter(|raw_receipt| !raw_receipt.is_null())
-            .map(|raw_receipt| format_receipt(raw_receipt))
-            .collect();
+        let mut receipts_vec: Vec<TransactionReceipt> = Vec::new();
 
-        Ok(receipts)
+        for receipts in responses.into_iter() {
+            match receipts {
+                Ok(receipts) => match format_receipt(receipts) {
+                    Ok(receipts_formatted) => receipts_vec.push(receipts_formatted),
+                    Err(_) => continue,
+                },
+                Err(_) => continue,
+            }
+        }
+
+        Ok(receipts_vec)
     }
 
     async fn get_block_receipts(
@@ -125,15 +139,16 @@ impl Rpc {
             };
         }
 
-        let receipts = responses
-            .into_iter()
-            .map(Result::unwrap)
-            .filter(|raw_receipt| !raw_receipt.is_null())
-            .map(|raw_receipt| format_receipts(raw_receipt))
-            .flatten()
-            .collect();
+        let mut receipts_vec: Vec<TransactionReceipt> = Vec::new();
 
-        Ok(receipts)
+        for receipts in responses.into_iter() {
+            match receipts {
+                Ok(receipts) => receipts_vec.append(&mut format_receipts(receipts)),
+                Err(_) => continue,
+            }
+        }
+
+        Ok(receipts_vec)
     }
 
     pub async fn subscribe_heads(&self, db: &Database) {

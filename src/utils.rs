@@ -26,12 +26,12 @@ pub fn format_number(n: U256) -> String {
     return format!("{}", n.to_string());
 }
 
-pub fn format_block(b: serde_json::Value) -> Block<Transaction> {
-    return serde_json::from_value(b).unwrap();
+pub fn format_block(b: serde_json::Value) -> Result<Block<Transaction>, serde_json::Error> {
+    return serde_json::from_value(b);
 }
 
-pub fn format_receipt(b: serde_json::Value) -> TransactionReceipt {
-    return serde_json::from_value(b).unwrap();
+pub fn format_receipt(b: serde_json::Value) -> Result<TransactionReceipt, serde_json::Error> {
+    return serde_json::from_value(b);
 }
 
 #[derive(Deserialize, Debug)]
