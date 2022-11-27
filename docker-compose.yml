@@ -31,6 +31,7 @@ services:
         HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
         HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:indexer@db/postgres
         HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:indexer@db/indexer
+        HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
       networks:
         - postgres  
 
