@@ -2024,8 +2024,9 @@ dependencies = [
 
 [[package]]
 name = "web3"
-version = "0.19.0"
-source = "git+https://github.com/patrick-fitzgerald/rust-web3?branch=erigon_eth_getBlockReceipts#80b3d2f241ffded1552d027dad3b1b24cb02b86c"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44f258e254752d210b84fe117b31f1e3cc9cbf04c0d747eb7f8cf7cf5e370f6d"
 dependencies = [
  "arrayvec",
  "base64",

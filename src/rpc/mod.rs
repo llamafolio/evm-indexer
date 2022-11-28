@@ -7,7 +7,7 @@ use web3::{
     ethabi::Address,
     futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
-    types::{Block, BlockId, BlockNumber, Transaction, TransactionReceipt, U64},
+    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
     Web3,
 };
 
@@ -22,9 +22,7 @@ use crate::{
         },
         Database,
     },
-    utils::{
-        format_address, format_block, format_bool, format_receipt, format_receipts, ERC20_ABI,
-    },
+    utils::{format_address, format_block, format_bool, format_receipt, ERC20_ABI},
 };
 
 #[derive(Debug, Clone)]
@@ -32,6 +30,7 @@ pub struct Rpc {
     pub batch: Web3<Batch<Http>>,
     pub wss: Web3<WebSocket>,
     pub chain: Chain,
+    pub requests_batch: usize,
 }
 
 impl Rpc {
@@ -45,6 +44,7 @@ impl Rpc {
             wss: Web3::new(ws),
             batch: Web3::new(web3::transports::Batch::new(http)),
             chain: config.chain,
+            requests_batch: config.batch_size.clone(),
         })
     }
 
@@ -60,7 +60,7 @@ impl Rpc {
         Ok(last_block as i64)
     }
 
-    async fn get_block_batch(&self, range: Vec<i64>) -> Result<Vec<Block<Transaction>>> {
+    async fn get_block_batch(&self, range: &Vec<i64>) -> Result<Vec<Block<Transaction>>> {
         for block_height in range.iter() {
             let block_number = U64::from_str_radix(&block_height.to_string(), 10)
                 .expect("Unable to parse block number");
@@ -93,69 +93,30 @@ impl Rpc {
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
-        let chunks = txs.chunks(200);
-
-        let mut responses = Vec::new();
-
-        for chunk in chunks {
-            for tx in chunk.iter() {
-                self.batch.eth().transaction_receipt(tx.hash);
-            }
-
-            let receipt_res = self.batch.transport().submit_batch().await;
-            match receipt_res {
-                Ok(mut result) => responses.append(&mut result),
-                Err(_) => continue,
-            };
+        for tx in txs.iter() {
+            self.batch.eth().transaction_receipt(tx.hash);
         }
 
-        let mut receipts_vec: Vec<TransactionReceipt> = Vec::new();
+        let receipts_res = self.batch.transport().submit_batch().await;
 
-        for receipts in responses.into_iter() {
-            match receipts {
-                Ok(receipts) => match format_receipt(receipts) {
-                    Ok(receipts_formatted) => receipts_vec.push(receipts_formatted),
-                    Err(_) => continue,
-                },
-                Err(_) => continue,
+        match receipts_res {
+            Ok(result) => {
+                let mut receipts: Vec<TransactionReceipt> = Vec::new();
+
+                for receipt in result.into_iter() {
+                    match receipt {
+                        Ok(tx_receipt) => match format_receipt(tx_receipt) {
+                            Ok(receipt_formatted) => receipts.push(receipt_formatted),
+                            Err(_) => continue,
+                        },
+                        Err(_) => continue,
+                    }
+                }
+
+                Ok(receipts)
             }
+            Err(_) => Ok(Vec::new()),
         }
-
-        Ok(receipts_vec)
-    }
-
-    async fn get_block_receipts(
-        &self,
-        blocks: &Vec<Block<Transaction>>,
-    ) -> Result<Vec<TransactionReceipt>> {
-        let chunks = blocks.chunks(200);
-
-        let mut responses = Vec::new();
-
-        for chunk in chunks {
-            for block in chunk.iter() {
-                self.batch
-                    .eth()
-                    .block_receipts(BlockNumber::Number(block.number.unwrap()));
-            }
-
-            let receipt_res = self.batch.transport().submit_batch().await;
-            match receipt_res {
-                Ok(mut result) => responses.append(&mut result),
-                Err(_) => continue,
-            };
-        }
-
-        let mut receipts_vec: Vec<TransactionReceipt> = Vec::new();
-
-        for receipts in responses.into_iter() {
-            match receipts {
-                Ok(receipts) => receipts_vec.append(&mut format_receipts(receipts)),
-                Err(_) => continue,
-            }
-        }
-
-        Ok(receipts_vec)
     }
 
     pub async fn subscribe_heads(&self, db: &Database) {
@@ -186,7 +147,7 @@ impl Rpc {
                                 chain.name
                             );
 
-                            let from = block_number.as_u64() as i64 - 5;
+                            let from = block_number.as_u64() as i64 - chain.blocks_reorg;
                             let to = block_number.as_u64() as i64;
 
                             let range: Vec<i64> = (from..to).collect();
@@ -237,13 +198,13 @@ impl Rpc {
         Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
     )> {
-        let blocks = self.get_block_batch(range).await.unwrap();
+        let block_chunks = range.chunks(self.requests_batch.clone());
 
-        let mut web3_receipts: Vec<TransactionReceipt> = Vec::new();
+        let mut blocks: Vec<Block<Transaction>> = Vec::new();
 
-        if self.chain.name.to_string() == "mainnet" {
-            let mut receipts = self.get_block_receipts(&blocks).await.unwrap();
-            web3_receipts.append(&mut receipts);
+        for chunk in block_chunks {
+            let mut block_chunk = self.get_block_batch(&chunk.to_vec()).await.unwrap();
+            blocks.append(&mut block_chunk);
         }
 
         let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
@@ -258,9 +219,13 @@ impl Rpc {
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
-        if self.chain.name.to_string() != "mainnet" {
-            let mut receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
-            web3_receipts.append(&mut receipts);
+        let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
+
+        let receipts_chunks = web3_txs.chunks(self.requests_batch.clone());
+
+        for chunk in receipts_chunks {
+            let mut receipts_chunk = self.get_txs_receipts(&chunk.to_vec()).await.unwrap();
+            tx_receipts.append(&mut receipts_chunk);
         }
 
         let db_txs: Vec<DatabaseTx> = web3_txs
@@ -278,7 +243,7 @@ impl Rpc {
 
         let mut db_token_transfers: Vec<DatabaseTokenTransfers> = vec![];
 
-        for tx_receipt in web3_receipts {
+        for tx_receipt in tx_receipts {
             let db_tx_receipt =
                 DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.name.to_string());
 

@@ -10,6 +10,7 @@ pub struct Chain {
     pub id: i64,
     pub name: &'static str,
     pub multicall_address: &'static str,
+    pub blocks_reorg: i64,
 }
 
 impl Chain {
@@ -18,6 +19,7 @@ impl Chain {
             id: chain.id,
             name: chain.name,
             multicall_address: chain.multicall_address,
+            blocks_reorg: chain.blocks_reorg,
         }
     }
 
@@ -57,18 +59,21 @@ static ETHEREUM: Chain = Chain {
     id: 1,
     name: "mainnet",
     multicall_address: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    blocks_reorg: 12,
 };
 
 static POLYGON: Chain = Chain {
     id: 137,
     name: "polygon",
     multicall_address: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    blocks_reorg: 128,
 };
 
 static FTM: Chain = Chain {
     id: 250,
     name: "fantom",
     multicall_address: "0xcA11bde05977b3631167028862bE2a173976CA11s",
+    blocks_reorg: 5,
 };
 
 pub static AVAILABLE_CHAINS: [Chain; 3] = [ETHEREUM, POLYGON, FTM];
