@@ -118,7 +118,7 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
 
         let excluded = chunk
             .into_iter()
-            .filter(|token| included_addresses.contains(token))
+            .filter(|token| !included_addresses.contains(token))
             .map(|excluded| DatabaseExcludedToken {
                 address: excluded.to_string(),
                 address_with_chain: format!("{}-{}", excluded.to_string(), config.chain.name),
