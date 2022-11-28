@@ -17,6 +17,9 @@ pub struct Args {
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
 
+    #[arg(short, long, help = "RPC provider to use to sync", default_value_t = String::from("llamanodes"))]
+    pub provider: String,
+
     #[arg(
         short, long,
         help = "Amount of workers to fetch blocks",
@@ -44,6 +47,7 @@ pub struct Config {
     pub start_block: i64,
     pub workers: usize,
     pub batch_size: usize,
+    pub provider: String,
     pub chain: Chain,
 }
 
@@ -61,7 +65,9 @@ impl Config {
 
         let provider_key = std::env::var("PROVIDER_KEY").expect("PROVIDER_KEY must be set.");
 
-        let endpoints = chain.get_endpoints(provider_key);
+        let provider = args.provider;
+
+        let endpoints = chain.get_endpoints(provider_key, provider.clone());
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
@@ -71,6 +77,7 @@ impl Config {
             start_block: args.start_block,
             workers: args.workers,
             batch_size: args.batch_size,
+            provider,
             chain,
         }
     }

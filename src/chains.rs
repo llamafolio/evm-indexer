@@ -21,7 +21,7 @@ impl Chain {
         }
     }
 
-    pub fn get_endpoints(&self, key: String) -> Endpoints {
+    pub fn get_endpoints(&self, key: String, provider: String) -> Endpoints {
         let name = self.name;
 
         let mut slug = name;
@@ -34,10 +34,22 @@ impl Chain {
             slug = "ftm"
         }
 
-        return Endpoints {
-            http: format!("https://{}-ski.llamarpc.com/rpc/{}", slug, key),
-            wss: format!("wss://{}-ski.llamarpc.com/rpc/{}", slug, key),
-        };
+        if provider == "llamanodes" {
+            return Endpoints {
+                http: format!("https://{}-ski.llamarpc.com/rpc/{}", slug, key),
+                wss: format!("wss://{}-ski.llamarpc.com/rpc/{}", slug, key),
+            };
+        } else if provider == "ankr" {
+            return Endpoints {
+                http: format!("https://rpc.ankr.com/{}/{}", slug, key),
+                wss: format!("wss://rpc.ankr.com/{}/ws/{}", slug, key),
+            };
+        } else {
+            return Endpoints {
+                http: String::from(""),
+                wss: String::from(""),
+            };
+        }
     }
 }
 

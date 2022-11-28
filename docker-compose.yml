@@ -43,7 +43,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer"
+    command: "evm-indexer --provider ankr"
     networks:
       - postgres
     depends_on:
@@ -58,7 +58,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain polygon"
+    command: "evm-indexer --chain polygon --provider ankr"
     networks:
       - postgres
     depends_on:
@@ -73,7 +73,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain fantom"
+    command: "evm-indexer --chain fantom  --provider ankr"
     networks:
       - postgres
     depends_on:
