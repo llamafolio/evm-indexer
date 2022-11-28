@@ -21,6 +21,3 @@ web3 = { git = "https://github.com/patrick-fitzgerald/rust-web3", branch = "erig
 version = "4.0.0"
 default-features = false
 features = ["colors"]
-
-[features]
-stdout = []
