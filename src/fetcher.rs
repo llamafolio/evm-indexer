@@ -90,7 +90,7 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
 pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database) -> Result<()> {
     let missing_tokens = db.get_tokens_missing_data().await.unwrap();
 
-    let chunks = missing_tokens.chunks(20);
+    let chunks = missing_tokens.chunks(100);
 
     for chunk in chunks {
         let data = rpc.get_tokens_metadata(chunk.to_vec()).await.unwrap();
