@@ -368,9 +368,10 @@ impl Rpc {
                     ),
                     address: format_address(address),
                     chain: self.chain.name.to_string(),
-                    name,
+                    // Name and Symbol are reformatted to prevent non utf8 characters
+                    name: format!("{}", name),
+                    symbol: format!("{}", symbol),
                     decimals,
-                    symbol,
                 }),
                 Err(_) => continue,
             }
