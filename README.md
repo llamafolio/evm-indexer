@@ -6,9 +6,15 @@ This repository contains a program to parse all blocks and transactions into a P
 
 - [Database Structure](./doc/DATABASE.md)
 
-## Disclaimer
+## Demo
 
-This program is highly experimental and not meant to be used for production.
+To see the EVM indexer in action go to [https://evm-indexer.kindynos.mx](https://evm-indexer.kindynos.mx)
+
+The repository comes with an autodeployed Hasura Cloud instance to connect a GraphQL API directly to the indexer to fetch the data.
+
+It is only enable if you use the docker-compose file.
+
+The frontend app repository can be found here [https://github.com/eabz/evm-indexer-app](https://github.com/eabz/evm-indexer-app)
 
 ## Install
 
