@@ -362,7 +362,7 @@ impl Rpc {
             match token_data {
                 Ok((name, symbol, decimals, address)) => tokens_metadata.push(DatabaseToken {
                     address_with_chain: format!(
-                        "{:?}-{:?}",
+                        "{}-{}",
                         format_address(address),
                         self.chain.name.to_string()
                     ),

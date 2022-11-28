@@ -12,4 +12,9 @@ CREATE TABLE txs (
   max_priority_fee_per_gas VARCHAR,
   input VARCHAR NOT NULL,
   chain VARCHAR NOT NULL
+
+  CONSTRAINT tx_receipt FOREIGN KEY(hash) REFERENCES txs_receipts(hash)
+  CONSTRAINT tx_log FOREIGN KEY(hash) REFERENCES logs(hash)
+  CONSTRAINT tx_contract_interaction FOREIGN KEY(hash) REFERENCES contract_interactions(hash)
+  CONSTRAINT tx_token_transfers FOREIGN KEY(hash) REFERENCES token_transfers(hash)
 )
