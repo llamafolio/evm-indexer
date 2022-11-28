@@ -128,7 +128,7 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
 
         db.store_excluded_tokens(&excluded).await.unwrap();
 
-        info!("Stored data for {} excluded tokens", added_tokens);
+        info!("Stored data for {} excluded tokens", excluded.len());
     }
 
     Ok(())
