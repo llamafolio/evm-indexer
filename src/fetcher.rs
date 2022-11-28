@@ -13,7 +13,7 @@ use crate::{
     rpc::Rpc,
 };
 
-pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()> {
+pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: &Config) -> Result<()> {
     let rpc_last_block = rpc.get_last_block().await.unwrap();
 
     let full_blocks_set: Vec<i64> = (config.start_block..rpc_last_block).collect();

@@ -44,7 +44,10 @@ async fn main() {
         let config = config.clone();
 
         async move {
-            fetcher::fetch_blocks(&rpc, &db, config).await.unwrap();
+            loop {
+                fetcher::fetch_blocks(&rpc, &db, &config).await.unwrap();
+                sleep(Duration::from_secs(120)).await;
+            }
         }
     });
 
@@ -62,5 +65,7 @@ async fn main() {
         }
     });
 
-    rpc.subscribe_heads(&db).await;
+    loop {
+        rpc.subscribe_heads(&db).await;
+    }
 }
