@@ -8,11 +8,11 @@ use crate::utils::{
 };
 
 use super::schema::{
-    blocks, contract_creations, contract_interactions, logs, state, token_transfers, tokens, txs,
-    txs_receipts,
+    blocks, contract_creations, contract_interactions, excluded_tokens, logs, state,
+    token_transfers, tokens, txs, txs_receipts,
 };
 
-#[derive(Selectable, Queryable, Insertable, Debug)]
+#[derive(Selectable, Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = blocks)]
 pub struct DatabaseBlock {
     pub number: i64,
@@ -55,7 +55,7 @@ impl DatabaseBlock {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = txs)]
 pub struct DatabaseTx {
     pub block_number: i64,
@@ -113,7 +113,7 @@ impl DatabaseTx {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = txs_receipts)]
 pub struct DatabaseTxReceipt {
     pub hash: String,
@@ -136,7 +136,7 @@ impl DatabaseTxReceipt {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = logs)]
 pub struct DatabaseTxLogs {
     pub hash: String,
@@ -178,7 +178,7 @@ impl DatabaseTxLogs {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = contract_interactions)]
 pub struct DatabaseContractInteraction {
     pub hash: String,
@@ -200,7 +200,7 @@ impl DatabaseContractInteraction {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = contract_creations)]
 pub struct DatabaseContractCreation {
     pub hash: String,
@@ -220,7 +220,7 @@ impl DatabaseContractCreation {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = token_transfers)]
 pub struct DatabaseTokenTransfers {
     pub hash_with_index: String,
@@ -321,14 +321,14 @@ pub fn token_transfers_from_logs(
     });
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = state)]
 pub struct DatabaseState {
     pub chain: String,
     pub blocks: i64,
 }
 
-#[derive(Queryable, Insertable, Debug)]
+#[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = tokens)]
 pub struct DatabaseToken {
     pub address_with_chain: String,
@@ -337,4 +337,12 @@ pub struct DatabaseToken {
     pub name: String,
     pub decimals: i64,
     pub symbol: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = excluded_tokens)]
+pub struct DatabaseExcludedToken {
+    pub address_with_chain: String,
+    pub address: String,
+    pub chain: String,
 }

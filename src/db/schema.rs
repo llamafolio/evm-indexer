@@ -38,6 +38,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    excluded_tokens (address_with_chain) {
+        address_with_chain -> Varchar,
+        address -> Varchar,
+        chain -> Varchar,
+    }
+}
+
+diesel::table! {
     logs (hash) {
         hash -> Varchar,
         address -> Nullable<Varchar>,
@@ -112,6 +120,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     blocks,
     contract_creations,
     contract_interactions,
+    excluded_tokens,
     logs,
     state,
     token_transfers,

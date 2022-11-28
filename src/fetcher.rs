@@ -4,7 +4,14 @@ use anyhow::Result;
 use log::*;
 use web3::futures::future::join_all;
 
-use crate::{config::Config, db::Database, rpc::Rpc};
+use crate::{
+    config::Config,
+    db::{
+        models::{DatabaseExcludedToken, DatabaseToken},
+        Database,
+    },
+    rpc::Rpc,
+};
 
 pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()> {
     let rpc_last_block = rpc.get_last_block().await.unwrap();
@@ -87,7 +94,7 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
     Ok(())
 }
 
-pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database) -> Result<()> {
+pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) -> Result<()> {
     let missing_tokens = db.get_tokens_missing_data().await.unwrap();
 
     let chunks = missing_tokens.chunks(100);
@@ -95,9 +102,33 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database) -> Result<()> {
     for chunk in chunks {
         let data = rpc.get_tokens_metadata(chunk.to_vec()).await.unwrap();
 
-        db.store_tokens(&data).await.unwrap();
+        let added_tokens = data.len();
 
-        info!("Stored data for {} tokens", chunk.len());
+        let filtered_tokens: Vec<DatabaseToken> = data
+            .clone()
+            .into_iter()
+            .filter(|token| token.name != String::from("") && token.symbol != String::from(""))
+            .collect();
+
+        db.store_tokens(&filtered_tokens).await.unwrap();
+
+        info!("Stored data for {} tokens", added_tokens);
+
+        let included_addresses: Vec<String> = data.into_iter().map(|token| token.address).collect();
+
+        let excluded = chunk
+            .into_iter()
+            .filter(|token| included_addresses.contains(token))
+            .map(|excluded| DatabaseExcludedToken {
+                address: excluded.to_string(),
+                address_with_chain: format!("{}-{}", excluded.to_string(), config.chain.name),
+                chain: config.chain.name.to_string(),
+            })
+            .collect();
+
+        db.store_excluded_tokens(&excluded).await.unwrap();
+
+        info!("Stored data for {} excluded tokens", added_tokens);
     }
 
     Ok(())

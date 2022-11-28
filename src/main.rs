@@ -41,6 +41,8 @@ async fn main() {
     tokio::spawn({
         let rpc = rpc.clone();
         let db = db.clone();
+        let config = config.clone();
+
         async move {
             fetcher::fetch_blocks(&rpc, &db, config).await.unwrap();
         }
@@ -49,9 +51,12 @@ async fn main() {
     tokio::spawn({
         let rpc = rpc.clone();
         let db = db.clone();
+        let config = config.clone();
         async move {
             loop {
-                fetcher::fetch_tokens_metadata(&rpc, &db).await.unwrap();
+                fetcher::fetch_tokens_metadata(&rpc, &db, &config)
+                    .await
+                    .unwrap();
                 sleep(Duration::from_secs(30)).await;
             }
         }

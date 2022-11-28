@@ -18,6 +18,7 @@ use self::models::DatabaseBlock;
 
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
+use self::models::DatabaseExcludedToken;
 use self::models::DatabaseState;
 use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
@@ -26,6 +27,8 @@ use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxReceipt;
 use self::schema::blocks;
 use self::schema::blocks::table as blocks_table;
+use self::schema::excluded_tokens;
+use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
 use self::schema::token_transfers::table as token_transfers_table;
 use self::schema::tokens;
@@ -93,9 +96,22 @@ impl Database {
             Err(_) => HashSet::new(),
         };
 
+        let excluded_tokens_stored = excluded_tokens_table
+            .select(excluded_tokens::address)
+            .filter(excluded_tokens::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<String>(&mut connection);
+
+        let excluded_tokens_stored_addresses: HashSet<String> = match excluded_tokens_stored {
+            Ok(token_addresses) => HashSet::from_iter(token_addresses),
+            Err(_) => HashSet::new(),
+        };
+
         let missing_tokens: Vec<String> = token_transfers_addresses
             .into_iter()
-            .filter(|n| !token_stored_addresses.contains(n))
+            .filter(|n| {
+                !token_stored_addresses.contains(n) && !excluded_tokens_stored_addresses.contains(n)
+            })
             .collect();
 
         Ok(missing_tokens)
@@ -187,7 +203,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store blocks in the database");
+                .expect("Unable to store blocks into database");
         }
 
         Ok(())
@@ -201,7 +217,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store txs in the database");
+                .expect("Unable to store txs into database");
         }
 
         Ok(())
@@ -215,7 +231,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store tx_receipts in the database");
+                .expect("Unable to store tx_receipts into database");
         }
 
         Ok(())
@@ -229,7 +245,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store logs in the database");
+                .expect("Unable to store logs into database");
         }
 
         Ok(())
@@ -246,7 +262,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store contract creations in the database");
+                .expect("Unable to store contract creations into database");
         }
 
         Ok(())
@@ -263,7 +279,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store contract interactions in the database");
+                .expect("Unable to store contract interactions into database");
         }
 
         Ok(())
@@ -280,7 +296,7 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store token transfers in the database");
+                .expect("Unable to store token transfers into database");
         }
 
         Ok(())
@@ -294,7 +310,21 @@ impl Database {
                 .values(chunk)
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store tokens in the database");
+                .expect("Unable to store tokens into database");
+        }
+
+        Ok(())
+    }
+
+    pub async fn store_excluded_tokens(&self, tokens: &Vec<DatabaseExcludedToken>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        for chunk in tokens.chunks(500) {
+            diesel::insert_into(schema::excluded_tokens::dsl::excluded_tokens)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store excluded tokens into database");
         }
 
         Ok(())
