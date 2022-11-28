@@ -143,7 +143,7 @@ impl Database {
     ) {
         let mut stores: Vec<BoxFuture<_>> = vec![];
 
-        let mut log = String::from("Inserted: ");
+        let mut log = String::new();
 
         if blocks.len() > 0 {
             stores.push(Box::pin(self.store_blocks(&blocks)));
@@ -192,7 +192,13 @@ impl Database {
 
         self.update_chain_state().await.unwrap();
 
-        info!("{} for chain {}", log, self.chain.name.to_string());
+        if log.len() > 0 {
+            info!(
+                "Inserted: {} for chain {}",
+                log,
+                self.chain.name.to_string()
+            );
+        }
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {

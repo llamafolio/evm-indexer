@@ -95,22 +95,7 @@ services:
       - postgres
     depends_on:
       db:
-        condition: service_healthy               
-
-  arbitrum-indexer:
-    container_name: arbitrum-indexer
-    image: ghcr.io/eabz/evm-indexer:latest
-    restart: on-failure
-    environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
-    env_file:
-      - .env
-    command: "evm-indexer --chain arbitrum  --provider ankr"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy      
+        condition: service_healthy                
 
 networks:
   postgres:
