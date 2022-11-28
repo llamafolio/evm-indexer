@@ -45,16 +45,16 @@ pub fn format_receipts(b: serde_json::Value) -> Vec<TransactionReceipt> {
 
     match receipts_res {
         Ok(receipts) => return receipts,
-        Err(err) => {
-            println!("{:?}", err);
+        Err(_) => {
             let object: Result<ReceiptsMap, serde_json::Error> = serde_json::from_value(b.clone());
             match object {
                 Ok(receipts) => return receipts.receipts,
-                Err(err) => {
-                    println!("{:?}", err);
+                Err(_) => {
                     return Vec::new();
                 }
             }
         }
     }
 }
+
+pub static ERC20_ABI: &[u8] = include_bytes!("res/abi/erc20.json").as_slice();

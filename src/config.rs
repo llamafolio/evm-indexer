@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::chains::{get_endpoints, Endpoints, AVAILABLE_CHAINS, AVAILABLE_PROVIDERS};
+use crate::chains::{get_chain, Chain};
 
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
 pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
@@ -16,9 +16,6 @@ pub struct Args {
 
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
-
-    #[arg(short, long, help = "Name of the provider used to sync", default_value_t = String::from("llamanodes"))]
-    pub provider: String,
 
     #[arg(
         short, long,
@@ -47,37 +44,29 @@ pub struct Config {
     pub start_block: i64,
     pub workers: usize,
     pub batch_size: usize,
-    pub chain: String,
+    pub chain: Chain,
 }
 
 impl Config {
     pub fn new() -> Self {
         let args = Args::parse();
 
-        let mut chain = args.chain;
+        let mut chainname = args.chain;
 
-        if chain == "ethereum" {
-            chain = "mainnet".to_string();
+        if chainname == "ethereum" {
+            chainname = "mainnet".to_string();
         }
 
-        if !AVAILABLE_CHAINS.contains(&&*chain.clone()) {
-            panic!("Chain not available");
-        }
-
-        let provider = String::from(args.provider);
-
-        if !AVAILABLE_PROVIDERS.contains(&&*provider) {
-            panic!("Provider not available");
-        }
+        let chain = get_chain(chainname);
 
         let provider_key = std::env::var("PROVIDER_KEY").expect("PROVIDER_KEY must be set.");
 
-        let enpoints: Endpoints = get_endpoints(provider, chain.clone(), provider_key);
+        let endpoints = chain.get_endpoints(provider_key);
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
-            rpc_http_url: enpoints.http,
-            rpc_ws_url: enpoints.wss,
+            rpc_http_url: endpoints.http,
+            rpc_ws_url: endpoints.wss,
             debug: args.debug,
             start_block: args.start_block,
             workers: args.workers,

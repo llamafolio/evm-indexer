@@ -8,7 +8,7 @@ use crate::utils::{
 };
 
 use super::schema::{
-    blocks, contract_creations, contract_interactions, logs, state, token_transfers, txs,
+    blocks, contract_creations, contract_interactions, logs, state, token_transfers, tokens, txs,
     txs_receipts,
 };
 
@@ -326,4 +326,15 @@ pub fn token_transfers_from_logs(
 pub struct DatabaseState {
     pub chain: String,
     pub blocks: i64,
+}
+
+#[derive(Queryable, Insertable, Debug)]
+#[diesel(table_name = tokens)]
+pub struct DatabaseToken {
+    pub address_with_chain: String,
+    pub address: String,
+    pub chain: String,
+    pub name: String,
+    pub decimals: i64,
+    pub symbol: String,
 }

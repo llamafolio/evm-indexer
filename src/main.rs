@@ -5,9 +5,12 @@ pub mod fetcher;
 pub mod rpc;
 pub mod utils;
 
+use std::time::Duration;
+
 use dotenv::dotenv;
 use log::*;
 use simple_logger::SimpleLogger;
+use tokio::time::sleep;
 
 use crate::{config::Config, db::Database, rpc::Rpc};
 
@@ -40,6 +43,17 @@ async fn main() {
         let db = db.clone();
         async move {
             fetcher::fetch_blocks(&rpc, &db, config).await.unwrap();
+        }
+    });
+
+    tokio::spawn({
+        let rpc = rpc.clone();
+        let db = db.clone();
+        async move {
+            loop {
+                fetcher::fetch_tokens_metadata(&rpc, &db).await.unwrap();
+                sleep(Duration::from_secs(30)).await;
+            }
         }
     });
 

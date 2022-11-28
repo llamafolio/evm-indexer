@@ -1,30 +1,37 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use log::*;
 use web3::{
-    futures::StreamExt,
+    contract::{Contract, Options},
+    ethabi::Address,
+    futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
     types::{Block, BlockId, BlockNumber, Transaction, TransactionReceipt, U64},
     Web3,
 };
 
 use crate::{
+    chains::Chain,
     config::Config,
     db::{
         models::{
             token_transfers_from_logs, DatabaseBlock, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs,
-            DatabaseTxReceipt,
+            DatabaseContractInteraction, DatabaseToken, DatabaseTokenTransfers, DatabaseTx,
+            DatabaseTxLogs, DatabaseTxReceipt,
         },
         Database,
     },
-    utils::{format_address, format_block, format_bool, format_receipt, format_receipts},
+    utils::{
+        format_address, format_block, format_bool, format_receipt, format_receipts, ERC20_ABI,
+    },
 };
 
 #[derive(Debug, Clone)]
 pub struct Rpc {
     pub batch: Web3<Batch<Http>>,
     pub wss: Web3<WebSocket>,
-    pub chain: String,
+    pub chain: Chain,
 }
 
 impl Rpc {
@@ -176,7 +183,7 @@ impl Rpc {
                             info!(
                                 "Received new block header with height {:?} for chain {}",
                                 block_header.number.unwrap(),
-                                chain
+                                chain.name
                             );
 
                             let from = block_number.as_u64() as i64 - 5;
@@ -234,7 +241,7 @@ impl Rpc {
 
         let mut web3_receipts: Vec<TransactionReceipt> = Vec::new();
 
-        if self.chain.clone() == "mainnet" {
+        if self.chain.name.to_string() == "mainnet" {
             let mut receipts = self.get_block_receipts(&blocks).await.unwrap();
             web3_receipts.append(&mut receipts);
         }
@@ -243,7 +250,7 @@ impl Rpc {
             .into_iter()
             .map(|block| {
                 (
-                    DatabaseBlock::from_web3(&block, self.chain.clone()),
+                    DatabaseBlock::from_web3(&block, self.chain.name.to_string()),
                     block.transactions,
                 )
             })
@@ -251,14 +258,14 @@ impl Rpc {
 
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
-        if self.chain.clone() != "mainnet" {
+        if self.chain.name.to_string() != "mainnet" {
             let mut receipts = self.get_txs_receipts(&web3_txs).await.unwrap();
             web3_receipts.append(&mut receipts);
         }
 
         let db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
-            .map(|tx| DatabaseTx::from_web3(&tx, self.chain.clone()))
+            .map(|tx| DatabaseTx::from_web3(&tx, self.chain.name.to_string()))
             .collect();
 
         let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
@@ -273,7 +280,7 @@ impl Rpc {
 
         for tx_receipt in web3_receipts {
             let db_tx_receipt =
-                DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.clone());
+                DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.name.to_string());
 
             db_tx_receipts.push(db_tx_receipt);
 
@@ -289,7 +296,7 @@ impl Rpc {
                     Some(contract) => {
                         db_contract_creations.push(DatabaseContractCreation::from_receipt(
                             &tx_receipt,
-                            self.chain.clone(),
+                            self.chain.name.to_string(),
                             format_address(contract),
                         ))
                     }
@@ -297,7 +304,7 @@ impl Rpc {
                         if logs.len() > 0 {
                             let db_contract_interaction = DatabaseContractInteraction::from_receipt(
                                 &tx_receipt,
-                                self.chain.clone(),
+                                self.chain.name.to_string(),
                             );
 
                             db_contract_interactions.push(db_contract_interaction);
@@ -307,13 +314,14 @@ impl Rpc {
                                 match token_transfers_from_logs(
                                     &log,
                                     &tx_receipt,
-                                    self.chain.clone(),
+                                    self.chain.name.to_string(),
                                 ) {
                                     Ok(token_transfer) => db_token_transfers.push(token_transfer),
                                     Err(_) => continue,
                                 };
 
-                                let db_log = DatabaseTxLogs::from_web3(log, self.chain.clone());
+                                let db_log =
+                                    DatabaseTxLogs::from_web3(log, self.chain.name.to_string());
 
                                 db_tx_logs.push(db_log);
                             }
@@ -332,5 +340,77 @@ impl Rpc {
             db_contract_interactions,
             db_token_transfers,
         ))
+    }
+
+    pub async fn get_tokens_metadata(&self, tokens: Vec<String>) -> Result<Vec<DatabaseToken>> {
+        let mut tokens_metadata: Vec<DatabaseToken> = Vec::new();
+
+        let tokens: Vec<Address> = tokens
+            .into_iter()
+            .map(|token| Address::from_str(&token).unwrap())
+            .collect();
+
+        let mut tokens_req = vec![];
+
+        for token in tokens {
+            tokens_req.push(self.get_erc20_details(token));
+        }
+
+        let tokens_data = join_all(tokens_req).await;
+
+        for token_data in tokens_data {
+            match token_data {
+                Ok((name, symbol, decimals, address)) => tokens_metadata.push(DatabaseToken {
+                    address_with_chain: format!(
+                        "{:?}-{:?}",
+                        format_address(address),
+                        self.chain.name.to_string()
+                    ),
+                    address: format_address(address),
+                    chain: self.chain.name.to_string(),
+                    name,
+                    decimals,
+                    symbol,
+                }),
+                Err(_) => continue,
+            }
+        }
+
+        Ok(tokens_metadata)
+    }
+
+    pub async fn get_erc20_details(
+        &self,
+        token: Address,
+    ) -> Result<(String, String, i64, Address), anyhow::Error> {
+        let erc20_abi = ERC20_ABI;
+
+        let contract = Contract::from_json(self.batch.eth(), token, erc20_abi).unwrap();
+
+        let name: String = match contract
+            .query("name", (), None, Options::default(), None)
+            .await
+        {
+            Ok(result) => result,
+            Err(_) => return Err(anyhow::Error::msg("Invalid token name")),
+        };
+
+        let decimals: i64 = match contract
+            .query("decimals", (), None, Options::default(), None)
+            .await
+        {
+            Ok(result) => result,
+            Err(_) => return Err(anyhow::Error::msg("Invalid token decimals")),
+        };
+
+        let symbol: String = match contract
+            .query("symbol", (), None, Options::default(), None)
+            .await
+        {
+            Ok(result) => result,
+            Err(_) => return Err(anyhow::Error::msg("Invalid token symbol")),
+        };
+
+        Ok((name, symbol, decimals, token))
     }
 }

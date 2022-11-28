@@ -1,6 +1,8 @@
 pub mod models;
 mod schema;
 
+use std::collections::HashSet;
+
 use anyhow::Result;
 use diesel::prelude::*;
 use diesel::PgConnection;
@@ -9,6 +11,7 @@ use log::*;
 use web3::futures::future::join_all;
 use web3::futures::future::BoxFuture;
 
+use crate::chains::Chain;
 use crate::config::Config;
 
 use self::models::DatabaseBlock;
@@ -16,12 +19,18 @@ use self::models::DatabaseBlock;
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
 use self::models::DatabaseState;
+use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxReceipt;
 use self::schema::blocks;
 use self::schema::blocks::table as blocks_table;
+use self::schema::token_transfers;
+use self::schema::token_transfers::table as token_transfers_table;
+use self::schema::tokens;
+use self::schema::tokens::table as tokens_table;
+
 use self::schema::state;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
@@ -34,7 +43,7 @@ pub struct State {
 #[derive(Debug, Clone)]
 pub struct Database {
     pub db_url: String,
-    pub chain: String,
+    pub chain: Chain,
 }
 
 impl Database {
@@ -59,12 +68,45 @@ impl Database {
         return connection;
     }
 
+    pub async fn get_tokens_missing_data(&self) -> Result<Vec<String>> {
+        let mut connection = self.establish_connection();
+
+        let token_addresses = token_transfers_table
+            .select(token_transfers::token)
+            .filter(token_transfers::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<String>(&mut connection);
+
+        let token_transfers_addresses = match token_addresses {
+            Ok(token_addresses) => token_addresses,
+            Err(_) => Vec::new(),
+        };
+
+        let tokens_stored = tokens_table
+            .select(tokens::address)
+            .filter(tokens::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<String>(&mut connection);
+
+        let token_stored_addresses: HashSet<String> = match tokens_stored {
+            Ok(token_addresses) => HashSet::from_iter(token_addresses),
+            Err(_) => HashSet::new(),
+        };
+
+        let missing_tokens: Vec<String> = token_transfers_addresses
+            .into_iter()
+            .filter(|n| !token_stored_addresses.contains(n))
+            .collect();
+
+        Ok(missing_tokens)
+    }
+
     pub async fn get_block_numbers(&self) -> Result<Vec<i64>> {
         let mut connection = self.establish_connection();
 
         let blocks = blocks_table
             .select(blocks::number)
-            .filter(blocks::chain.eq(self.chain.clone()))
+            .filter(blocks::chain.eq(self.chain.name.to_string()))
             .load::<i64>(&mut connection);
 
         match blocks {
@@ -134,7 +176,7 @@ impl Database {
 
         self.update_chain_state().await.unwrap();
 
-        info!("{} for chain {}", log, self.chain.clone());
+        info!("{} for chain {}", log, self.chain.name.to_string());
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
@@ -244,13 +286,27 @@ impl Database {
         Ok(())
     }
 
+    pub async fn store_tokens(&self, tokens: &Vec<DatabaseToken>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        for chunk in tokens.chunks(500) {
+            diesel::insert_into(schema::tokens::dsl::tokens)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store tokens in the database");
+        }
+
+        Ok(())
+    }
+
     async fn update_chain_state(&self) -> Result<()> {
         let mut connection = self.establish_connection();
 
         let blocks = self.get_block_numbers().await.unwrap();
 
         let state = DatabaseState {
-            chain: self.chain.clone(),
+            chain: self.chain.name.to_string(),
             blocks: blocks.len() as i64,
         };
 

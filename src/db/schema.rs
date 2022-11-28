@@ -72,6 +72,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    tokens (address_with_chain) {
+        address_with_chain -> Varchar,
+        address -> Varchar,
+        chain -> Varchar,
+        name -> Varchar,
+        decimals -> Int8,
+        symbol -> Varchar,
+    }
+}
+
+diesel::table! {
     txs (hash) {
         hash -> Varchar,
         block_number -> Int8,
@@ -104,6 +115,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     logs,
     state,
     token_transfers,
+    tokens,
     txs,
     txs_receipts,
 );

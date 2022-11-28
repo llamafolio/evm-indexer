@@ -1,0 +1,8 @@
+CREATE TABLE tokens (
+  address_with_chain VARCHAR PRIMARY KEY UNIQUE NOT NULL,
+  address VARCHAR NOT NULL,
+  chain VARCHAR NOT NULL, 
+  name VARCHAR NOT NULL,
+  decimals BIGINT NOT NULL,
+  symbol VARCHAR NOT NULL
+)

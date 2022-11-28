@@ -33,7 +33,7 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
             "Procesing chunk from block {} to {} for chain {}",
             work_chunk.first().unwrap(),
             work_chunk.last().unwrap(),
-            config.chain.clone()
+            config.chain.name
         );
 
         for worker_part in chunks {
@@ -82,6 +82,22 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
         }
 
         join_all(stores).await;
+    }
+
+    Ok(())
+}
+
+pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database) -> Result<()> {
+    let missing_tokens = db.get_tokens_missing_data().await.unwrap();
+
+    let chunks = missing_tokens.chunks(20);
+
+    for chunk in chunks {
+        let data = rpc.get_tokens_metadata(chunk.to_vec()).await.unwrap();
+
+        db.store_tokens(&data).await.unwrap();
+
+        info!("Stored data for {} tokens", chunk.len());
     }
 
     Ok(())
