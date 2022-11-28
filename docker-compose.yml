@@ -46,7 +46,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --provider ankr --batch-size 1000"
+    command: "evm-indexer --provider ankr"
     networks:
       - postgres
     depends_on:
@@ -61,7 +61,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain polygon --provider ankr --batch-size 1000"
+    command: "evm-indexer --chain polygon --provider ankr"
     networks:
       - postgres
     depends_on:
@@ -76,7 +76,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain fantom  --provider ankr --batch-size 1000"
+    command: "evm-indexer --chain fantom  --provider ankr"
     networks:
       - postgres
     depends_on:
@@ -91,7 +91,7 @@ services:
       - DATABASE_URL=postgresql://indexer:indexer@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain optimism  --provider ankr --batch-size 1000"
+    command: "evm-indexer --chain optimism  --provider ankr"
     networks:
       - postgres
     depends_on:
