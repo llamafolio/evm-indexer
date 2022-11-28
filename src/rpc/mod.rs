@@ -131,58 +131,50 @@ impl Rpc {
 
         loop {
             let new_block = sub.next().await;
+            match new_block {
+                Some(block_header) => match block_header {
+                    Ok(block_header) => {
+                        let block_number = block_header.number.unwrap();
+                        info!(
+                            "Received new block header with height {:?} for chain {}",
+                            block_header.number.unwrap(),
+                            self.chain.name
+                        );
 
-            let rpc = self.clone();
-            let spawn_db = db.clone();
-            let chain = self.chain.clone();
+                        let from = block_number.as_u64() as i64 - self.chain.blocks_reorg;
+                        let to = block_number.as_u64() as i64;
 
-            tokio::spawn(async move {
-                match new_block {
-                    Some(block_header) => match block_header {
-                        Ok(block_header) => {
-                            let block_number = block_header.number.unwrap();
-                            info!(
-                                "Received new block header with height {:?} for chain {}",
-                                block_header.number.unwrap(),
-                                chain.name
-                            );
+                        let range: Vec<i64> = (from..to).collect();
 
-                            let from = block_number.as_u64() as i64 - chain.blocks_reorg;
-                            let to = block_number.as_u64() as i64;
+                        let (
+                            db_blocks,
+                            db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creations,
+                            db_contract_interactions,
+                            db_token_transfers,
+                        ) = self.get_blocks(range).await.unwrap();
 
-                            let range: Vec<i64> = (from..to).collect();
-
-                            let (
-                                db_blocks,
-                                db_txs,
-                                db_tx_receipts,
-                                db_tx_logs,
-                                db_contract_creations,
-                                db_contract_interactions,
-                                db_token_transfers,
-                            ) = rpc.get_blocks(range).await.unwrap();
-
-                            spawn_db
-                                .store_blocks_and_txs(
-                                    db_blocks,
-                                    db_txs,
-                                    db_tx_receipts,
-                                    db_tx_logs,
-                                    db_contract_creations,
-                                    db_contract_interactions,
-                                    db_token_transfers,
-                                )
-                                .await;
-                        }
-                        Err(_) => {
-                            return;
-                        }
-                    },
-                    None => {
+                        db.store_blocks_and_txs(
+                            db_blocks,
+                            db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creations,
+                            db_contract_interactions,
+                            db_token_transfers,
+                        )
+                        .await;
+                    }
+                    Err(_) => {
                         return;
                     }
+                },
+                None => {
+                    return;
                 }
-            });
+            }
         }
     }
 
