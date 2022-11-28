@@ -30,7 +30,7 @@ impl Chain {
             slug = "eth"
         }
 
-        if name == String::from("fantom") {
+        if name == String::from("fantom") && provider == "llamanodes" {
             slug = "ftm"
         }
 
