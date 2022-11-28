@@ -83,7 +83,21 @@ static ARBITTUM: Chain = Chain {
     blocks_reorg: 20,
 };
 
-pub static AVAILABLE_CHAINS: [Chain; 5] = [ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM];
+static GNOSIS: Chain = Chain {
+    id: 20,
+    name: "gnosis",
+    blocks_reorg: 20,
+};
+
+static BNB_CHAIN: Chain = Chain {
+    id: 56,
+    name: "bsc",
+    blocks_reorg: 16,
+};
+
+pub static AVAILABLE_CHAINS: [Chain; 7] = [
+    ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM, GNOSIS, BNB_CHAIN,
+];
 
 pub fn get_chains() -> HashMap<String, Chain> {
     let mut chains: HashMap<String, Chain> = HashMap::new();

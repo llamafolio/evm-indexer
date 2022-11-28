@@ -1,26 +1,5 @@
 version: '3.8'
 services:
-  mainnet-node:
-    init: true
-    container_name: mainnet-node
-    image: nethermind/nethermind
-    user: root
-    volumes:
-      - ./mainnet/db:/nethermind/nethermind_db/
-      - ./mainnet/keystore/:/nethermind/keystore
-    environment:
-      NETHERMIND_CONFIG: "mainnet"
-      NETHERMIND_INITCONFIG_WEBSOCKETSENABLED: "true"
-      NETHERMIND_JSONRPCCONFIG_ENABLEDMODULES: "eth,subscribe,web3"
-      NETHERMIND_JSONRPCCONFIG_ENABLED: "true"
-      NETHERMIND_JSONRPCCONFIG_HOST: "0.0.0.0"
-      NETHERMIND_NETWORKCONFIG_ACTIVEPEERSMAXCOUNT: "256"
-      NETHERMIND_SYNCCONFIG_FASTSYNC: "true"
-
-    ports:
-      - "8546:8545"
-    restart: always
-
   gnosis-node:
     init: true
     container_name: gnosis-node
