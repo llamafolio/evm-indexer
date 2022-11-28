@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:14.1-alpine
+    container_name: indexer-db
     restart: always
     environment:
       - POSTGRES_USER=indexer
@@ -21,6 +22,7 @@ services:
 
   graphql-engine:
       image: hasura/graphql-engine:latest
+      container_name: indexer-hasura
       ports:
       - "8080:8080"
       depends_on:
@@ -79,7 +81,37 @@ services:
     depends_on:
       db:
         condition: service_healthy           
-        
+
+  optimism-indexer:
+    container_name: optimism-indexer
+    image: ghcr.io/eabz/evm-indexer:latest
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+    env_file:
+      - .env
+    command: "evm-indexer --chain optimism  --provider ankr"
+    networks:
+      - postgres
+    depends_on:
+      db:
+        condition: service_healthy               
+
+  arbitrum-indexer:
+    container_name: arbitrum-indexer
+    image: ghcr.io/eabz/evm-indexer:latest
+    restart: on-failure
+    environment:
+      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+    env_file:
+      - .env
+    command: "evm-indexer --chain arbitrum  --provider ankr"
+    networks:
+      - postgres
+    depends_on:
+      db:
+        condition: service_healthy      
+
 networks:
   postgres:
     driver: bridge
