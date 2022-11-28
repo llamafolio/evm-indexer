@@ -4,7 +4,7 @@ The database structure and information use the [diesel](https://crates.io/crates
 
 Migrations for the database run every time you start the program.
 
-There are eight tables created on the database.
+There are ten tables created on the database.
 
 - [Blocks (blocks)](#blocks-table)
 - [Transactions (txs)](#transactions-table)
@@ -14,6 +14,8 @@ There are eight tables created on the database.
 - [Contract Interactions (contract_interactions)](#contract-interactions-table)
 - [Token Transfers (token_transfers)](#token-transfers-table)
 - [State (state)](#state-table)
+- [Tokens (tokens)](#tokens-table)
+- [Excluded Tokens (excluded_tokens)](#exlucded-tokens-table)
 
 #### Blocks Table
 
@@ -111,3 +113,22 @@ There are eight tables created on the database.
 | -------- | --------------- | --------- |
 | `chain`  | `VARCHAR`       | `String ` |
 | `blocks` | `BIGINT`        | `String ` |
+
+#### Tokens Table
+
+| Column               | PostgreSQL type | Rust type |
+| -------------------- | --------------- | --------- |
+| `address_with_chain` | `VARCHAR`       | `String ` |
+| `address`            | `VARCHAR`       | `String ` |
+| `chain`              | `VARCHAR`       | `String ` |
+| `name`               | `VARCHAR`       | `String ` |
+| `decimals`           | `BIGINT`        | `i64 `    |
+| `symbol`             | `VARCHAR`       | `String ` |
+
+#### Excluded Tokens Table
+
+| Column               | PostgreSQL type | Rust type |
+| -------------------- | --------------- | --------- |
+| `address_with_chain` | `VARCHAR`       | `String ` |
+| `address`            | `VARCHAR`       | `String ` |
+| `chain`              | `VARCHAR`       | `String ` |
