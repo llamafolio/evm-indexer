@@ -67,11 +67,6 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: Config) -> Result<()
             db_token_transfers,
         ) in res
         {
-            if db_blocks.len() < config.batch_size {
-                info!("Incomplete blocks returned, omitting...");
-                continue;
-            }
-
             if db_txs.len() != db_tx_receipts.len() {
                 info!("Txs and txs_receipts don't match, omitting...");
                 continue;
