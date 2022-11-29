@@ -171,7 +171,7 @@ static ARBITTUM: Chain = Chain {
     id: 42161,
     name: "arbitrum",
     blocks_reorg: 20,
-    ankr_available: false,
+    ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
 };

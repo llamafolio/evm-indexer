@@ -7,7 +7,7 @@ use web3::{
     ethabi::Address,
     futures::{future::join_all, StreamExt},
     transports::{Batch, Http, WebSocket},
-    types::{Block, BlockId, Transaction, TransactionReceipt, U64},
+    types::{Block, BlockId, Transaction, TransactionReceipt, H256, U64},
     Web3,
 };
 
@@ -22,7 +22,7 @@ use crate::{
         },
         Database,
     },
-    utils::{format_address, format_block, format_bool, format_receipt, ERC20_ABI},
+    utils::{format_address, format_block, format_bool, format_hash, format_receipt, ERC20_ABI},
 };
 
 #[derive(Debug, Clone)]
@@ -85,7 +85,15 @@ impl Rpc {
         }
     }
 
-    async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
+    pub async fn get_tx_receipt(&self, tx: &String) -> Option<TransactionReceipt> {
+        let hash = H256::from_str(tx).unwrap();
+
+        let receipt = self.single.eth().transaction_receipt(hash).await.unwrap();
+
+        return receipt;
+    }
+
+    pub async fn get_txs_receipts(&self, txs: &Vec<String>) -> Result<Vec<TransactionReceipt>> {
         let mut receipts: Vec<TransactionReceipt> = Vec::new();
 
         if txs.len() == 0 {
@@ -93,7 +101,8 @@ impl Rpc {
         }
 
         for tx in txs.iter() {
-            self.batch.eth().transaction_receipt(tx.hash);
+            let hash = H256::from_str(tx).unwrap();
+            self.batch.eth().transaction_receipt(hash);
         }
 
         let receipts_res = self.batch.transport().submit_batch().await;
@@ -213,7 +222,8 @@ impl Rpc {
         let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
 
         for chunk in receipts_chunks {
-            let mut receipts_chunk = self.get_txs_receipts(&chunk.to_vec()).await.unwrap();
+            let tx_hashes: Vec<String> = chunk.into_iter().map(|tx| format_hash(tx.hash)).collect();
+            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
             tx_receipts.append(&mut receipts_chunk);
         }
 
@@ -222,6 +232,35 @@ impl Rpc {
             .map(|tx| DatabaseTx::from_web3(&tx, self.chain.name.to_string()))
             .collect();
 
+        let (
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_contract_interactions,
+            db_token_transfers,
+        ) = self.get_metadata_from_receipts(tx_receipts).await.unwrap();
+
+        Ok((
+            db_blocks,
+            db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_contract_interactions,
+            db_token_transfers,
+        ))
+    }
+
+    pub async fn get_metadata_from_receipts(
+        &self,
+        receipts: Vec<TransactionReceipt>,
+    ) -> Result<(
+        Vec<DatabaseTxReceipt>,
+        Vec<DatabaseTxLogs>,
+        Vec<DatabaseContractCreation>,
+        Vec<DatabaseContractInteraction>,
+        Vec<DatabaseTokenTransfers>,
+    )> {
         let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
 
         let mut db_tx_logs: Vec<DatabaseTxLogs> = vec![];
@@ -232,7 +271,7 @@ impl Rpc {
 
         let mut db_token_transfers: Vec<DatabaseTokenTransfers> = vec![];
 
-        for tx_receipt in tx_receipts {
+        for tx_receipt in receipts {
             let db_tx_receipt =
                 DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.name.to_string());
 
@@ -286,8 +325,6 @@ impl Rpc {
         }
 
         Ok((
-            db_blocks,
-            db_txs,
             db_tx_receipts,
             db_tx_logs,
             db_contract_creations,

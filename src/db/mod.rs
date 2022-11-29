@@ -32,6 +32,9 @@ use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
 use self::schema::token_transfers::table as token_transfers_table;
+use self::schema::txs_no_receipt;
+use self::schema::txs_no_receipt::table as txs_no_receipt_table;
+
 use self::schema::tokens;
 use self::schema::tokens::table as tokens_table;
 
@@ -70,6 +73,17 @@ impl Database {
             PgConnection::establish(&self.db_url).expect("Unable to connect to the database");
 
         return connection;
+    }
+
+    pub async fn get_missing_receipts_txs(&self) -> Result<Vec<String>> {
+        let mut connection = self.establish_connection();
+
+        let txs: Vec<String> = txs_no_receipt_table
+            .select(txs_no_receipt::hash)
+            .load::<String>(&mut connection)
+            .unwrap();
+
+        Ok(txs)
     }
 
     pub async fn get_tokens_missing_data(&self) -> Result<Vec<String>> {
@@ -368,5 +382,15 @@ impl Database {
             .expect("Unable to update chain state");
 
         Ok(())
+    }
+
+    pub async fn delete_no_receipt_txs(&self, txs: &Vec<String>) {
+        let mut connection = self.establish_connection();
+
+        for tx in txs {
+            diesel::delete(txs_no_receipt_table.filter(txs_no_receipt::hash.eq(tx)))
+                .execute(&mut connection)
+                .expect("Unable to delete no receipt transactions");
+        }
     }
 }

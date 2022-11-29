@@ -187,6 +187,51 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
     Ok(())
 }
 
+pub async fn fetch_tx_no_receipts(rpc: &Rpc, db: &Database) -> Result<()> {
+    let missing_txs = db.get_missing_receipts_txs().await.unwrap();
+
+    info!(
+        "Fetching {} transactions with no receipts in shorter batches",
+        missing_txs.len()
+    );
+
+    for tx in missing_txs {
+        let receipt = rpc.get_tx_receipt(&tx).await;
+
+        match receipt {
+            Some(receipt) => {
+                let (
+                    db_tx_receipts,
+                    db_tx_logs,
+                    db_contract_creations,
+                    db_contract_interactions,
+                    db_token_transfers,
+                ) = rpc.get_metadata_from_receipts(vec![receipt]).await.unwrap();
+
+                if db_tx_receipts.len() != 1 {
+                    continue;
+                }
+
+                db.store_blocks_and_txs(
+                    Vec::new(),
+                    Vec::new(),
+                    db_tx_receipts,
+                    db_tx_logs,
+                    db_contract_creations,
+                    db_contract_interactions,
+                    db_token_transfers,
+                )
+                .await;
+
+                db.delete_no_receipt_txs(&vec![tx]).await;
+            }
+            None => continue,
+        }
+    }
+
+    Ok(())
+}
+
 fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {
     HashSet::from_iter(vec)
 }

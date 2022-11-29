@@ -36,15 +36,15 @@ async fn main() {
 
     let mut available_providers: Vec<Rpc> = vec![];
 
-    let llamanodes_provider = config.llamanodes_provider.clone();
-    if llamanodes_provider.is_available(&config.chain) {
-        let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
-        available_providers.push(rpc);
-    }
-
     let ankr_provider = config.ankr_provider.clone();
     if ankr_provider.is_available(&config.chain) {
         let rpc = Rpc::new(&config, &ankr_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
+
+    let llamanodes_provider = config.llamanodes_provider.clone();
+    if llamanodes_provider.is_available(&config.chain) {
+        let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
         available_providers.push(rpc);
     }
 
@@ -78,6 +78,17 @@ async fn main() {
                 fetcher::fetch_tokens_metadata(&rpc, &db, &config)
                     .await
                     .unwrap();
+                sleep(Duration::from_secs(30)).await;
+            }
+        }
+    });
+
+    tokio::spawn({
+        let rpc = available_providers[0].clone();
+        let db = db.clone();
+        async move {
+            loop {
+                fetcher::fetch_tx_no_receipts(&rpc, &db).await.unwrap();
                 sleep(Duration::from_secs(30)).await;
             }
         }
