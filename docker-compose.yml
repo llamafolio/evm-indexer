@@ -98,21 +98,6 @@ services:
       db:
         condition: service_healthy                
 
-  bsc-indexer:
-    container_name: bsc-indexer
-    image: ghcr.io/eabz/evm-indexer:latest
-    restart: on-failure
-    environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
-    env_file:
-      - .env
-    command: "evm-indexer --chain bsc  --provider ankr"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy      
-
   gnosis-indexer:
     container_name: gnosis-indexer
     image: ghcr.io/eabz/evm-indexer:latest

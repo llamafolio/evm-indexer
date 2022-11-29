@@ -13,8 +13,8 @@ use crate::{
     rpc::Rpc,
 };
 
-pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: &Config) -> Result<()> {
-    let rpc_last_block = rpc.get_last_block().await.unwrap();
+pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) -> Result<()> {
+    let rpc_last_block = providers[0].get_last_block().await.unwrap();
 
     let full_blocks_set: Vec<i64> = (config.start_block..rpc_last_block).collect();
 
@@ -26,65 +26,88 @@ pub async fn fetch_blocks(rpc: &Rpc, db: &Database, config: &Config) -> Result<(
         .collect();
 
     let missing_blocks_amount = missing_blocks.len();
+    let providers_amount = providers.len();
 
     info!(
-        "Fetching {} blocks with batches of {} blocks with {} workers",
-        missing_blocks_amount, config.batch_size, config.workers
+        "Fetching {} blocks with batches of {} blocks with {} workers from {} providers",
+        missing_blocks_amount, config.batch_size, config.workers, providers_amount
     );
 
-    for work_chunk in missing_blocks.chunks(config.batch_size * config.workers) {
-        let mut works = vec![];
+    let providers_chunk: Vec<Vec<i64>> = missing_blocks
+        .clone()
+        .chunks(missing_blocks_amount / providers_amount)
+        .into_iter()
+        .map(|chunk| chunk.to_vec())
+        .collect();
 
-        let chunks = work_chunk.chunks(config.batch_size);
-        info!(
-            "Procesing chunk from block {} to {} for chain {}",
-            work_chunk.first().unwrap(),
-            work_chunk.last().unwrap(),
-            config.chain.name
-        );
+    let mut providers_work = vec![];
+    for (i, provider) in providers.into_iter().enumerate() {
+        let provider_work = tokio::spawn({
+            let chunk = providers_chunk[i].clone();
+            let rpc = provider.clone();
+            let db = db.clone();
+            let config = config.clone();
 
-        for worker_part in chunks {
-            works.push(rpc.get_blocks(worker_part.to_vec()));
-        }
+            async move {
+                for work_chunk in chunk.chunks(config.batch_size * config.workers) {
+                    let mut works = vec![];
 
-        let block_responses = join_all(works).await;
+                    let chunks = work_chunk.chunks(config.batch_size);
+                    info!(
+                        "Procesing chunk from block {} to {} for chain {}",
+                        work_chunk.first().unwrap(),
+                        work_chunk.last().unwrap(),
+                        config.chain.name
+                    );
 
-        let res = block_responses.into_iter().map(Result::unwrap);
+                    for worker_part in chunks {
+                        works.push(rpc.get_blocks(worker_part.to_vec()));
+                    }
 
-        if res.len() < config.workers {
-            info!("Incomplete result returned, omitting...")
-        }
+                    let block_responses = join_all(works).await;
 
-        let mut stores = vec![];
+                    let res = block_responses.into_iter().map(Result::unwrap);
 
-        for (
-            db_blocks,
-            db_txs,
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creation,
-            db_contract_interaction,
-            db_token_transfers,
-        ) in res
-        {
-            if db_txs.len() != db_tx_receipts.len() {
-                info!("Txs and txs_receipts don't match, omitting...");
-                continue;
+                    if res.len() < config.workers {
+                        info!("Incomplete result returned, omitting...")
+                    }
+
+                    let mut stores = vec![];
+
+                    for (
+                        db_blocks,
+                        db_txs,
+                        db_tx_receipts,
+                        db_tx_logs,
+                        db_contract_creation,
+                        db_contract_interaction,
+                        db_token_transfers,
+                    ) in res
+                    {
+                        if db_txs.len() != db_tx_receipts.len() {
+                            info!("Txs and txs_receipts don't match, omitting...");
+                            continue;
+                        }
+
+                        stores.push(db.store_blocks_and_txs(
+                            db_blocks,
+                            db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creation,
+                            db_contract_interaction,
+                            db_token_transfers,
+                        ));
+                    }
+
+                    join_all(stores).await;
+                }
             }
-
-            stores.push(db.store_blocks_and_txs(
-                db_blocks,
-                db_txs,
-                db_tx_receipts,
-                db_tx_logs,
-                db_contract_creation,
-                db_contract_interaction,
-                db_token_transfers,
-            ));
-        }
-
-        join_all(stores).await;
+        });
+        providers_work.push(provider_work);
     }
+
+    join_all(providers_work).await;
 
     Ok(())
 }

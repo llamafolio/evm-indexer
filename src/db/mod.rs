@@ -50,7 +50,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: &Config) -> Result<Self> {
         info!("Initializing Database");
 
         let mut connection =
@@ -59,7 +59,7 @@ impl Database {
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
         Ok(Self {
-            db_url: config.db_url,
+            db_url: config.db_url.to_string(),
             chain: config.chain,
         })
     }

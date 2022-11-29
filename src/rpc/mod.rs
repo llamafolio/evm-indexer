@@ -12,7 +12,7 @@ use web3::{
 };
 
 use crate::{
-    chains::Chain,
+    chains::{Chain, Provider},
     config::Config,
     db::{
         models::{
@@ -34,11 +34,9 @@ pub struct Rpc {
 }
 
 impl Rpc {
-    pub async fn new(config: Config) -> Result<Self> {
-        info!("Initializing RPC");
-
-        let http = Http::new(&config.rpc_http_url).unwrap();
-        let ws = WebSocket::new(&config.rpc_ws_url).await.unwrap();
+    pub async fn new(config: &Config, provider: &Provider) -> Result<Self> {
+        let http = Http::new(&provider.http).unwrap();
+        let ws = WebSocket::new(&provider.wss).await.unwrap();
 
         Ok(Self {
             wss: Web3::new(ws),

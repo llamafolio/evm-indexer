@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::chains::{get_chain, Chain};
+use crate::chains::{get_chain, Chain, Provider};
 
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
 pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
@@ -16,9 +16,6 @@ pub struct Args {
 
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
-
-    #[arg(short, long, help = "RPC provider to use to sync", default_value_t = String::from("llamanodes"))]
-    pub provider: String,
 
     #[arg(
         short, long,
@@ -41,14 +38,13 @@ pub struct Args {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub db_url: String,
-    pub rpc_http_url: String,
-    pub rpc_ws_url: String,
     pub debug: bool,
     pub start_block: i64,
     pub workers: usize,
     pub batch_size: usize,
-    pub provider: String,
     pub chain: Chain,
+    pub llamanodes_provider: Provider,
+    pub ankr_provider: Provider,
 }
 
 impl Config {
@@ -63,22 +59,29 @@ impl Config {
 
         let chain = get_chain(chainname);
 
-        let provider_key = std::env::var("PROVIDER_KEY").expect("PROVIDER_KEY must be set.");
+        let llamanodes_key = match std::env::var("LLAMANODES_PROVIDER_ID") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
 
-        let provider = args.provider;
+        let ankr_key = match std::env::var("ANKR_PROVIDER_ID") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
 
-        let endpoints = chain.get_endpoints(provider_key, provider.clone());
+        let llamanodes_provider = chain.get_provider(llamanodes_key, "llamanodes".to_string());
+
+        let ankr_provider = chain.get_provider(ankr_key, "ankr".to_string());
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
-            rpc_http_url: endpoints.http,
-            rpc_ws_url: endpoints.wss,
             debug: args.debug,
             start_block: args.start_block,
             workers: args.workers,
             batch_size: args.batch_size,
-            provider,
             chain,
+            llamanodes_provider,
+            ankr_provider,
         }
     }
 }

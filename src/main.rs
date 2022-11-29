@@ -30,29 +30,41 @@ async fn main() {
 
     info!("Starting EVM Indexer");
 
-    let db = Database::new(config.clone())
+    let db = Database::new(&config)
         .await
         .expect("Unable to connect to the database");
 
-    let rpc = Rpc::new(config.clone())
-        .await
-        .expect("Unable to connect to the rpc url");
+    let mut available_providers: Vec<Rpc> = vec![];
+
+    let ankr_provider = config.ankr_provider.clone();
+    if ankr_provider.is_available(&config.chain) {
+        let rpc = Rpc::new(&config, &ankr_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
+
+    let llamanodes_provider = config.llamanodes_provider.clone();
+    if llamanodes_provider.is_available(&config.chain) {
+        let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
 
     tokio::spawn({
-        let rpc = rpc.clone();
         let db = db.clone();
         let config = config.clone();
+        let available_providers = available_providers.clone();
 
         async move {
             loop {
-                fetcher::fetch_blocks(&rpc, &db, &config).await.unwrap();
+                fetcher::fetch_blocks(&available_providers, &db, &config)
+                    .await
+                    .unwrap();
                 sleep(Duration::from_secs(120)).await;
             }
         }
     });
 
     tokio::spawn({
-        let rpc = rpc.clone();
+        let rpc = available_providers[0].clone();
         let db = db.clone();
         let config = config.clone();
         async move {
@@ -66,6 +78,7 @@ async fn main() {
     });
 
     loop {
+        let rpc = available_providers[0].clone();
         rpc.subscribe_heads(&db).await;
     }
 }
