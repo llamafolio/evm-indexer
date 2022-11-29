@@ -195,38 +195,40 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, db: &Database) -> Result<()> {
         missing_txs.len()
     );
 
-    for tx in missing_txs {
-        let receipt = rpc.get_tx_receipt(&tx).await;
+    let chunks = missing_txs.chunks(1);
 
-        match receipt {
-            Some(receipt) => {
-                let (
-                    db_tx_receipts,
-                    db_tx_logs,
-                    db_contract_creations,
-                    db_contract_interactions,
-                    db_token_transfers,
-                ) = rpc.get_metadata_from_receipts(vec![receipt]).await.unwrap();
+    for chunk in chunks {
+        let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
+        println!("{:?}-{:?}", chunk.len(), tx_receipts.len());
 
-                if db_tx_receipts.len() != 1 {
-                    continue;
-                }
-
-                db.store_blocks_and_txs(
-                    Vec::new(),
-                    Vec::new(),
-                    db_tx_receipts,
-                    db_tx_logs,
-                    db_contract_creations,
-                    db_contract_interactions,
-                    db_token_transfers,
-                )
-                .await;
-
-                db.delete_no_receipt_txs(&vec![tx]).await;
-            }
-            None => continue,
+        if tx_receipts.len() != chunk.len() {
+            continue;
         }
+
+        let (
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_contract_interactions,
+            db_token_transfers,
+        ) = rpc.get_metadata_from_receipts(tx_receipts).await.unwrap();
+
+        if db_tx_receipts.len() != chunk.len() {
+            continue;
+        }
+
+        db.store_blocks_and_txs(
+            Vec::new(),
+            Vec::new(),
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_contract_interactions,
+            db_token_transfers,
+        )
+        .await;
+
+        db.delete_no_receipt_txs(&chunk.to_vec()).await;
     }
 
     Ok(())
