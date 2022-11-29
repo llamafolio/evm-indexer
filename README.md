@@ -2,19 +2,65 @@
 
 > Minimalistic EVM-compatible blockchain indexer written in rust.
 
-This repository contains a program to parse all blocks and transactions into a PostgreSQL database. It also includes all the transaction receipts and logs for contract execution.
+This repository contains a program to index helpful information from any EVM-compatible chain into a PostgreSQL database.
 
-- [Database Structure](./doc/DATABASE.md)
+It is ready for developing purposes. If you want more information about it, you can [send me a DM on Twitter](https://twitter.com/eaberrueta)
 
 ## Demo
 
-To see the EVM indexer in action go to [https://evm-indexer.kindynos.mx](https://evm-indexer.kindynos.mx)
-
-The repository comes with an autodeployed Hasura Cloud instance to connect a GraphQL API directly to the indexer to fetch the data.
-
-It is only enable if you use the docker-compose file.
+To see the EVM indexer in action, go to [https://evm-indexer.kindynos.mx](https://evm-indexer.kindynos.mx)
 
 The frontend app repository can be found here [https://github.com/eabz/evm-indexer-app](https://github.com/eabz/evm-indexer-app)
+
+## Chains
+
+Currently, the indexer can index the following chains:
+
+- Ethereum (mainnet)
+- Polygon
+- Avalanche
+- Fantom
+- Gnosis Chain
+- Optimism
+
+## Database Information
+
+The indexer creates tables for:
+
+1. Blocks
+2. Transactions
+3. Transaction Receipts
+4. Transaction Logs
+5. Contract Creations
+6. Contract Interactions
+7. Token Transfers
+8. Tokens Details
+
+The information structure is explained in the [database structure document](./doc/DATABASE.md).
+
+## Providers
+
+The indexer connects automatically to three different providers through the RPC.
+
+The available providers are:
+
+- [LlamaNodes](https://llamanodes.com)
+- [Ankr](https://www.ankr.com/rpc)
+- [Pokt](https://www.pokt.network/)
+
+The indexer automatically selects the providers added.
+
+## Environment Variables
+
+The indexer requires the following environment variables.
+
+| Variable                 | Purpose                              | Required Local | Required Docker |
+| ------------------------ | ------------------------------------ | -------------- | --------------- |
+| `DATABASE_URL`           | Url of the PostgreSQL database       | `true`         | `false `        |
+| `ANKR_PROVIDER_ID`       | Ankr RPC nodes provider ID           | `false `       | `false `        |
+| `LLAMANODES_PROVIDER_ID` | LlamaNodes RPC nodes provider ID     | `false `       | `false `        |
+| `POKT_PROVIDER_ID`       | Pokt RPC provider ID                 | `false `       | `false `        |
+| `HASURA_ADMIN_PASSWORD`  | Hasura console and GraphQL API token | `false `       | `true `         |
 
 ## Install
 
@@ -36,17 +82,7 @@ git clone https://github.com/eabz/evm-indexer && cd evm-indexer
 cargo build --release
 ```
 
-3. Copy the .env.example file to .env and add your environment variables.
-
-```
-DATABASE_URL -> URL for postgresql database.
-PROVIDER_KEY -> API key for the RPC endpoint tested providers.
-```
-
-The available providers for the indexer are:
-
-- [LlamaNodes](https://llamanodes.com)
-- [Ankr](https://www.ankr.com/rpc)
+3. Copy the `.env.example` file to `.env` and add your environment variables.
 
 4. Run the program
 
@@ -56,14 +92,24 @@ The available providers for the indexer are:
 
 ### Docker
 
-The code has a builtin docker file that you can build through it, or you can use the constructed automatically image from
+You can use the official docker image.
 
 ```
 docker pull ghcr.io/eabz/evm-indexer:latest
 ```
 
-For docker-compose, you can use
+You can use our docker-compose script to start a full indexer with a database, all chains enabled, and a Hasura Cloud GraphQL API.
 
 ```
 docker-compose up
 ```
+
+### Contribute
+
+We appreciate your contributions. PR are accepted and open.
+
+Some ideas for contributions are:
+
+1. Add more chains
+2. Increment providers to sync simultaneously.
+3. Speed up the information deserialization/storing.
