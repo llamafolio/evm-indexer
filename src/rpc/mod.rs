@@ -206,7 +206,7 @@ impl Rpc {
 
         let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
 
-        let receipts_chunks = web3_txs.chunks(self.requests_batch.clone());
+        let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
 
         for chunk in receipts_chunks {
             let mut receipts_chunk = self.get_txs_receipts(&chunk.to_vec()).await.unwrap();
