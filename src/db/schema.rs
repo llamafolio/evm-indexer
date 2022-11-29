@@ -109,6 +109,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    txs_no_receipt (hash) {
+        hash -> Varchar,
+        chain -> Varchar,
+        block_number -> Int8,
+    }
+}
+
+diesel::table! {
     txs_receipts (hash) {
         hash -> Varchar,
         success -> Nullable<Bool>,
@@ -126,5 +134,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     token_transfers,
     tokens,
     txs,
+    txs_no_receipt,
     txs_receipts,
 );

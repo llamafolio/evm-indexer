@@ -24,6 +24,7 @@ use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
+use self::models::DatabaseTxNoReceipt;
 use self::models::DatabaseTxReceipt;
 use self::schema::blocks;
 use self::schema::blocks::table as blocks_table;
@@ -334,6 +335,18 @@ impl Database {
         }
 
         Ok(())
+    }
+
+    pub async fn store_txs_no_receipt(&self, txs: &Vec<DatabaseTxNoReceipt>) {
+        let mut connection = self.establish_connection();
+
+        for chunk in txs.chunks(500) {
+            diesel::insert_into(schema::txs_no_receipt::dsl::txs_no_receipt)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store transactions with no receipt into database");
+        }
     }
 
     async fn update_chain_state(&self) -> Result<()> {

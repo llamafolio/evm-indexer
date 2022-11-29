@@ -189,7 +189,7 @@ static BNB_CHAIN: Chain = Chain {
     id: 56,
     name: "bsc",
     blocks_reorg: 16,
-    ankr_available: false,
+    ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
 };

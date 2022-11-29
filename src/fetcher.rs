@@ -7,7 +7,7 @@ use web3::futures::future::join_all;
 use crate::{
     config::Config,
     db::{
-        models::{DatabaseExcludedToken, DatabaseToken},
+        models::{DatabaseExcludedToken, DatabaseToken, DatabaseTx, DatabaseTxNoReceipt},
         Database,
     },
     rpc::Rpc,
@@ -72,8 +72,6 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                         info!("Incomplete result returned, omitting...")
                     }
 
-                    let mut stores = vec![];
-
                     for (
                         db_blocks,
                         db_txs,
@@ -84,29 +82,60 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                         db_token_transfers,
                     ) in res
                     {
-                        if db_txs.len() != db_tx_receipts.len() {
+                        let db_txs_count = db_txs.len();
+                        let db_tx_receipts_count = db_tx_receipts.len();
+
+                        if db_txs_count != db_tx_receipts_count {
                             info!(
-                                "Not enough receipts for transactions: txs({}) receipts ({}) block_range({})-({})",
-                                db_txs.len(),
-                                db_tx_receipts.len(),
+                                "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
+                                db_txs_count,
+                                db_tx_receipts_count,
                                 db_blocks.first().unwrap().number,
                                 db_blocks.last().unwrap().number,
                             );
-                            continue;
                         }
 
-                        stores.push(db.store_blocks_and_txs(
+                        let db_receipts_hash: Vec<String> = db_tx_receipts
+                            .clone()
+                            .into_iter()
+                            .map(|receipt| receipt.hash)
+                            .collect();
+
+                        let mut db_txs_with_receipts: Vec<DatabaseTx> = vec![];
+                        let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
+
+                        for tx in db_txs {
+                            if db_receipts_hash.contains(&tx.hash) {
+                                db_txs_with_receipts.push(tx);
+                            } else {
+                                db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                                    hash: tx.hash,
+                                    chain: tx.chain,
+                                    block_number: tx.block_number,
+                                });
+                            }
+                        }
+
+                        db.store_blocks_and_txs(
                             db_blocks,
-                            db_txs,
+                            db_txs_with_receipts,
                             db_tx_receipts,
                             db_tx_logs,
                             db_contract_creation,
                             db_contract_interaction,
                             db_token_transfers,
-                        ));
-                    }
+                        )
+                        .await;
 
-                    join_all(stores).await;
+                        if db_txs_with_no_receipts.len() > 0 {
+                            info!(
+                                "Storing {} txs with no receipt for future check",
+                                db_txs_with_no_receipts.len(),
+                            );
+
+                            db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                        }
+                    }
                 }
             }
         });

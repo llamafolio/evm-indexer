@@ -86,6 +86,12 @@ impl Rpc {
     }
 
     async fn get_txs_receipts(&self, txs: &Vec<Transaction>) -> Result<Vec<TransactionReceipt>> {
+        let mut receipts: Vec<TransactionReceipt> = Vec::new();
+
+        if txs.len() == 0 {
+            return Ok(receipts);
+        }
+
         for tx in txs.iter() {
             self.batch.eth().transaction_receipt(tx.hash);
         }
@@ -94,8 +100,6 @@ impl Rpc {
 
         match receipts_res {
             Ok(result) => {
-                let mut receipts: Vec<TransactionReceipt> = Vec::new();
-
                 for receipt in result.into_iter() {
                     match receipt {
                         Ok(tx_receipt) => match format_receipt(tx_receipt) {

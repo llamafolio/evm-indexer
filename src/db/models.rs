@@ -9,7 +9,7 @@ use crate::utils::{
 
 use super::schema::{
     blocks, contract_creations, contract_interactions, excluded_tokens, logs, state,
-    token_transfers, tokens, txs, txs_receipts,
+    token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone)]
@@ -350,4 +350,12 @@ pub struct DatabaseExcludedToken {
     pub address_with_chain: String,
     pub address: String,
     pub chain: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = txs_no_receipt)]
+pub struct DatabaseTxNoReceipt {
+    pub hash: String,
+    pub chain: String,
+    pub block_number: i64,
 }
