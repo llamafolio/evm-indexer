@@ -45,6 +45,7 @@ pub struct Config {
     pub chain: Chain,
     pub llamanodes_provider: Provider,
     pub ankr_provider: Provider,
+    pub pokt_provider: Provider,
 }
 
 impl Config {
@@ -69,9 +70,16 @@ impl Config {
             Err(_) => String::from(""),
         };
 
+        let pokt_key = match std::env::var("POKT_PROVIDER_ID") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
         let llamanodes_provider = chain.get_provider(llamanodes_key, "llamanodes".to_string());
 
         let ankr_provider = chain.get_provider(ankr_key, "ankr".to_string());
+
+        let pokt_provider = chain.get_provider(pokt_key, "pokt".to_string());
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
@@ -82,6 +90,7 @@ impl Config {
             chain,
             llamanodes_provider,
             ankr_provider,
+            pokt_provider,
         }
     }
 }

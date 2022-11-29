@@ -5,6 +5,7 @@ pub struct Provider {
     pub name: String,
     pub http: String,
     pub wss: String,
+    pub wss_access: bool,
 }
 
 impl Provider {
@@ -21,7 +22,13 @@ impl Provider {
             }
         }
 
-        return self.http != String::from("") && self.wss != String::from("");
+        if self.name == "pokt" {
+            if !chain.pokt_available {
+                return false;
+            }
+        }
+
+        return self.http != String::from("");
     }
 }
 
@@ -32,6 +39,7 @@ pub struct Chain {
     pub blocks_reorg: i64,
     pub ankr_available: bool,
     pub llamanodes_available: bool,
+    pub pokt_available: bool,
 }
 
 impl Chain {
@@ -42,6 +50,7 @@ impl Chain {
             blocks_reorg: chain.blocks_reorg,
             ankr_available: chain.ankr_available,
             llamanodes_available: chain.llamanodes_available,
+            pokt_available: chain.pokt_available,
         }
     }
 
@@ -55,6 +64,7 @@ impl Chain {
                 name: String::from(""),
                 http: String::from(""),
                 wss: String::from(""),
+                wss_access: false,
             };
         }
 
@@ -62,8 +72,22 @@ impl Chain {
             slug = "eth"
         }
 
+        // Rules for slug changes for llamanodes
         if name == String::from("fantom") && provider == "llamanodes" {
             slug = "ftm"
+        }
+
+        if name == String::from("fantom") && provider == "llamanodes" {
+            slug = "ftm"
+        }
+
+        // Rules for slug changes for pokt provider
+        if name == String::from("avalanche") && provider == "pokt" {
+            slug = "avax"
+        }
+
+        if name == String::from("polygon") && provider == "pokt" {
+            slug = "poly"
         }
 
         if provider == "llamanodes" {
@@ -71,18 +95,37 @@ impl Chain {
                 name: "llamanodes".to_string(),
                 http: format!("https://{}-ski.llamarpc.com/rpc/{}", slug, key),
                 wss: format!("wss://{}-ski.llamarpc.com/rpc/{}", slug, key),
+                wss_access: true,
             };
         } else if provider == "ankr" {
             return Provider {
                 name: "ankr".to_string(),
                 http: format!("https://rpc.ankr.com/{}/{}", slug, key),
                 wss: format!("wss://rpc.ankr.com/{}/ws/{}", slug, key),
+                wss_access: true,
+            };
+        } else if provider == "pokt" {
+            let mut net = "mainnet";
+
+            if name == String::from("gnosis") {
+                net = "xdai"
+            }
+
+            return Provider {
+                name: "ankr".to_string(),
+                http: format!(
+                    "https://{}-{}.gateway.pokt.network/v1/lb/{}",
+                    slug, net, key
+                ),
+                wss: String::from(""),
+                wss_access: false,
             };
         } else {
             return Provider {
                 name: String::from(""),
                 http: String::from(""),
                 wss: String::from(""),
+                wss_access: false,
             };
         }
     }
@@ -94,6 +137,7 @@ static ETHEREUM: Chain = Chain {
     blocks_reorg: 12,
     ankr_available: true,
     llamanodes_available: true,
+    pokt_available: true,
 };
 
 static POLYGON: Chain = Chain {
@@ -102,6 +146,7 @@ static POLYGON: Chain = Chain {
     blocks_reorg: 128,
     ankr_available: true,
     llamanodes_available: true,
+    pokt_available: true,
 };
 
 static FTM: Chain = Chain {
@@ -110,6 +155,7 @@ static FTM: Chain = Chain {
     blocks_reorg: 5,
     ankr_available: true,
     llamanodes_available: true,
+    pokt_available: true,
 };
 
 static OPTIMISM: Chain = Chain {
@@ -118,6 +164,7 @@ static OPTIMISM: Chain = Chain {
     blocks_reorg: 20,
     ankr_available: true,
     llamanodes_available: false,
+    pokt_available: true,
 };
 
 static ARBITTUM: Chain = Chain {
@@ -126,6 +173,7 @@ static ARBITTUM: Chain = Chain {
     blocks_reorg: 20,
     ankr_available: false,
     llamanodes_available: false,
+    pokt_available: true,
 };
 
 static GNOSIS: Chain = Chain {
@@ -134,6 +182,7 @@ static GNOSIS: Chain = Chain {
     blocks_reorg: 20,
     ankr_available: true,
     llamanodes_available: false,
+    pokt_available: true,
 };
 
 static BNB_CHAIN: Chain = Chain {
@@ -142,6 +191,7 @@ static BNB_CHAIN: Chain = Chain {
     blocks_reorg: 16,
     ankr_available: false,
     llamanodes_available: false,
+    pokt_available: true,
 };
 
 static AVALANCHE: Chain = Chain {
@@ -150,6 +200,7 @@ static AVALANCHE: Chain = Chain {
     blocks_reorg: 16,
     ankr_available: true,
     llamanodes_available: false,
+    pokt_available: true,
 };
 
 pub static AVAILABLE_CHAINS: [Chain; 8] = [

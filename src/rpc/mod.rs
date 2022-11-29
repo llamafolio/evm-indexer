@@ -27,8 +27,9 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Rpc {
+    pub single: Web3<Http>,
     pub batch: Web3<Batch<Http>>,
-    pub wss: Web3<WebSocket>,
+    pub wss: Option<Web3<WebSocket>>,
     pub chain: Chain,
     pub requests_batch: usize,
 }
@@ -36,10 +37,10 @@ pub struct Rpc {
 impl Rpc {
     pub async fn new(config: &Config, provider: &Provider) -> Result<Self> {
         let http = Http::new(&provider.http).unwrap();
-        let ws = WebSocket::new(&provider.wss).await.unwrap();
 
         Ok(Self {
-            wss: Web3::new(ws),
+            wss: get_websocket(provider).await,
+            single: Web3::new(http.clone()),
             batch: Web3::new(web3::transports::Batch::new(http)),
             chain: config.chain,
             requests_batch: config.batch_size.clone(),
@@ -47,15 +48,9 @@ impl Rpc {
     }
 
     pub async fn get_last_block(&self) -> Result<i64> {
-        let last_block = self
-            .wss
-            .eth()
-            .block_number()
-            .await
-            .expect("Unable to fetch last block")
-            .as_u64();
+        let last_block = self.single.eth().block_number().await.unwrap().as_u64() as i64;
 
-        Ok(last_block as i64)
+        Ok(last_block)
     }
 
     async fn get_block_batch(&self, range: &Vec<i64>) -> Result<Vec<Block<Transaction>>> {
@@ -118,61 +113,61 @@ impl Rpc {
     }
 
     pub async fn subscribe_heads(&self, db: &Database) {
-        let mut sub = self
-            .wss
-            .eth_subscribe()
-            .subscribe_new_heads()
-            .await
-            .unwrap();
+        match self.wss.clone() {
+            Some(wss) => {
+                let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
 
-        info!("Initializing new blocks listener");
+                info!("Initializing new blocks listener");
 
-        loop {
-            let new_block = sub.next().await;
-            match new_block {
-                Some(block_header) => match block_header {
-                    Ok(block_header) => {
-                        let block_number = block_header.number.unwrap();
-                        info!(
-                            "Received new block header with height {:?} for chain {}",
-                            block_header.number.unwrap(),
-                            self.chain.name
-                        );
+                loop {
+                    let new_block = sub.next().await;
+                    match new_block {
+                        Some(block_header) => match block_header {
+                            Ok(block_header) => {
+                                let block_number = block_header.number.unwrap();
+                                info!(
+                                    "Received new block header with height {:?} for chain {}",
+                                    block_header.number.unwrap(),
+                                    self.chain.name
+                                );
 
-                        let from = block_number.as_u64() as i64 - self.chain.blocks_reorg;
-                        let to = block_number.as_u64() as i64;
+                                let from = block_number.as_u64() as i64 - self.chain.blocks_reorg;
+                                let to = block_number.as_u64() as i64;
 
-                        let range: Vec<i64> = (from..to).collect();
+                                let range: Vec<i64> = (from..to).collect();
 
-                        let (
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        ) = self.get_blocks(range).await.unwrap();
+                                let (
+                                    db_blocks,
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creations,
+                                    db_contract_interactions,
+                                    db_token_transfers,
+                                ) = self.get_blocks(range).await.unwrap();
 
-                        db.store_blocks_and_txs(
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        )
-                        .await;
+                                db.store_blocks_and_txs(
+                                    db_blocks,
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creations,
+                                    db_contract_interactions,
+                                    db_token_transfers,
+                                )
+                                .await;
+                            }
+                            Err(_) => {
+                                return;
+                            }
+                        },
+                        None => {
+                            return;
+                        }
                     }
-                    Err(_) => {
-                        return;
-                    }
-                },
-                None => {
-                    return;
                 }
             }
+            None => return,
         }
     }
 
@@ -368,5 +363,14 @@ impl Rpc {
         };
 
         Ok((name, symbol, decimals, token))
+    }
+}
+
+async fn get_websocket(provider: &Provider) -> Option<Web3<WebSocket>> {
+    if !provider.wss_access {
+        None
+    } else {
+        let wss = WebSocket::new(&provider.wss).await.unwrap();
+        Some(Web3::new(wss))
     }
 }

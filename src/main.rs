@@ -48,6 +48,12 @@ async fn main() {
         available_providers.push(rpc);
     }
 
+    let pokt_provider = config.pokt_provider.clone();
+    if pokt_provider.is_available(&config.chain) {
+        let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
+
     tokio::spawn({
         let db = db.clone();
         let config = config.clone();
@@ -80,5 +86,6 @@ async fn main() {
     loop {
         let rpc = available_providers[0].clone();
         rpc.subscribe_heads(&db).await;
+        sleep(Duration::from_secs(180)).await;
     }
 }
