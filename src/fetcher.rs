@@ -86,9 +86,11 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                     {
                         if db_txs.len() != db_tx_receipts.len() {
                             info!(
-                                "Not enough receipts for transactions: txs({}) receipts ({})",
+                                "Not enough receipts for transactions: txs({}) receipts ({}) block_range({})-({})",
                                 db_txs.len(),
-                                db_tx_receipts.len()
+                                db_tx_receipts.len(),
+                                db_blocks.first().unwrap().number,
+                                db_blocks.last().unwrap().number,
                             );
                             continue;
                         }
