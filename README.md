@@ -22,6 +22,7 @@ Currently, the indexer can index the following chains:
 - Fantom
 - Gnosis Chain
 - Optimism
+- BNB Chain
 
 ## Database Information
 

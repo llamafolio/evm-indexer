@@ -195,11 +195,10 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, db: &Database) -> Result<()> {
         missing_txs.len()
     );
 
-    let chunks = missing_txs.chunks(1);
+    let chunks = missing_txs.chunks(5);
 
     for chunk in chunks {
         let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
-        println!("{:?}-{:?}", chunk.len(), tx_receipts.len());
 
         if tx_receipts.len() != chunk.len() {
             continue;
