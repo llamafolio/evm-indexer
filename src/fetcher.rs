@@ -85,7 +85,11 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                     ) in res
                     {
                         if db_txs.len() != db_tx_receipts.len() {
-                            info!("Txs and txs_receipts don't match, omitting...");
+                            info!(
+                                "Not enough receipts for transactions: txs({}) receipts ({})",
+                                db_txs.len(),
+                                db_tx_receipts.len()
+                            );
                             continue;
                         }
 
