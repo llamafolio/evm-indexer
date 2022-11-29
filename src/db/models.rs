@@ -37,6 +37,11 @@ impl DatabaseBlock {
             Some(base_fee_per_gas) => format_number(base_fee_per_gas),
         };
 
+        let nonce: String = match block.nonce {
+            None => String::from("0"),
+            Some(nonce) => format_nonce(nonce),
+        };
+
         Self {
             number: block.number.unwrap().as_u64() as i64,
             hash: format_hash(block.hash.unwrap()),
@@ -48,7 +53,7 @@ impl DatabaseBlock {
             txs: block.transactions.len() as i64,
             timestamp: format_number(block.timestamp),
             size: format_number(block.size.unwrap()),
-            nonce: format_nonce(block.nonce.unwrap()),
+            nonce,
             base_fee_per_gas,
             chain,
         }

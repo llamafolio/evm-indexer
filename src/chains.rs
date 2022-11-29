@@ -95,8 +95,14 @@ static BNB_CHAIN: Chain = Chain {
     blocks_reorg: 16,
 };
 
-pub static AVAILABLE_CHAINS: [Chain; 7] = [
-    ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM, GNOSIS, BNB_CHAIN,
+static AVALANCHE: Chain = Chain {
+    id: 43114,
+    name: "avalanche",
+    blocks_reorg: 16,
+};
+
+pub static AVAILABLE_CHAINS: [Chain; 8] = [
+    ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM, GNOSIS, BNB_CHAIN, AVALANCHE,
 ];
 
 pub fn get_chains() -> HashMap<String, Chain> {
