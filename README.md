@@ -51,6 +51,12 @@ The available providers are:
 
 The indexer automatically selects the providers added.
 
+During our first indexings we realized that all providers sometimes deliver the information incomplete. To do so, the indexer stores all the incomplete transactions into a separate table and refetchs the using a fallback provider.
+
+We tried a lot of public and paid RPC providers, for some reason, the only provider that delivers complete information is [QuickNode](https://www.quicknode.com/).
+
+To enable this service you need to add the quicknode RPC (or a local node will also work) as a `FALLBACK_PROVIDER` in the `env` variables.
+
 ## Environment Variables
 
 The indexer requires the following environment variables.
@@ -62,6 +68,20 @@ The indexer requires the following environment variables.
 | `LLAMANODES_PROVIDER_ID` | LlamaNodes RPC nodes provider ID     | `false `       | `false `        |
 | `POKT_PROVIDER_ID`       | Pokt RPC provider ID                 | `false `       | `false `        |
 | `HASURA_ADMIN_PASSWORD`  | Hasura console and GraphQL API token | `false `       | `true `         |
+
+To add the fallback providers (QuickNode or local nodes) to refetch failed transaction receipts.
+
+| Variable                |
+| ----------------------- |
+| `ETH_FALLBACK_RPC`      |
+| `BSC_FALLBACK_RPC`      |
+| `GNOSIS_FALLBACK_RPC`   |
+| `AVAX_FALLBACK_RPC`     |
+| `FTM_FALLBACK_RPC`      |
+| `POLYGON_FALLBACK_RPC`  |
+| `OPTIMISM_FALLBACK_RPC` |
+
+If the provider is not specified, the refetcher won't start and the indexer will work normally without refetching the transaction receipts.
 
 ## Install
 
