@@ -161,6 +161,9 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
             .clone()
             .into_iter()
             .filter(|token| token.name != String::from("") && token.symbol != String::from(""))
+            .filter(|token| {
+                !token.name.as_bytes().contains(&0x00) && !token.symbol.as_bytes().contains(&0x00)
+            })
             .collect();
 
         db.store_tokens(&filtered_tokens).await.unwrap();
