@@ -108,11 +108,18 @@ impl Chain {
             let mut net = "mainnet";
 
             if name == String::from("gnosis") {
-                net = "xdai"
+                net = "xdai-archival"
+            }
+
+            if name == String::from("mainnet")
+                || name == String::from("poly")
+                || name == String::from("bsc")
+            {
+                net = "archival"
             }
 
             return Provider {
-                name: "ankr".to_string(),
+                name: "pokt".to_string(),
                 http: format!(
                     "https://{}-{}.gateway.pokt.network/v1/lb/{}",
                     slug, net, key
