@@ -84,12 +84,12 @@ async fn main() {
     });
 
     tokio::spawn({
-        let rpc = available_providers[0].clone();
         let db = db.clone();
+        let config = config.clone();
         async move {
             loop {
-                fetcher::fetch_tx_no_receipts(&rpc, &db).await.unwrap();
-                sleep(Duration::from_secs(30)).await;
+                fetcher::fetch_tx_no_receipts(&config, &db).await.unwrap();
+                sleep(Duration::from_secs(5)).await;
             }
         }
     });

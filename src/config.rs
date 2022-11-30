@@ -46,6 +46,7 @@ pub struct Config {
     pub llamanodes_provider: Provider,
     pub ankr_provider: Provider,
     pub pokt_provider: Provider,
+    pub fall_back_rpc: String,
 }
 
 impl Config {
@@ -91,6 +92,62 @@ impl Config {
             llamanodes_provider,
             ankr_provider,
             pokt_provider,
+            fall_back_rpc: get_fallback_rpc(chain.name.to_string()),
         }
     }
+}
+
+pub fn get_fallback_rpc(chain: String) -> String {
+    let mut fallback_rpc = String::from("");
+
+    if chain == "mainnet" {
+        fallback_rpc = match std::env::var("ETH_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "bsc" {
+        fallback_rpc = match std::env::var("BSC_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "gnosis" {
+        fallback_rpc = match std::env::var("GNOSIS_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "avalanche" {
+        fallback_rpc = match std::env::var("AVAX_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "fantom" {
+        fallback_rpc = match std::env::var("FTM_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "polygon" {
+        fallback_rpc = match std::env::var("POLYGON_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "optimism" {
+        fallback_rpc = match std::env::var("OPTIMISM_FALLBACK_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    return fallback_rpc;
 }

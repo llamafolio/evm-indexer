@@ -5,6 +5,7 @@ use log::*;
 use web3::futures::future::join_all;
 
 use crate::{
+    chains::Provider,
     config::Config,
     db::{
         models::{DatabaseExcludedToken, DatabaseToken, DatabaseTx, DatabaseTxNoReceipt},
@@ -190,15 +191,25 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
     Ok(())
 }
 
-pub async fn fetch_tx_no_receipts(rpc: &Rpc, db: &Database) -> Result<()> {
+pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> {
+    let provider = &Provider {
+        name: String::from("fallback"),
+        http: config.fall_back_rpc.clone(),
+        wss: String::from(""),
+        wss_access: false,
+    };
+
+    let rpc = Rpc::new(config, provider).await.unwrap();
+
     let missing_txs = db.get_missing_receipts_txs().await.unwrap();
 
     info!(
-        "Fetching {} transactions with no receipts in shorter batches",
-        missing_txs.len()
+        "Fetching {} transactions with no receipts in shorter batches for chain {}",
+        missing_txs.len(),
+        config.chain.name
     );
 
-    let chunks = missing_txs.chunks(5);
+    let chunks = missing_txs.chunks(100);
 
     for chunk in chunks {
         let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
