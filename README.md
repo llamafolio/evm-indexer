@@ -105,7 +105,7 @@ You can use our docker-compose script to start a full indexer with a database, a
 docker-compose up
 ```
 
-### Contribute
+## Contribute
 
 We appreciate your contributions. PR are accepted and open.
 
