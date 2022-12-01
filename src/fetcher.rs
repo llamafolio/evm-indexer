@@ -12,6 +12,7 @@ use crate::{
         Database,
     },
     rpc::Rpc,
+    utils::format_hash,
 };
 
 pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) -> Result<()> {
@@ -214,7 +215,7 @@ pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> 
     for chunk in chunks {
         let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
 
-        if tx_receipts.len() != chunk.len() {
+        if tx_receipts.len() == 0 {
             continue;
         }
 
@@ -224,11 +225,10 @@ pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> 
             db_contract_creations,
             db_contract_interactions,
             db_token_transfers,
-        ) = rpc.get_metadata_from_receipts(tx_receipts).await.unwrap();
-
-        if db_tx_receipts.len() != chunk.len() {
-            continue;
-        }
+        ) = rpc
+            .get_metadata_from_receipts(tx_receipts.clone())
+            .await
+            .unwrap();
 
         db.store_blocks_and_txs(
             Vec::new(),
@@ -241,7 +241,13 @@ pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> 
         )
         .await;
 
-        db.delete_no_receipt_txs(&chunk.to_vec()).await;
+        let delete_receipts: Vec<String> = tx_receipts
+            .clone()
+            .into_iter()
+            .map(|receipt| format_hash(receipt.transaction_hash))
+            .collect();
+
+        db.delete_no_receipt_txs(&delete_receipts).await;
     }
 
     Ok(())
