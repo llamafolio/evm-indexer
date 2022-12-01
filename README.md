@@ -64,6 +64,7 @@ The indexer requires the following environment variables.
 | Variable                 | Purpose                              | Required Local | Required Docker |
 | ------------------------ | ------------------------------------ | -------------- | --------------- |
 | `DATABASE_URL`           | Url of the PostgreSQL database       | `true`         | `false `        |
+| `DATABASE_URL`           | Password for the PostgreSQL database | `false`        | `true `         |
 | `ANKR_PROVIDER_ID`       | Ankr RPC nodes provider ID           | `false `       | `false `        |
 | `LLAMANODES_PROVIDER_ID` | LlamaNodes RPC nodes provider ID     | `false `       | `false `        |
 | `POKT_PROVIDER_ID`       | Pokt RPC provider ID                 | `false `       | `false `        |
@@ -124,6 +125,8 @@ You can use our docker-compose script to start a full indexer with a database, a
 ```
 docker-compose up
 ```
+
+Note: When using the docker-compose the database is exposed on the port `8000` of the host.
 
 ## Contribute
 
