@@ -1,6 +1,12 @@
 CREATE INDEX IF NOT EXISTS token_transfers_by_hash 
 ON token_transfers USING HASH (hash);
 
+CREATE INDEX IF NOT EXISTS token_transfers_by_sender
+ON token_transfers USING HASH (from_address);
+
+CREATE INDEX IF NOT EXISTS token_transfers_by_receiver
+ON token_transfers USING HASH (to_address);
+
 CREATE INDEX IF NOT EXISTS tokens_by_chain 
 ON tokens USING HASH (chain);
 
