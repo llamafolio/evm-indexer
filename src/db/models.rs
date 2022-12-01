@@ -144,6 +144,7 @@ impl DatabaseTxReceipt {
 #[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = logs)]
 pub struct DatabaseTxLogs {
+    pub hash_with_index: String,
     pub hash: String,
     pub address: String,
     pub topics: Vec<String>,
@@ -166,7 +167,9 @@ impl DatabaseTxLogs {
             Some(log_type) => log_type,
         };
 
+        let hash = format_hash(log.transaction_hash.unwrap());
         Self {
+            hash_with_index: format!("{}-{}", hash, log.log_index.unwrap().as_u64()),
             hash: format_hash(log.transaction_hash.unwrap()),
             address: format_address(log.address),
             data: format_bytes(&log.data),

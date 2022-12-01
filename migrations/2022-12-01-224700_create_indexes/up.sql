@@ -21,3 +21,9 @@ ON txs (from_address);
 
 CREATE INDEX IF NOT EXISTS txs_by_receiver
 ON txs (to_address);
+
+CREATE INDEX IF NOT EXISTS contract_interactions_by_address
+ON contract_interactions (address);
+
+CREATE INDEX IF NOT EXISTS tx_logs_by_hash
+ON logs (hash);

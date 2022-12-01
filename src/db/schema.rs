@@ -46,8 +46,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    logs (hash) {
-        hash -> Varchar,
+    logs (hash_with_index) {
+        hash_with_index -> Varchar,
+        hash -> Nullable<Varchar>,
         address -> Nullable<Varchar>,
         topics -> Nullable<Array<Nullable<Text>>>,
         data -> Nullable<Varchar>,

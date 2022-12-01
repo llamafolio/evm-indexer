@@ -1,5 +1,0 @@
-CREATE TABLE txs_receipts (
-  hash VARCHAR PRIMARY KEY UNIQUE,
-  success BOOLEAN,
-  chain VARCHAR NOT NULL
-)

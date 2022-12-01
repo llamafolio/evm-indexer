@@ -1,0 +1,11 @@
+DROP TABLE blocks;
+DROP TABLE txs;
+DROP TABLE txs_receipts;
+DROP TABLE logs;
+DROP TABLE contract_interactions;
+DROP TABLE contract_creations;
+DROP TABLE token_transfers;
+DROP TABLE state;
+DROP TABLE tokens;
+DROP TABLE excluded_tokens;
+DROP TABLE txs_no_receipt;
