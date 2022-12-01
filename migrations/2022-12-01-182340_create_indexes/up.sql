@@ -1,18 +1,17 @@
 CREATE INDEX IF NOT EXISTS token_transfers_by_hash 
-ON token_transfers(hash);
+ON token_transfers USING HASH (hash);
 
 CREATE INDEX IF NOT EXISTS tokens_by_chain 
-ON tokens(chain);
+ON tokens USING HASH (chain);
 
 CREATE INDEX IF NOT EXISTS tokens_by_address 
-ON tokens(address);
+ON tokens USING HASH (address);
 
 CREATE INDEX IF NOT EXISTS txs_by_block_number 
-ON txs(block_number DESC);
+ON txs USING BTREE (block_number DESC);
 
 CREATE INDEX IF NOT EXISTS txs_by_sender 
-ON txs(from_address);
+ON txs USING HASH (from_address);
 
 CREATE INDEX IF NOT EXISTS txs_by_receiver
-ON txs(to_address);
-
+ON txs USING HASH (to_address);
