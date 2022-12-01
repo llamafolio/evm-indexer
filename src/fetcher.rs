@@ -209,7 +209,7 @@ pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> 
         config.chain.name
     );
 
-    let chunks = missing_txs.chunks(100);
+    let chunks = missing_txs.chunks(500);
 
     for chunk in chunks {
         let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
