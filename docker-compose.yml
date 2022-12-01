@@ -31,8 +31,8 @@ services:
       environment:
         HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
         HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
-        HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:indexer@db/postgres
-        HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:indexer@db/indexer
+        HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
+        HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
         HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
       networks:
         - postgres  
@@ -45,7 +45,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer"
@@ -60,7 +60,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain polygon"
@@ -75,7 +75,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain fantom"
@@ -90,7 +90,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain optimism"
@@ -105,7 +105,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain gnosis"
@@ -120,7 +120,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain bsc"
@@ -135,7 +135,7 @@ services:
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:indexer@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
     command: "evm-indexer --chain avalanche"
