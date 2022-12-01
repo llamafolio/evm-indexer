@@ -12,7 +12,7 @@ use log::*;
 use simple_logger::SimpleLogger;
 use tokio::time::sleep;
 
-use crate::{config::Config, db::Database, rpc::Rpc};
+use crate::{chains::Provider, config::Config, db::Database, rpc::Rpc};
 
 #[tokio::main()]
 async fn main() {
@@ -51,6 +51,18 @@ async fn main() {
     let pokt_provider = config.pokt_provider.clone();
     if pokt_provider.is_available(&config.chain) {
         let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
+
+    if config.fall_back_rpc != String::from("") {
+        let provider = &Provider {
+            name: String::from("fallback"),
+            http: config.fall_back_rpc.clone(),
+            wss: String::from(""),
+            wss_access: false,
+        };
+
+        let rpc = Rpc::new(&config, provider).await.unwrap();
         available_providers.push(rpc);
     }
 
