@@ -13,7 +13,7 @@ services:
       - ./database/:/var/lib/postgresql/data
     command: >
       -c work_mem=2GB
-      -c max_wal_size=4GB  
+      -c max_wal_size=40GB  
       -c max_connections=500  
       -c max_parallel_maintenance_workers=16
       -c maintenance_work_mem=168GB
