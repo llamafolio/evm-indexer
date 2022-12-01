@@ -3,6 +3,8 @@ services:
     image: postgres:14.1-alpine
     container_name: indexer-db
     restart: always
+    env_file:
+      - .env
     environment:
       - POSTGRES_USER=indexer
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
@@ -26,8 +28,10 @@ services:
       image: hasura/graphql-engine:latest
       container_name: indexer-hasura
       ports:
-      - "8080:8080"
+        - "8080:8080"
       restart: always
+      env_file:
+        - .env
       environment:
         HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
         HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
