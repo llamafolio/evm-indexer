@@ -93,8 +93,8 @@ impl Chain {
         if provider == "llamanodes" {
             return Provider {
                 name: "llamanodes".to_string(),
-                http: format!("https://{}-ski.llamarpc.com/rpc/{}", slug, key),
-                wss: format!("wss://{}-ski.llamarpc.com/rpc/{}", slug, key),
+                http: format!("https://{}.llamarpc.com/rpc/{}", slug, key),
+                wss: format!("wss://{}.llamarpc.com/rpc/{}", slug, key),
                 wss_access: true,
             };
         } else if provider == "ankr" {
