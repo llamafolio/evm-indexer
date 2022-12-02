@@ -200,6 +200,10 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         config.chain.name
     );
 
+    if missing_txs.len() == 0 {
+        return Ok(());
+    }
+
     let chunks: Vec<Vec<String>> = missing_txs
         .chunks(50)
         .into_iter()
