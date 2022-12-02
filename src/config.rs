@@ -46,6 +46,7 @@ pub struct Config {
     pub llamanodes_provider: Provider,
     pub ankr_provider: Provider,
     pub pokt_provider: Provider,
+    pub blast_provider: Provider,
     pub fall_back_rpc: String,
 }
 
@@ -76,11 +77,18 @@ impl Config {
             Err(_) => String::from(""),
         };
 
+        let blast_key = match std::env::var("BLAST_PROVIDER_ID") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
         let llamanodes_provider = chain.get_provider(llamanodes_key, "llamanodes".to_string());
 
         let ankr_provider = chain.get_provider(ankr_key, "ankr".to_string());
 
         let pokt_provider = chain.get_provider(pokt_key, "pokt".to_string());
+
+        let blast_provider = chain.get_provider(blast_key, "blast".to_string());
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
@@ -92,6 +100,7 @@ impl Config {
             llamanodes_provider,
             ankr_provider,
             pokt_provider,
+            blast_provider,
             fall_back_rpc: get_fallback_rpc(chain.name.to_string()),
         }
     }

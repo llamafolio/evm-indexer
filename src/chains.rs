@@ -40,6 +40,7 @@ pub struct Chain {
     pub ankr_available: bool,
     pub llamanodes_available: bool,
     pub pokt_available: bool,
+    pub blast_available: bool,
 }
 
 impl Chain {
@@ -51,6 +52,7 @@ impl Chain {
             ankr_available: chain.ankr_available,
             llamanodes_available: chain.llamanodes_available,
             pokt_available: chain.pokt_available,
+            blast_available: chain.blast_available,
         }
     }
 
@@ -90,6 +92,11 @@ impl Chain {
             slug = "poly"
         }
 
+        // Rules for slug changes for blast provider
+        if name == String::from("avalanche") && provider == "blast" {
+            slug = "ava"
+        }
+
         if provider == "llamanodes" {
             return Provider {
                 name: "llamanodes".to_string(),
@@ -127,6 +134,13 @@ impl Chain {
                 wss: String::from(""),
                 wss_access: false,
             };
+        } else if provider == "blast" {
+            return Provider {
+                name: "blast".to_string(),
+                http: format!("https://{}-mainnet.blastapi.io/{}", slug, key),
+                wss: format!("wss://{}-mainnet.blastapi.io/{}", slug, key),
+                wss_access: false,
+            };
         } else {
             return Provider {
                 name: String::from(""),
@@ -145,6 +159,7 @@ static ETHEREUM: Chain = Chain {
     ankr_available: true,
     llamanodes_available: true,
     pokt_available: true,
+    blast_available: true,
 };
 
 static POLYGON: Chain = Chain {
@@ -154,6 +169,7 @@ static POLYGON: Chain = Chain {
     ankr_available: true,
     llamanodes_available: true,
     pokt_available: true,
+    blast_available: true,
 };
 
 static FTM: Chain = Chain {
@@ -163,6 +179,7 @@ static FTM: Chain = Chain {
     ankr_available: true,
     llamanodes_available: true,
     pokt_available: true,
+    blast_available: true,
 };
 
 static OPTIMISM: Chain = Chain {
@@ -172,6 +189,7 @@ static OPTIMISM: Chain = Chain {
     ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
+    blast_available: true,
 };
 
 static ARBITTUM: Chain = Chain {
@@ -181,6 +199,7 @@ static ARBITTUM: Chain = Chain {
     ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
+    blast_available: true,
 };
 
 static GNOSIS: Chain = Chain {
@@ -190,6 +209,7 @@ static GNOSIS: Chain = Chain {
     ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
+    blast_available: true,
 };
 
 static BNB_CHAIN: Chain = Chain {
@@ -199,6 +219,7 @@ static BNB_CHAIN: Chain = Chain {
     ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
+    blast_available: true,
 };
 
 static AVALANCHE: Chain = Chain {
@@ -208,6 +229,7 @@ static AVALANCHE: Chain = Chain {
     ankr_available: true,
     llamanodes_available: false,
     pokt_available: true,
+    blast_available: true,
 };
 
 pub static AVAILABLE_CHAINS: [Chain; 8] = [

@@ -54,6 +54,12 @@ async fn main() {
         available_providers.push(rpc);
     }
 
+    let blast_provider = config.blast_provider.clone();
+    if blast_provider.is_available(&config.chain) {
+        let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
+        available_providers.push(rpc);
+    }
+
     if config.fall_back_rpc != String::from("") {
         let provider = &Provider {
             name: String::from("fallback"),
