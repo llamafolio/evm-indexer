@@ -1,7 +1,8 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use anyhow::Result;
 use log::*;
+use tokio::time::sleep;
 use web3::futures::future::join_all;
 
 use crate::{
@@ -201,6 +202,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     );
 
     if missing_txs.len() == 0 {
+        sleep(Duration::from_secs(120)).await;
         return Ok(());
     }
 
