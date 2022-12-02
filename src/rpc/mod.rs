@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
 use log::*;
@@ -215,6 +215,14 @@ impl Rpc {
             })
             .unzip();
 
+        let blocks_timestamps = db_blocks
+            .clone()
+            .into_iter()
+            .map(|block| (block.hash, block.timestamp));
+
+        let block_timestamps_hashmap: HashMap<String, String> =
+            HashMap::from_iter(blocks_timestamps);
+
         let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
 
         let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
@@ -229,7 +237,14 @@ impl Rpc {
 
         let db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
-            .map(|tx| DatabaseTx::from_web3(&tx, self.chain.name.to_string()))
+            .map(|tx| {
+                let block_hash = format_hash(tx.block_hash.unwrap());
+                DatabaseTx::from_web3(
+                    &tx,
+                    self.chain.name.to_string(),
+                    block_timestamps_hashmap.get(&block_hash),
+                )
+            })
             .collect();
 
         let (

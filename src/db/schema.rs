@@ -100,6 +100,7 @@ diesel::table! {
         value -> Varchar,
         gas_used -> Varchar,
         gas_price -> Varchar,
+        timestamp -> Varchar,
         transaction_index -> Int8,
         transaction_type -> Nullable<Int8>,
         max_fee_per_gas -> Nullable<Varchar>,

@@ -64,6 +64,7 @@ impl DatabaseBlock {
 #[diesel(table_name = txs)]
 pub struct DatabaseTx {
     pub block_number: i64,
+    pub timestamp: String,
     pub from_address: String,
     pub to_address: String,
     pub value: String,
@@ -79,7 +80,7 @@ pub struct DatabaseTx {
 }
 
 impl DatabaseTx {
-    pub fn from_web3(tx: &Transaction, chain: String) -> Self {
+    pub fn from_web3(tx: &Transaction, chain: String, timestamp: Option<&String>) -> Self {
         let max_fee_per_gas: String = match tx.max_fee_per_gas {
             None => String::from("0"),
             Some(max_fee_per_gas) => format_number(max_fee_per_gas),
@@ -100,6 +101,13 @@ impl DatabaseTx {
             Some(transaction_type) => transaction_type.as_u64() as i64,
         };
 
+        let empty_timestamp = String::from("");
+
+        let parsed_timestamp: &String = match timestamp {
+            None => &empty_timestamp,
+            Some(timestamp) => timestamp,
+        };
+
         Self {
             block_number: tx.block_number.unwrap().as_u64() as i64,
             from_address: format_address(tx.from.unwrap()),
@@ -114,6 +122,7 @@ impl DatabaseTx {
             max_priority_fee_per_gas,
             input: format_bytes(&tx.input),
             chain,
+            timestamp: parsed_timestamp.to_string(),
         }
     }
 }

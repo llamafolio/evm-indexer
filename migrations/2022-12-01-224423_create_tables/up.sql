@@ -67,6 +67,7 @@ CREATE TABLE txs (
   value VARCHAR NOT NULL,
   gas_used VARCHAR NOT NULL,
   gas_price VARCHAR NOT NULL,
+  timestamp VARCHAR NOT NULL,
   transaction_index BIGINT NOT NULL,
   transaction_type BIGINT,
   max_fee_per_gas VARCHAR,
