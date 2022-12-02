@@ -81,7 +81,7 @@ impl Database {
         let txs: Vec<String> = txs_no_receipt_table
             .select(txs_no_receipt::hash)
             .filter(txs_no_receipt::chain.eq(self.chain.name.to_string()))
-            .limit(250)
+            .limit(1000)
             .load::<String>(&mut connection)
             .unwrap();
 

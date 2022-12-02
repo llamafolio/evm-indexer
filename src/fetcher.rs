@@ -207,7 +207,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     }
 
     let chunks: Vec<Vec<String>> = missing_txs
-        .chunks(50)
+        .chunks(200)
         .into_iter()
         .map(|chunk| chunk.to_vec())
         .collect();
