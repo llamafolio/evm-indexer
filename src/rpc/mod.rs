@@ -6,7 +6,7 @@ use web3::{
     contract::{Contract, Options},
     ethabi::Address,
     futures::{future::join_all, StreamExt},
-    transports::{Batch, Http, WebSocket},
+    transports::{Http, WebSocket},
     types::{Block, BlockId, Transaction, TransactionReceipt, H256, U64},
     Web3,
 };
@@ -28,7 +28,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Rpc {
     pub single: Web3<Http>,
-    pub batch: Web3<Batch<Http>>,
+    pub url: String,
     pub wss: Option<Web3<WebSocket>>,
     pub chain: Chain,
     pub requests_batch: usize,
@@ -41,7 +41,7 @@ impl Rpc {
         Ok(Self {
             wss: get_websocket(provider).await,
             single: Web3::new(http.clone()),
-            batch: Web3::new(web3::transports::Batch::new(http)),
+            url: provider.http.clone(),
             chain: config.chain,
             requests_batch: config.batch_size.clone(),
         })
@@ -54,16 +54,18 @@ impl Rpc {
     }
 
     async fn get_block_batch(&self, range: &Vec<i64>) -> Result<Vec<Block<Transaction>>> {
+        let batch = Web3::new(web3::transports::Batch::new(Http::new(&self.url).unwrap()));
+
         for block_height in range.iter() {
             let block_number = U64::from_str_radix(&block_height.to_string(), 10)
                 .expect("Unable to parse block number");
 
             let block_id = <BlockId as From<U64>>::from(block_number);
 
-            self.batch.eth().block_with_txs(block_id);
+            batch.eth().block_with_txs(block_id);
         }
 
-        let blocks_res = self.batch.transport().submit_batch().await;
+        let blocks_res = batch.transport().submit_batch().await;
 
         match blocks_res {
             Ok(result) => {
@@ -94,6 +96,8 @@ impl Rpc {
     }
 
     pub async fn get_txs_receipts(&self, txs: &Vec<String>) -> Result<Vec<TransactionReceipt>> {
+        let batch = Web3::new(web3::transports::Batch::new(Http::new(&self.url).unwrap()));
+
         let mut receipts: Vec<TransactionReceipt> = Vec::new();
 
         if txs.len() == 0 {
@@ -102,10 +106,10 @@ impl Rpc {
 
         for tx in txs.iter() {
             let hash = H256::from_str(tx).unwrap();
-            self.batch.eth().transaction_receipt(hash);
+            batch.eth().transaction_receipt(hash);
         }
 
-        let receipts_res = self.batch.transport().submit_batch().await;
+        let receipts_res = batch.transport().submit_batch().await;
 
         match receipts_res {
             Ok(result) => {
@@ -392,7 +396,7 @@ impl Rpc {
     ) -> Result<(String, String, i64, Address), anyhow::Error> {
         let erc20_abi = ERC20_ABI;
 
-        let contract = Contract::from_json(self.batch.eth(), token, erc20_abi).unwrap();
+        let contract = Contract::from_json(self.single.eth(), token, erc20_abi).unwrap();
 
         let name: String = match contract
             .query("name", (), None, Options::default(), None)

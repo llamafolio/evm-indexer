@@ -5,7 +5,6 @@ use log::*;
 use web3::futures::future::join_all;
 
 use crate::{
-    chains::Provider,
     config::Config,
     db::{
         models::{DatabaseExcludedToken, DatabaseToken, DatabaseTx, DatabaseTxNoReceipt},
@@ -192,16 +191,7 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
     Ok(())
 }
 
-pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> {
-    let provider = &Provider {
-        name: String::from("fallback"),
-        http: config.fall_back_rpc.clone(),
-        wss: String::from(""),
-        wss_access: false,
-    };
-
-    let rpc = Rpc::new(config, provider).await.unwrap();
-
+pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> Result<()> {
     let missing_txs = db.get_missing_receipts_txs().await.unwrap();
 
     info!(
@@ -210,45 +200,64 @@ pub async fn fetch_tx_no_receipts(config: &Config, db: &Database) -> Result<()> 
         config.chain.name
     );
 
-    let chunks = missing_txs.chunks(50);
+    let chunks: Vec<Vec<String>> = missing_txs
+        .chunks(50)
+        .into_iter()
+        .map(|chunk| chunk.to_vec())
+        .collect();
 
-    for chunk in chunks {
-        let tx_receipts = rpc.get_txs_receipts(&chunk.to_vec()).await.unwrap();
+    let mut works = vec![];
 
-        if tx_receipts.len() == 0 {
-            continue;
-        }
+    for n in 0..5 {
+        let work = tokio::spawn({
+            let work_chunk = chunks[n as usize].clone();
 
-        let (
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creations,
-            db_contract_interactions,
-            db_token_transfers,
-        ) = rpc
-            .get_metadata_from_receipts(tx_receipts.clone())
-            .await
-            .unwrap();
+            let db = db.clone();
+            let rpc = rpc.clone();
 
-        db.store_blocks_and_txs(
-            Vec::new(),
-            Vec::new(),
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creations,
-            db_contract_interactions,
-            db_token_transfers,
-        )
-        .await;
+            async move {
+                let tx_receipts = rpc.get_txs_receipts(&work_chunk.to_vec()).await.unwrap();
 
-        let delete_receipts: Vec<String> = tx_receipts
-            .clone()
-            .into_iter()
-            .map(|receipt| format_hash(receipt.transaction_hash))
-            .collect();
+                if tx_receipts.len() == 0 {
+                    return;
+                }
 
-        db.delete_no_receipt_txs(&delete_receipts).await;
+                let (
+                    db_tx_receipts,
+                    db_tx_logs,
+                    db_contract_creations,
+                    db_contract_interactions,
+                    db_token_transfers,
+                ) = rpc
+                    .get_metadata_from_receipts(tx_receipts.clone())
+                    .await
+                    .unwrap();
+
+                db.store_blocks_and_txs(
+                    Vec::new(),
+                    Vec::new(),
+                    db_tx_receipts,
+                    db_tx_logs,
+                    db_contract_creations,
+                    db_contract_interactions,
+                    db_token_transfers,
+                )
+                .await;
+
+                let delete_receipts: Vec<String> = tx_receipts
+                    .clone()
+                    .into_iter()
+                    .map(|receipt| format_hash(receipt.transaction_hash))
+                    .collect();
+
+                db.delete_no_receipt_txs(&delete_receipts).await;
+            }
+        });
+
+        works.push(work);
     }
+
+    join_all(works).await;
 
     Ok(())
 }

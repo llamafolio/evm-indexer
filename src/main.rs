@@ -104,10 +104,20 @@ async fn main() {
     tokio::spawn({
         let db = db.clone();
         let config = config.clone();
+        let provider = &Provider {
+            name: String::from("fallback"),
+            http: config.fall_back_rpc.clone(),
+            wss: String::from(""),
+            wss_access: false,
+        };
+
+        let rpc = Rpc::new(&config, provider).await.unwrap();
+
         async move {
             loop {
-                fetcher::fetch_tx_no_receipts(&config, &db).await.unwrap();
-                sleep(Duration::from_secs(5)).await;
+                fetcher::fetch_tx_no_receipts(&rpc, &config, &db)
+                    .await
+                    .unwrap();
             }
         }
     });
