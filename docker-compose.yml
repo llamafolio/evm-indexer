@@ -73,7 +73,7 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain polygon  --batch-size 200"
+    command: "evm-indexer --chain polygon"
     networks:
       - postgres
     depends_on:
@@ -133,7 +133,7 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain bsc --batch-size 200"
+    command: "evm-indexer --chain bsc"
     networks:
       - postgres
     depends_on:
