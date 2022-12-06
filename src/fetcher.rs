@@ -28,6 +28,7 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
         .collect();
 
     let missing_blocks_amount = missing_blocks.len();
+
     let providers_amount = providers.len();
 
     info!(
@@ -35,35 +36,40 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
         missing_blocks_amount, config.batch_size, config.workers, providers_amount
     );
 
-    let providers_chunk: Vec<Vec<i64>> = missing_blocks
+    let chunks: Vec<Vec<i64>> = missing_blocks
         .clone()
-        .chunks(missing_blocks_amount / providers_amount)
-        .into_iter()
+        .chunks(config.batch_size * providers_amount * config.workers)
         .map(|chunk| chunk.to_vec())
         .collect();
 
-    let mut providers_work = vec![];
-    for (i, provider) in providers.into_iter().enumerate() {
-        let provider_work = tokio::spawn({
-            let chunk = providers_chunk[i].clone();
-            let rpc = provider.clone();
-            let db = db.clone();
-            let config = config.clone();
+    for chunk in chunks {
+        let mut providers_work = vec![];
 
-            async move {
-                for work_chunk in chunk.chunks(config.batch_size * config.workers) {
-                    let mut works = vec![];
+        let providers_chunks: Vec<Vec<i64>> = chunk
+            .chunks(config.batch_size * config.workers)
+            .map(|chunk| chunk.to_vec())
+            .collect();
 
-                    let chunks = work_chunk.chunks(config.batch_size);
+        for (i, provider) in providers.into_iter().enumerate() {
+            let provider_work = tokio::spawn({
+                let chunk = providers_chunks[i].clone();
+                let rpc = provider.clone();
+                let db = db.clone();
+                let config = config.clone();
 
+                async move {
                     info!(
                         "Procesing chunk from block {} to {} for chain {}",
-                        work_chunk.first().unwrap(),
-                        work_chunk.last().unwrap(),
+                        chunk.first().unwrap(),
+                        chunk.last().unwrap(),
                         config.chain.name
                     );
 
-                    for worker_part in chunks {
+                    let mut works = vec![];
+
+                    let work_chunk = chunk.chunks(config.batch_size);
+
+                    for worker_part in work_chunk {
                         works.push(rpc.get_blocks(worker_part.to_vec()));
                     }
 
@@ -140,12 +146,13 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                         }
                     }
                 }
-            }
-        });
-        providers_work.push(provider_work);
-    }
+            });
 
-    join_all(providers_work).await;
+            providers_work.push(provider_work)
+        }
+
+        join_all(providers_work).await;
+    }
 
     Ok(())
 }
