@@ -84,6 +84,26 @@ To add the fallback providers (QuickNode or local nodes) to refetch failed trans
 
 If the provider is not specified, the refetcher won't start and the indexer will work normally without refetching the transaction receipts.
 
+If you want to download from a local node (node inside the same private network or the same computer) use the following variables.
+If this is set, the program will ignore all other providers and use the local node only to sync.
+
+| Variable                  |
+| ------------------------- |
+| `ETH_LOCAL_HTTP_RPC`      |
+| `ETH_LOCAL_WSS_RPC`       |
+| `BSC_LOCAL_HTTP_RPC`      |
+| `BSC_LOCAL_WSS_RPC`       |
+| `GNOSIS_LOCAL_HTTP_RPC`   |
+| `GNOSIS_LOCAL_WSS_RPC`    |
+| `AVAX_LOCAL_HTTP_RPC`     |
+| `AVAX_LOCAL_WSS_RPC`      |
+| `FTM_LOCAL_HTTP_RPC`      |
+| `FTM_LOCAL_WSS_RPC`       |
+| `POLYGON_LOCAL_HTTP_RPC`  |
+| `POLYGON_LOCAL_WSS_RPC`   |
+| `OPTIMISM_LOCAL_HTTP_RPC` |
+| `OPTIMISM_LOCAL_WSS_RPC`  |
+
 ## Install
 
 You can try the indexer locally or through Docker.

@@ -47,7 +47,10 @@ pub struct Config {
     pub ankr_provider: Provider,
     pub pokt_provider: Provider,
     pub blast_provider: Provider,
-    pub fall_back_rpc: String,
+    pub fallback_rpc: String,
+    pub use_local_rpc: bool,
+    pub local_rpc: String,
+    pub local_rpc_ws: String,
 }
 
 impl Config {
@@ -60,7 +63,7 @@ impl Config {
             chainname = "mainnet".to_string();
         }
 
-        let chain = get_chain(chainname);
+        let chain = get_chain(chainname.clone());
 
         let llamanodes_key = match std::env::var("LLAMANODES_PROVIDER_ID") {
             Ok(key) => key,
@@ -90,6 +93,8 @@ impl Config {
 
         let blast_provider = chain.get_provider(blast_key, "blast".to_string());
 
+        let (local_rpc, local_rpc_ws) = get_local_rpc(chainname);
+
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
             debug: args.debug,
@@ -101,7 +106,10 @@ impl Config {
             ankr_provider,
             pokt_provider,
             blast_provider,
-            fall_back_rpc: get_fallback_rpc(chain.name.to_string()),
+            fallback_rpc: get_fallback_rpc(chain.name.to_string()),
+            use_local_rpc: local_rpc != String::from("") && local_rpc_ws != String::from(""),
+            local_rpc,
+            local_rpc_ws,
         }
     }
 }
@@ -159,4 +167,95 @@ pub fn get_fallback_rpc(chain: String) -> String {
     }
 
     return fallback_rpc;
+}
+
+pub fn get_local_rpc(chain: String) -> (String, String) {
+    let mut local_rpc = String::from("");
+    let mut local_ws = String::from("");
+
+    if chain == "mainnet" {
+        local_rpc = match std::env::var("ETH_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("ETH_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "bsc" {
+        local_rpc = match std::env::var("BSC_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("BSC_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "gnosis" {
+        local_rpc = match std::env::var("GNOSIS_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("GNOSIS_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "avalanche" {
+        local_rpc = match std::env::var("AVAX_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("AVAX_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "fantom" {
+        local_rpc = match std::env::var("FTM_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("FTM_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "polygon" {
+        local_rpc = match std::env::var("POLYGON_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("POLYGON_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "optimism" {
+        local_rpc = match std::env::var("OPTIMISM_LOCAL_HTTP_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+
+        local_ws = match std::env::var("OPTIMISM_LOCAL_WSS_RPC") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    return (local_rpc, local_ws);
 }

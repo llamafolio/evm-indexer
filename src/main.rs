@@ -36,39 +36,55 @@ async fn main() {
 
     let mut available_providers: Vec<Rpc> = vec![];
 
-    let ankr_provider = config.ankr_provider.clone();
-    if ankr_provider.is_available(&config.chain) {
-        let rpc = Rpc::new(&config, &ankr_provider).await.unwrap();
-        available_providers.push(rpc);
-    }
+    if !config.use_local_rpc {
+        let ankr_provider = config.ankr_provider.clone();
+        if ankr_provider.is_available(&config.chain) {
+            let rpc = Rpc::new(&config, &ankr_provider).await.unwrap();
+            available_providers.push(rpc);
+        }
 
-    let llamanodes_provider = config.llamanodes_provider.clone();
-    if llamanodes_provider.is_available(&config.chain) {
-        let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
-        available_providers.push(rpc);
-    }
+        let llamanodes_provider = config.llamanodes_provider.clone();
+        if llamanodes_provider.is_available(&config.chain) {
+            let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
+            available_providers.push(rpc);
+        }
 
-    let pokt_provider = config.pokt_provider.clone();
-    if pokt_provider.is_available(&config.chain) {
-        let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
-        available_providers.push(rpc);
-    }
+        let pokt_provider = config.pokt_provider.clone();
+        if pokt_provider.is_available(&config.chain) {
+            let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
+            available_providers.push(rpc);
+        }
 
-    let blast_provider = config.blast_provider.clone();
-    if blast_provider.is_available(&config.chain) {
-        let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
-        available_providers.push(rpc);
-    }
+        let blast_provider = config.blast_provider.clone();
+        if blast_provider.is_available(&config.chain) {
+            let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
+            available_providers.push(rpc);
+        }
 
-    if config.fall_back_rpc != String::from("") {
+        if config.fallback_rpc != String::from("") {
+            let provider = &Provider {
+                name: String::from("fallback"),
+                http: config.fallback_rpc.clone(),
+                wss: String::from(""),
+                wss_access: false,
+            };
+
+            let rpc = Rpc::new(&config, provider).await.unwrap();
+            available_providers.push(rpc);
+        }
+    } else {
+        let local_rpc = config.local_rpc.clone();
+        let local_rpc_ws = config.local_rpc_ws.clone();
+
         let provider = &Provider {
-            name: String::from("fallback"),
-            http: config.fall_back_rpc.clone(),
-            wss: String::from(""),
-            wss_access: false,
+            name: String::from("local"),
+            http: local_rpc,
+            wss: local_rpc_ws,
+            wss_access: true,
         };
 
         let rpc = Rpc::new(&config, provider).await.unwrap();
+
         available_providers.push(rpc);
     }
 
@@ -106,7 +122,7 @@ async fn main() {
         let config = config.clone();
         let provider = &Provider {
             name: String::from("fallback"),
-            http: config.fall_back_rpc.clone(),
+            http: config.fallback_rpc.clone(),
             wss: String::from(""),
             wss_access: false,
         };

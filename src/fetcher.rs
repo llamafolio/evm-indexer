@@ -104,11 +104,13 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                             );
                         }
 
-                        let db_receipts_hash: Vec<String> = db_tx_receipts
-                            .clone()
-                            .into_iter()
-                            .map(|receipt| receipt.hash)
-                            .collect();
+                        let db_receipts_hash: HashSet<String> = vec_string_to_set(
+                            db_tx_receipts
+                                .clone()
+                                .into_iter()
+                                .map(|receipt| receipt.hash)
+                                .collect(),
+                        );
 
                         let mut db_txs_with_receipts: Vec<DatabaseTx> = vec![];
                         let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
@@ -277,5 +279,9 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
 }
 
 fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {
+    HashSet::from_iter(vec)
+}
+
+fn vec_string_to_set(vec: Vec<String>) -> HashSet<String> {
     HashSet::from_iter(vec)
 }
