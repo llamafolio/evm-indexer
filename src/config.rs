@@ -3,7 +3,7 @@ use clap::Parser;
 use crate::chains::{get_chain, Chain, Provider};
 
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
-pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 20;
+pub const DEFAULT_AMOUNT_OF_WORKERS: usize = 5;
 
 #[derive(Parser, Debug)]
 #[command(
