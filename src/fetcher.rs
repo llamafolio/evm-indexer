@@ -55,6 +55,7 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                     let mut works = vec![];
 
                     let chunks = work_chunk.chunks(config.batch_size);
+
                     info!(
                         "Procesing chunk from block {} to {} for chain {}",
                         work_chunk.first().unwrap(),

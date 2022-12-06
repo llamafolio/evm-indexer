@@ -200,14 +200,7 @@ impl Rpc {
         Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
     )> {
-        let block_chunks = range.chunks(self.requests_batch.clone());
-
-        let mut blocks: Vec<Block<Transaction>> = Vec::new();
-
-        for chunk in block_chunks {
-            let mut block_chunk = self.get_block_batch(&chunk.to_vec()).await.unwrap();
-            blocks.append(&mut block_chunk);
-        }
+        let blocks = self.get_block_batch(&range).await.unwrap();
 
         let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
             .into_iter()
