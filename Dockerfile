@@ -22,6 +22,6 @@ FROM alpine:latest AS runtime
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/evm-indexer /usr/local/bin
+COPY --from=builder /target/release/evm-indexer /
 
-ENTRYPOINT ["/usr/local/bin/evm-indexer"]
+ENTRYPOINT ["evm-indexer"]
