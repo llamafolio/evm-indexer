@@ -1,25 +1,27 @@
-FROM rust:latest as builder
+FROM lukemathwalker/cargo-chef:latest AS chef
 
 WORKDIR /
 
-RUN cargo new --lib /app/
-COPY Cargo.toml Cargo.lock /app/
+FROM chef AS planner
+
+COPY . .
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder 
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY . .
+
+RUN cargo build --release --bin app
 
 
-WORKDIR /app/
-RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
+FROM debian:buster-slim AS runtime
 
-COPY ./src /app/src/
-COPY ./migrations /app/migrations/
+WORKDIR /
 
-RUN touch /app/src/main.rs
+COPY --from=builder /app/target/release/evm-indexer /usr/local/bin
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
-  set -e
-  touch /app/src/main.rs
-  cargo build --release
-EOF
-
-FROM rust:latest
-
-COPY --from=builder /app/target/release/evm-indexer /usr/local/bin/evm-indexer
+ENTRYPOINT ["/usr/local/bin/evm-indexer"]

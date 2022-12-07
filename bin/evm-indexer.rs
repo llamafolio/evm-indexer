@@ -1,18 +1,10 @@
-pub mod chains;
-pub mod config;
-pub mod db;
-pub mod fetcher;
-pub mod rpc;
-pub mod utils;
-
 use std::time::Duration;
 
 use dotenv::dotenv;
+use evm_indexer::{chains::Provider, config::Config, db::Database, fetcher, rpc::Rpc};
 use log::*;
 use simple_logger::SimpleLogger;
 use tokio::time::sleep;
-
-use crate::{chains::Provider, config::Config, db::Database, rpc::Rpc};
 
 #[tokio::main()]
 async fn main() {
