@@ -19,5 +19,3 @@ RUN cargo build --release
 FROM alpine:latest AS runtime
 
 COPY --from=builder /target/release/evm-indexer /usr/local/bin/evm-indexer
-
-ENTRYPOINT ["/usr/local/bin/evm-indexer"]
