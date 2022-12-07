@@ -52,7 +52,7 @@ services:
           
   eth-indexer:
     container_name: eth-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -69,7 +69,7 @@ services:
 
   polygon-indexer:
     container_name: polygon-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -84,7 +84,7 @@ services:
 
   fantom-indexer:
     container_name: fantom-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -99,7 +99,7 @@ services:
 
   optimism-indexer:
     container_name: optimism-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -114,7 +114,7 @@ services:
 
   gnosis-indexer:
     container_name: gnosis-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -129,7 +129,7 @@ services:
 
   bsc-indexer:
     container_name: bsc-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
@@ -144,7 +144,7 @@ services:
 
   avalanche-indexer:
     container_name: avalanche-indexer
-    image: indexer
+    image: indexer:latest
     restart: on-failure
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
