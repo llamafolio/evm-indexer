@@ -15,7 +15,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
 
-RUN cargo build --release --bin app
+RUN cargo build --release --bin evm-indexer
 
 
 FROM debian:buster-slim AS runtime
