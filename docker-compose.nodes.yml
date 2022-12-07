@@ -1,6 +1,6 @@
 services:
   ethereum:
-    container_name: ethereum
+    container_name: ethereum-node
     image: thorax/erigon:v2.30.0
     user: root
     command: |
@@ -19,7 +19,7 @@ services:
       - 8545:8545
 
   gnosis:
-    container_name: gnosis
+    container_name: gnosis-node
     image: thorax/erigon:v2.30.0
     user: root
     command: |
