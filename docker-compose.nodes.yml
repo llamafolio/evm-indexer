@@ -1,0 +1,38 @@
+services:
+  ethereum:
+    image: thorax/erigon:v2.30.0
+    command: |
+      erigon 
+      --prune=hc
+      --maxpeers 1000
+      --snapshots=true
+      --db.pagesize=16k
+      --datadir=/home/ethereum
+      --http.api=eth,erigon,web3
+      --ws
+    volumes:
+      - /root/nodes/ethereum:/home/ethereum
+    ports:
+      - 30303:30303/tcp
+      - 30303:30303/udp
+      - 8545:8545
+
+  gnosis:
+    image: thorax/erigon:v2.30.0
+    command: |
+      erigon 
+      --prune=hc
+      --maxpeers 1000
+      --snapshots=true
+      --db.pagesize=16k
+      --datadir=/home/gnosis
+      --http.api=eth,erigon,web3
+      --ws
+    volumes:
+      - /root/nodes/gnosis:/home/gnosis
+    ports:
+      - 30304:30303/tcp
+      - 30304:30303/udp
+      - 8546:8545
+          
+  
