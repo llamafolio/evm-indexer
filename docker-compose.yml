@@ -59,7 +59,6 @@ services:
     env_file:
       - .env
     command: "evm-indexer"
-    network_mode: "host"
     networks:
       - postgres
     depends_on:
@@ -70,7 +69,6 @@ services:
     container_name: polygon-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
@@ -86,7 +84,6 @@ services:
     container_name: fantom-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
@@ -102,7 +99,6 @@ services:
     container_name: optimism-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
@@ -118,7 +114,6 @@ services:
     container_name: gnosis-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
@@ -134,7 +129,6 @@ services:
     container_name: bsc-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
@@ -150,7 +144,6 @@ services:
     container_name: avalanche-indexer
     image: ghcr.io/eabz/evm-indexer:latest
     restart: on-failure
-    network_mode: "host"
     environment:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
