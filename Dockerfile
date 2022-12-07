@@ -14,8 +14,11 @@ COPY ./migrations /app/migrations/
 
 RUN touch /app/src/main.rs
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry cargo build --release
-
+RUN --mount=type=cache,target=/usr/local/cargo/registry <<EOF
+  set -e
+  touch /app/src/main.rs
+  cargo build --release
+EOF
 
 FROM rust:latest
 
