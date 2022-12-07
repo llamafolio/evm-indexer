@@ -137,13 +137,13 @@ cargo build --release
 
 ### Docker
 
-You can use the official docker image.
+To use docker, you need to build the image and tag it as `indexer`
 
 ```
-docker pull ghcr.io/eabz/evm-indexer:latest
+docker build . -t indexer
 ```
 
-You can use our docker-compose script to start a full indexer with a database, all chains enabled, and a Hasura Cloud GraphQL API.
+Now you can run the image isolated or run it within the prepared docker-compose file.
 
 ```
 docker-compose up

@@ -1,6 +1,14 @@
-FROM lukemathwalker/cargo-chef:latest AS chef
+FROM clux/muslrust:stable AS chef
+
+USER root
+
+RUN cargo install cargo-chef
+
+WORKDIR /app
 
 FROM chef AS planner
+
+WORKDIR /app
 
 COPY . .
 
@@ -8,14 +16,18 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 
-COPY --from=planner /recipe.json recipe.json
+WORKDIR /app
 
-RUN cargo chef cook --release --recipe-path recipe.json
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
 
 COPY . .
 
-RUN cargo build --release --bin evm-indexer
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin evm-indexer
 
-FROM alpine:latest AS runtime
+FROM alpine AS runtime
 
-COPY --from=builder /target/release/evm-indexer /usr/local/bin/evm-indexer
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/evm-indexer /usr/local/bin/
+
+CMD ["/usr/local/bin/evm-indexer"]
