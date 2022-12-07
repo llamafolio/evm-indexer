@@ -22,6 +22,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: ghcr.io/eabz/evm-indexer:latest
+          tags: ghcr.io/llamafolio/evm-indexer:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
