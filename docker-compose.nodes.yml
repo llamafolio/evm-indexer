@@ -12,7 +12,7 @@ services:
       --http.api=eth,erigon,web3
       --ws
     volumes:
-      - ./ethereum:/home/erigon/ethereum
+      - ./nodes/ethereum:/home/erigon/ethereum
     ports:
       - 30303:30303/tcp
       - 30303:30303/udp
@@ -33,7 +33,7 @@ services:
       --http.api=eth,erigon,web3
       --ws
     volumes:
-      - ./gnosis:/home/erigon/gnosis
+      - ./nodes/gnosis:/home/erigon/gnosis
     ports:
       - 30304:30303/tcp
       - 30304:30303/udp
