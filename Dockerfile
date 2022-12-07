@@ -20,7 +20,7 @@ RUN cargo build --release --bin evm-indexer
 
 FROM alpine:latest AS runtime
 
-WORKDIR /
+WORKDIR /app
 
 COPY --from=builder /app/target/release/evm-indexer /usr/local/bin
 
