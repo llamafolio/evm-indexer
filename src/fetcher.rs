@@ -224,9 +224,9 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
 
     let mut works = vec![];
 
-    for n in 0..5 {
+    for chunk in chunks {
         let work = tokio::spawn({
-            let work_chunk = chunks[n as usize].clone();
+            let work_chunk = chunk.clone();
 
             let db = db.clone();
             let rpc = rpc.clone();

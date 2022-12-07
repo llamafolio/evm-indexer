@@ -1,7 +1,10 @@
 use anyhow::bail;
 use diesel::prelude::*;
 use ethabi::ParamType;
-use web3::types::{Block, Log, Transaction, TransactionReceipt, H160};
+use reth_primitives::{
+    rpc::{Block, Log, Transaction, TransactionReceipt},
+    H160,
+};
 
 use crate::utils::{
     format_address, format_bool, format_bytes, format_hash, format_nonce, format_number,
@@ -47,7 +50,7 @@ impl DatabaseBlock {
             hash: format_hash(block.hash.unwrap()),
             difficulty: format_number(block.difficulty),
             total_difficulty: format_number(block.total_difficulty.unwrap()),
-            miner: format_address(block.author),
+            miner: format_address(block.author.unwrap()),
             gas_limit: format_number(block.gas_limit),
             gas_used: format_number(block.gas_used),
             txs: block.transactions.len() as i64,
@@ -110,7 +113,7 @@ impl DatabaseTx {
 
         Self {
             block_number: tx.block_number.unwrap().as_u64() as i64,
-            from_address: format_address(tx.from.unwrap()),
+            from_address: format_address(tx.from),
             to_address,
             value: format_number(tx.value),
             gas_used: format_number(tx.gas),
@@ -164,36 +167,7 @@ pub struct DatabaseTxLogs {
     pub chain: String,
 }
 
-impl DatabaseTxLogs {
-    pub fn from_web3(log: Log, chain: String) -> Self {
-        let transaction_log_index: i64 = match log.transaction_log_index {
-            None => 0,
-            Some(transaction_log_index) => transaction_log_index.as_u64() as i64,
-        };
-
-        let log_type: String = match log.log_type {
-            None => String::from(""),
-            Some(log_type) => log_type,
-        };
-
-        let hash = format_hash(log.transaction_hash.unwrap());
-        Self {
-            hash_with_index: format!("{}-{}", hash, log.log_index.unwrap().as_u64()),
-            hash: format_hash(log.transaction_hash.unwrap()),
-            address: format_address(log.address),
-            data: format_bytes(&log.data),
-            log_index: log.log_index.unwrap().as_u64() as i64,
-            transaction_log_index,
-            log_type,
-            topics: log
-                .topics
-                .into_iter()
-                .map(|topic| format_hash(topic))
-                .collect(),
-            chain,
-        }
-    }
-}
+impl DatabaseTxLogs {}
 
 #[derive(Queryable, Insertable, Debug, Clone)]
 #[diesel(table_name = contract_interactions)]

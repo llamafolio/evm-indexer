@@ -1,13 +1,19 @@
+mod client;
+
 use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
+use jsonrpsee::core::{client::ClientT, params::BatchRequestBuilder, rpc_params};
+use jsonrpsee_http_client::{HttpClient, HttpClientBuilder};
 use log::*;
+
+use reth_primitives::rpc::{Block, Transaction, TransactionReceipt};
+
 use web3::{
     contract::{Contract, Options},
     ethabi::Address,
     futures::{future::join_all, StreamExt},
     transports::{Http, WebSocket},
-    types::{Block, BlockId, Transaction, TransactionReceipt, H256, U64},
     Web3,
 };
 
@@ -22,13 +28,18 @@ use crate::{
         },
         Database,
     },
-    utils::{format_address, format_block, format_bool, format_hash, format_receipt, ERC20_ABI},
+    utils::{
+        format_address, format_block, format_bool, format_bytes, format_hash, format_receipt,
+        ERC20_ABI,
+    },
 };
+
+use self::client::EthApiClient;
 
 #[derive(Debug, Clone)]
 pub struct Rpc {
-    pub single: Web3<Http>,
-    pub url: String,
+    pub web3: Web3<Http>,
+    pub http_client: HttpClient,
     pub wss: Option<Web3<WebSocket>>,
     pub chain: Chain,
     pub requests_batch: usize,
@@ -38,34 +49,41 @@ impl Rpc {
     pub async fn new(config: &Config, provider: &Provider) -> Result<Self> {
         let http = Http::new(&provider.http).unwrap();
 
+        let client = HttpClientBuilder::default()
+            .build(&provider.http.clone())
+            .unwrap();
+
         Ok(Self {
             wss: get_websocket(provider).await,
-            single: Web3::new(http.clone()),
-            url: provider.http.clone(),
+            http_client: client,
             chain: config.chain,
             requests_batch: config.batch_size.clone(),
+            web3: Web3::new(http.clone()),
         })
     }
 
     pub async fn get_last_block(&self) -> Result<i64> {
-        let last_block = self.single.eth().block_number().await.unwrap().as_u64() as i64;
+        let eth_client = EthApiClient::block_number(&self.http_client)
+            .await
+            .unwrap()
+            .as_u64() as i64;
 
-        Ok(last_block)
+        Ok(eth_client)
     }
 
     async fn get_block_batch(&self, range: &Vec<i64>) -> Result<Vec<Block<Transaction>>> {
-        let batch = Web3::new(web3::transports::Batch::new(Http::new(&self.url).unwrap()));
+        let mut batch = BatchRequestBuilder::new();
 
         for block_height in range.iter() {
-            let block_number = U64::from_str_radix(&block_height.to_string(), 10)
-                .expect("Unable to parse block number");
-
-            let block_id = <BlockId as From<U64>>::from(block_number);
-
-            batch.eth().block_with_txs(block_id);
+            batch
+                .insert(
+                    "eth_getBlockByNumber",
+                    rpc_params![format!("0x{:x}", block_height), true],
+                )
+                .unwrap();
         }
 
-        let blocks_res = batch.transport().submit_batch().await;
+        let blocks_res = self.http_client.batch_request(batch).await;
 
         match blocks_res {
             Ok(result) => {
@@ -87,16 +105,8 @@ impl Rpc {
         }
     }
 
-    pub async fn get_tx_receipt(&self, tx: &String) -> Option<TransactionReceipt> {
-        let hash = H256::from_str(tx).unwrap();
-
-        let receipt = self.single.eth().transaction_receipt(hash).await.unwrap();
-
-        return receipt;
-    }
-
     pub async fn get_txs_receipts(&self, txs: &Vec<String>) -> Result<Vec<TransactionReceipt>> {
-        let batch = Web3::new(web3::transports::Batch::new(Http::new(&self.url).unwrap()));
+        let mut batch = BatchRequestBuilder::new();
 
         let mut receipts: Vec<TransactionReceipt> = Vec::new();
 
@@ -105,11 +115,12 @@ impl Rpc {
         }
 
         for tx in txs.iter() {
-            let hash = H256::from_str(tx).unwrap();
-            batch.eth().transaction_receipt(hash);
+            batch
+                .insert("eth_getTransactionReceipt", rpc_params![tx])
+                .unwrap();
         }
 
-        let receipts_res = batch.transport().submit_batch().await;
+        let receipts_res = self.http_client.batch_request(batch).await;
 
         match receipts_res {
             Ok(result) => {
@@ -187,7 +198,6 @@ impl Rpc {
             None => return,
         }
     }
-
     pub async fn get_blocks(
         &self,
         range: Vec<i64>,
@@ -325,8 +335,43 @@ impl Rpc {
                                     Err(_) => continue,
                                 };
 
-                                let db_log =
-                                    DatabaseTxLogs::from_web3(log, self.chain.name.to_string());
+                                let db_log = {
+                                    let log = log;
+                                    let chain = self.chain.name.to_string();
+                                    let transaction_log_index: i64 = match log.transaction_log_index
+                                    {
+                                        None => 0,
+                                        Some(transaction_log_index) => {
+                                            transaction_log_index.as_u64() as i64
+                                        }
+                                    };
+
+                                    let log_type: String = match log.log_type {
+                                        None => String::from(""),
+                                        Some(log_type) => log_type,
+                                    };
+
+                                    let hash = format_hash(log.transaction_hash.unwrap());
+                                    DatabaseTxLogs {
+                                        hash_with_index: format!(
+                                            "{}-{}",
+                                            hash,
+                                            log.log_index.unwrap().as_u64()
+                                        ),
+                                        hash: format_hash(log.transaction_hash.unwrap()),
+                                        address: format_address(log.address),
+                                        data: format_bytes(&log.data),
+                                        log_index: log.log_index.unwrap().as_u64() as i64,
+                                        transaction_log_index,
+                                        log_type,
+                                        topics: log
+                                            .topics
+                                            .into_iter()
+                                            .map(|topic| format_hash(topic))
+                                            .collect(),
+                                        chain,
+                                    }
+                                };
 
                                 db_tx_logs.push(db_log);
                             }
@@ -366,10 +411,10 @@ impl Rpc {
                 Ok((name, symbol, decimals, address)) => tokens_metadata.push(DatabaseToken {
                     address_with_chain: format!(
                         "{}-{}",
-                        format_address(address),
+                        format!("{:?}", address),
                         self.chain.name.to_string()
                     ),
-                    address: format_address(address),
+                    address: format!("{:?}", address),
                     chain: self.chain.name.to_string(),
                     // Name and Symbol are reformatted to prevent non utf8 characters
                     name: format!("{}", name),
@@ -389,7 +434,7 @@ impl Rpc {
     ) -> Result<(String, String, i64, Address), anyhow::Error> {
         let erc20_abi = ERC20_ABI;
 
-        let contract = Contract::from_json(self.single.eth(), token, erc20_abi).unwrap();
+        let contract = Contract::from_json(self.web3.eth(), token, erc20_abi).unwrap();
 
         let name: String = match contract
             .query("name", (), None, Options::default(), None)

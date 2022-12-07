@@ -100,15 +100,15 @@ impl Chain {
         if provider == "llamanodes" {
             return Provider {
                 name: "llamanodes".to_string(),
-                http: format!("https://{}.llamarpc.com/rpc/{}", slug, key),
-                wss: format!("wss://{}.llamarpc.com/rpc/{}", slug, key),
+                http: format!("https://{}.llamarpc.com:443/rpc/{}", slug, key),
+                wss: format!("wss://{}.llamarpc.com:443/rpc/{}", slug, key),
                 wss_access: true,
             };
         } else if provider == "ankr" {
             return Provider {
                 name: "ankr".to_string(),
-                http: format!("https://rpc.ankr.com/{}/{}", slug, key),
-                wss: format!("wss://rpc.ankr.com/{}/ws/{}", slug, key),
+                http: format!("https://rpc.ankr.com:443/{}/{}", slug, key),
+                wss: format!("wss://rpc.ankr.com:443/{}/ws/{}", slug, key),
                 wss_access: true,
             };
         } else if provider == "pokt" {
@@ -128,7 +128,7 @@ impl Chain {
             return Provider {
                 name: "pokt".to_string(),
                 http: format!(
-                    "https://{}-{}.gateway.pokt.network/v1/lb/{}",
+                    "https://{}-{}.gateway.pokt.network:443/v1/lb/{}",
                     slug, net, key
                 ),
                 wss: String::from(""),
@@ -137,8 +137,8 @@ impl Chain {
         } else if provider == "blast" {
             return Provider {
                 name: "blast".to_string(),
-                http: format!("https://{}-mainnet.blastapi.io/{}", slug, key),
-                wss: format!("wss://{}-mainnet.blastapi.io/{}", slug, key),
+                http: format!("https://{}-mainnet.blastapi.io:443/{}", slug, key),
+                wss: format!("wss://{}-mainnet.blastapi.io:443/{}", slug, key),
                 wss_access: false,
             };
         } else {

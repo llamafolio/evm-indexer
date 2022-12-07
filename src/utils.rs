@@ -1,4 +1,7 @@
-use web3::types::{Block, Bytes, Transaction, TransactionReceipt, H160, H256, H64, U256, U64};
+use reth_primitives::{
+    rpc::{Block, Bytes, Transaction, TransactionReceipt},
+    H160, H256, H64, U256, U64,
+};
 
 pub fn format_nonce(h: H64) -> String {
     return format!("{:?}", h);
