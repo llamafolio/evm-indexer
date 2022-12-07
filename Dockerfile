@@ -18,7 +18,7 @@ COPY . .
 RUN cargo build --release --bin evm-indexer
 
 
-FROM debian:buster-slim AS runtime
+FROM alpine:latest AS runtime
 
 WORKDIR /
 
