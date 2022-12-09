@@ -298,7 +298,8 @@ impl Rpc {
             db_tx_receipts.push(db_tx_receipt);
 
             let success: bool = match tx_receipt.status {
-                None => false,
+                // If not present, means tx is before [EIP-658](https://eips.ethereum.org/EIPS/eip-658) means is valid.
+                None => true,
                 Some(success) => format_bool(success),
             };
 
