@@ -49,19 +49,7 @@ async fn main() {
 
         let blast_provider = config.blast_provider.clone();
         if blast_provider.is_available(&config.chain) {
-            let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
-            available_providers.push(rpc);
-        }
-
-        if config.fallback_rpc != String::from("") {
-            let provider = &Provider {
-                name: String::from("fallback"),
-                http: config.fallback_rpc.clone(),
-                wss: String::from(""),
-                wss_access: false,
-            };
-
-            let rpc = Rpc::new(&config, provider).await.unwrap();
+            let rpc = Rpc::new(&config, &blast_provider).await.unwrap();
             available_providers.push(rpc);
         }
     } else {

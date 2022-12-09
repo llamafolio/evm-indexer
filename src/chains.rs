@@ -28,6 +28,12 @@ impl Provider {
             }
         }
 
+        if self.name == "blast" {
+            if !chain.blast_available {
+                return false;
+            }
+        }
+
         return self.http != String::from("");
     }
 }
@@ -92,6 +98,10 @@ impl Chain {
             slug = "poly"
         }
 
+        if name == String::from("gnosis") && provider == "pokt" {
+            slug = "poa"
+        }
+
         // Rules for slug changes for blast provider
         if name == String::from("avalanche") && provider == "blast" {
             slug = "ava"
@@ -118,10 +128,7 @@ impl Chain {
                 net = "xdai-archival"
             }
 
-            if name == String::from("mainnet")
-                || name == String::from("poly")
-                || name == String::from("bsc")
-            {
+            if name == String::from("mainnet") || name == String::from("poly") {
                 net = "archival"
             }
 
