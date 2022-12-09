@@ -33,6 +33,8 @@ use self::schema::contract_abis;
 use self::schema::contract_abis::table as contract_abis_table;
 use self::schema::contract_creations;
 use self::schema::contract_creations::table as contract_creations_table;
+use self::schema::contract_interactions;
+use self::schema::contract_interactions::table as contract_interactions_table;
 use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
@@ -177,6 +179,42 @@ impl Database {
 
         match contracts {
             Ok(contracts) => Ok(contracts),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn get_contract_abi(&self, contract: &String) -> Result<Option<String>> {
+        let mut connection = self.establish_connection();
+
+        let abi = contract_abis_table
+            .select(contract_abis::abi)
+            .filter(contract_abis::address_with_chain.eq(format!(
+                "{}-{}",
+                contract,
+                self.chain.name.to_string()
+            )))
+            .first::<Option<String>>(&mut connection);
+
+        match abi {
+            Ok(interactions) => Ok(interactions),
+            Err(_) => Ok(None),
+        }
+    }
+
+    pub async fn get_pending_match_contract_interactions(
+        &self,
+    ) -> Result<Vec<DatabaseContractInteraction>> {
+        let mut connection = self.establish_connection();
+
+        let interactions = contract_interactions_table
+            .filter(contract_interactions::chain.eq(self.chain.name.to_string()))
+            .filter(contract_interactions::method_call.is_null())
+            .select(contract_interactions_table::all_columns())
+            .limit(250)
+            .load::<DatabaseContractInteraction>(&mut connection);
+
+        match interactions {
+            Ok(interactions) => Ok(interactions),
             Err(_) => Ok(Vec::new()),
         }
     }
@@ -430,6 +468,25 @@ impl Database {
             .set(schema::state::dsl::blocks.eq(state.blocks))
             .execute(&mut connection)
             .expect("Unable to update chain state");
+
+        Ok(())
+    }
+
+    async fn update_contract_interaction(
+        &self,
+        interaction: &DatabaseContractInteraction,
+    ) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        diesel::insert_into(schema::contract_interactions::dsl::contract_interactions)
+            .values(interaction)
+            .on_conflict(contract_interactions::hash)
+            .do_update()
+            .set(
+                schema::contract_interactions::dsl::method_call.eq(interaction.method_call.clone()),
+            )
+            .execute(&mut connection)
+            .expect("Unable to update contract interaction");
 
         Ok(())
     }

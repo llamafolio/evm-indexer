@@ -80,7 +80,6 @@ pub struct DatabaseTx {
     pub max_priority_fee_per_gas: String,
     pub input: String,
     pub chain: String,
-    pub method_call: Option<String>,
 }
 
 impl DatabaseTx {
@@ -127,7 +126,6 @@ impl DatabaseTx {
             input: format_bytes(&tx.input),
             chain,
             timestamp: parsed_timestamp.to_string(),
-            method_call: None,
         }
     }
 }
@@ -179,6 +177,7 @@ pub struct DatabaseContractInteraction {
     pub address: String,
     pub contract: String,
     pub chain: String,
+    pub method_call: Option<String>,
 }
 
 impl DatabaseContractInteraction {
@@ -189,6 +188,7 @@ impl DatabaseContractInteraction {
             address: format_address(receipt.from),
             contract: format_address(receipt.to.unwrap()),
             chain,
+            method_call: None,
         }
     }
 }

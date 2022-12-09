@@ -1,4 +1,7 @@
-use std::{collections::HashSet, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use anyhow::Result;
 use log::*;
@@ -362,6 +365,43 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
                 Err(_) => continue,
             },
             Err(_) => continue,
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn match_contract_interactions(
+    config: &Config,
+    db: &Database,
+    abi_cache: &mut HashMap<String, String>,
+) -> Result<()> {
+    let interactions = db.get_pending_match_contract_interactions().await.unwrap();
+
+    let interactions_amount = interactions.len();
+
+    info!(
+        "Updating {} contract interactions with their method",
+        interactions_amount
+    );
+
+    for interaction in interactions {
+        let mut abi = String::new();
+
+        if abi_cache.contains_key(&interaction.address) {
+            abi = abi_cache.get(&interaction.address).unwrap().to_string()
+        } else {
+            let contract_interacted = interaction.address.clone();
+
+            let contract_abi = db.get_contract_abi(&contract_interacted).await.unwrap();
+            match contract_abi {
+                Some(db_abi) => {
+                    abi_cache.insert(contract_interacted, db_abi.clone());
+                    abi = db_abi;
+                }
+                // TODO handle interactions without a verified abi in some way
+                None => continue,
+            }
         }
     }
 

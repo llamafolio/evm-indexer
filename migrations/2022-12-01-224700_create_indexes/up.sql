@@ -27,3 +27,6 @@ ON contract_interactions (address);
 
 CREATE INDEX IF NOT EXISTS tx_logs_by_hash
 ON logs (hash);
+
+CREATE INDEX IF NOT EXISTS contract_abis_by_address
+ON contract_abis (address);

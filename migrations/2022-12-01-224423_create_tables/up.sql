@@ -37,7 +37,8 @@ CREATE TABLE contract_interactions (
   block BIGINT NOT NULL,
   address VARCHAR NOT NULL,
   contract VARCHAR NOT NULL,
-  chain VARCHAR NOT NULL
+  chain VARCHAR NOT NULL,
+  method_call VARCHAR
 );
 
 CREATE TABLE contract_creations (
@@ -73,8 +74,7 @@ CREATE TABLE txs (
   max_fee_per_gas VARCHAR,
   max_priority_fee_per_gas VARCHAR,
   input VARCHAR NOT NULL,
-  chain VARCHAR NOT NULL,
-  method_call VARCHAR
+  chain VARCHAR NOT NULL
 );
 
 CREATE TABLE state (
