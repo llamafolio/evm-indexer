@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use dotenv::dotenv;
 use evm_indexer::{chains::Provider, config::Config, db::Database, fetcher, rpc::Rpc};
@@ -140,11 +140,10 @@ async fn main() {
 
     tokio::spawn({
         let db = db.clone();
-        let config = config.clone();
-        let mut abi_cache: HashMap<String, String> = HashMap::new();
+
         async move {
             loop {
-                fetcher::match_contract_interactions(&config, &db, &mut abi_cache)
+                fetcher::fetch_contract_iteractions_method_id(&db)
                     .await
                     .unwrap();
                 sleep(Duration::from_secs(5)).await;

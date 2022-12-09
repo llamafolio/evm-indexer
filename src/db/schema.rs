@@ -44,7 +44,7 @@ diesel::table! {
         address -> Varchar,
         contract -> Varchar,
         chain -> Varchar,
-        method_call -> Nullable<Varchar>,
+        method_id -> Nullable<Varchar>,
     }
 }
 
@@ -67,6 +67,13 @@ diesel::table! {
         transaction_log_index -> Nullable<Int8>,
         log_type -> Nullable<Varchar>,
         chain -> Varchar,
+    }
+}
+
+diesel::table! {
+    method_ids (method_id) {
+        method_id -> Varchar,
+        name -> Varchar,
     }
 }
 
@@ -144,6 +151,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     contract_interactions,
     excluded_tokens,
     logs,
+    method_ids,
     state,
     token_transfers,
     tokens,

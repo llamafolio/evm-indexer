@@ -615,6 +615,7 @@ dependencies = [
  "diesel_migrations",
  "dotenv",
  "ethabi 18.0.0",
+ "hex",
  "jsonrpsee",
  "jsonrpsee-http-client",
  "log",

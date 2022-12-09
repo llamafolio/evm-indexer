@@ -5,6 +5,7 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use diesel::prelude::*;
+use diesel::result::Error;
 use diesel::PgConnection;
 use diesel_migrations::*;
 use log::*;
@@ -20,6 +21,7 @@ use self::models::DatabaseContractABI;
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
 use self::models::DatabaseExcludedToken;
+use self::models::DatabaseMethodID;
 use self::models::DatabaseState;
 use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
@@ -39,6 +41,8 @@ use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
 use self::schema::token_transfers::table as token_transfers_table;
+use self::schema::txs;
+use self::schema::txs::table as txs_table;
 use self::schema::txs_no_receipt;
 use self::schema::txs_no_receipt::table as txs_no_receipt_table;
 
@@ -208,14 +212,27 @@ impl Database {
 
         let interactions = contract_interactions_table
             .filter(contract_interactions::chain.eq(self.chain.name.to_string()))
-            .filter(contract_interactions::method_call.is_null())
+            .filter(contract_interactions::method_id.is_null())
             .select(contract_interactions_table::all_columns())
-            .limit(250)
             .load::<DatabaseContractInteraction>(&mut connection);
 
         match interactions {
             Ok(interactions) => Ok(interactions),
             Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn get_transaction_input(&self, hash: &String) -> Result<Option<String>> {
+        let mut connection = self.establish_connection();
+
+        let tx: Result<String, Error> = txs_table
+            .filter(txs::hash.eq(hash))
+            .select(txs::input)
+            .first::<String>(&mut connection);
+
+        match tx {
+            Ok(input) => Ok(Some(input)),
+            Err(_) => Ok(None),
         }
     }
 
@@ -451,6 +468,16 @@ impl Database {
             .expect("Unable to store contract abis into database");
     }
 
+    pub async fn store_abi_method_ids(&self, method_ids: &Vec<DatabaseMethodID>) {
+        let mut connection = self.establish_connection();
+
+        diesel::insert_into(schema::method_ids::dsl::method_ids)
+            .values(method_ids)
+            .on_conflict_do_nothing()
+            .execute(&mut connection)
+            .expect("Unable to store method ids into database");
+    }
+
     async fn update_chain_state(&self) -> Result<()> {
         let mut connection = self.establish_connection();
 
@@ -472,7 +499,7 @@ impl Database {
         Ok(())
     }
 
-    async fn update_contract_interaction(
+    pub async fn update_contract_interaction(
         &self,
         interaction: &DatabaseContractInteraction,
     ) -> Result<()> {
@@ -482,9 +509,7 @@ impl Database {
             .values(interaction)
             .on_conflict(contract_interactions::hash)
             .do_update()
-            .set(
-                schema::contract_interactions::dsl::method_call.eq(interaction.method_call.clone()),
-            )
+            .set(schema::contract_interactions::dsl::method_id.eq(interaction.method_id.clone()))
             .execute(&mut connection)
             .expect("Unable to update contract interaction");
 

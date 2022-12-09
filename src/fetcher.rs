@@ -1,9 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
+use std::{collections::HashSet, time::Duration};
 
 use anyhow::Result;
+use ethabi::Contract;
 use log::*;
 use reqwest::Client;
 use serde_json::Error;
@@ -13,7 +11,10 @@ use web3::futures::future::join_all;
 use crate::{
     config::Config,
     db::{
-        models::{DatabaseContractABI, DatabaseExcludedToken, DatabaseToken, DatabaseTxNoReceipt},
+        models::{
+            DatabaseContractABI, DatabaseContractInteraction, DatabaseExcludedToken,
+            DatabaseMethodID, DatabaseToken, DatabaseTxNoReceipt,
+        },
         Database,
     },
     rpc::Rpc,
@@ -326,6 +327,8 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
                             if abi_response_formatted.status == "1"
                                 && abi_response_formatted.message == "OK"
                             {
+                                let abi = abi_response_formatted.result;
+
                                 let db_contract_abi = DatabaseContractABI {
                                     address_with_chain: format!(
                                         "{}-{}",
@@ -334,11 +337,33 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
                                     ),
                                     chain: config.chain.name.to_string(),
                                     address: pending_contract,
-                                    abi: Some(abi_response_formatted.result),
+                                    abi: Some(abi.clone()),
                                     verified: true,
                                 };
 
                                 db.store_contract_abi(&db_contract_abi).await;
+
+                                let contract: Contract = serde_json::from_str(&abi).unwrap();
+
+                                let functions = contract.functions();
+
+                                let mut db_methods: Vec<DatabaseMethodID> = vec![];
+
+                                for function in functions {
+                                    let signature =
+                                        format!("0x{}", hex::encode(function.short_signature()));
+
+                                    let db_method = DatabaseMethodID {
+                                        name: function.name.clone(),
+                                        method_id: signature,
+                                    };
+
+                                    db_methods.push(db_method);
+                                }
+
+                                info!("Storing {} method IDs from ABI", db_methods.len());
+
+                                db.store_abi_method_ids(&db_methods).await
                             } else {
                                 if abi_response_formatted.result
                                     == "Contract source code not verified"
@@ -371,37 +396,39 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
     Ok(())
 }
 
-pub async fn match_contract_interactions(
-    config: &Config,
-    db: &Database,
-    abi_cache: &mut HashMap<String, String>,
-) -> Result<()> {
+pub async fn fetch_contract_iteractions_method_id(db: &Database) -> Result<()> {
     let interactions = db.get_pending_match_contract_interactions().await.unwrap();
 
     let interactions_amount = interactions.len();
 
     info!(
-        "Updating {} contract interactions with their method",
+        "Updating {} contract interactions with their method signature",
         interactions_amount
     );
 
     for interaction in interactions {
-        let mut abi = String::new();
+        let input = db.get_transaction_input(&interaction.hash).await.unwrap();
 
-        if abi_cache.contains_key(&interaction.address) {
-            abi = abi_cache.get(&interaction.address).unwrap().to_string()
-        } else {
-            let contract_interacted = interaction.address.clone();
+        match input {
+            Some(tx_input) => {
+                let byte4 = byte4_from_input(tx_input);
 
-            let contract_abi = db.get_contract_abi(&contract_interacted).await.unwrap();
-            match contract_abi {
-                Some(db_abi) => {
-                    abi_cache.insert(contract_interacted, db_abi.clone());
-                    abi = db_abi;
-                }
-                // TODO handle interactions without a verified abi in some way
-                None => continue,
+                let byte4_str = format!("0x{}", hex::encode(byte4));
+
+                let new_interaction = DatabaseContractInteraction {
+                    hash: interaction.hash,
+                    block: interaction.block,
+                    address: interaction.address,
+                    contract: interaction.contract,
+                    chain: interaction.chain,
+                    method_id: Some(byte4_str),
+                };
+
+                db.update_contract_interaction(&new_interaction)
+                    .await
+                    .unwrap();
             }
+            None => continue,
         }
     }
 
@@ -414,4 +441,21 @@ fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {
 
 fn vec_string_to_set(vec: Vec<String>) -> HashSet<String> {
     HashSet::from_iter(vec)
+}
+
+fn byte4_from_input(input: String) -> [u8; 4] {
+    let input_bytes = input.as_bytes();
+
+    if input_bytes.len() < 4 {
+        return [0x00, 0x00, 0x00, 0x00];
+    }
+
+    let byte4: [u8; 4] = [
+        input_bytes[0],
+        input_bytes[1],
+        input_bytes[2],
+        input_bytes[3],
+    ];
+
+    return byte4;
 }

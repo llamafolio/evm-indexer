@@ -11,8 +11,8 @@ use crate::utils::{
 };
 
 use super::schema::{
-    blocks, contract_abis, contract_creations, contract_interactions, excluded_tokens, logs, state,
-    token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
+    blocks, contract_abis, contract_creations, contract_interactions, excluded_tokens, logs,
+    method_ids, state, token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone)]
@@ -177,7 +177,7 @@ pub struct DatabaseContractInteraction {
     pub address: String,
     pub contract: String,
     pub chain: String,
-    pub method_call: Option<String>,
+    pub method_id: Option<String>,
 }
 
 impl DatabaseContractInteraction {
@@ -188,7 +188,7 @@ impl DatabaseContractInteraction {
             address: format_address(receipt.from),
             contract: format_address(receipt.to.unwrap()),
             chain,
-            method_call: None,
+            method_id: None,
         }
     }
 }
@@ -356,4 +356,11 @@ pub struct DatabaseContractABI {
     pub address: String,
     pub abi: Option<String>,
     pub verified: bool,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = method_ids)]
+pub struct DatabaseMethodID {
+    pub method_id: String,
+    pub name: String,
 }

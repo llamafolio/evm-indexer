@@ -38,7 +38,7 @@ CREATE TABLE contract_interactions (
   address VARCHAR NOT NULL,
   contract VARCHAR NOT NULL,
   chain VARCHAR NOT NULL,
-  method_call VARCHAR
+  method_id VARCHAR
 );
 
 CREATE TABLE contract_creations (
@@ -109,4 +109,9 @@ CREATE TABLE contract_abis (
   address VARCHAR NOT NULL,
   abi VARCHAR,
   verified BOOLEAN
+);
+
+CREATE TABLE method_ids (
+  method_id VARCHAR PRIMARY KEY UNIQUE NOT NULL,
+  name VARCHAR NOT NULL
 );
