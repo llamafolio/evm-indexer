@@ -2,18 +2,31 @@ use std::{collections::HashSet, time::Duration};
 
 use anyhow::Result;
 use log::*;
+use reqwest::Client;
+use serde_json::Error;
 use tokio::time::sleep;
 use web3::futures::future::join_all;
 
 use crate::{
     config::Config,
     db::{
-        models::{DatabaseExcludedToken, DatabaseToken, DatabaseTx, DatabaseTxNoReceipt},
+        models::{DatabaseContractABI, DatabaseExcludedToken, DatabaseToken, DatabaseTxNoReceipt},
         Database,
     },
     rpc::Rpc,
     utils::format_hash,
 };
+
+use serde::Deserialize;
+use serde::Serialize;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AbiResponse {
+    pub status: String,
+    pub message: String,
+    pub result: String,
+}
 
 pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) -> Result<()> {
     let rpc_last_block = providers[0].get_last_block().await.unwrap();
@@ -83,7 +96,7 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
 
                     for (
                         db_blocks,
-                        db_txs,
+                        mut db_txs,
                         db_tx_receipts,
                         db_tx_logs,
                         db_contract_creation,
@@ -112,16 +125,15 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                                 .collect(),
                         );
 
-                        let mut db_txs_with_receipts: Vec<DatabaseTx> = vec![];
                         let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
 
-                        for tx in db_txs {
-                            if db_receipts_hash.contains(&tx.hash) {
-                                db_txs_with_receipts.push(tx);
-                            } else {
+                        for tx in &mut db_txs {
+                            let hash = tx.hash.clone();
+                            let chain = tx.chain.clone();
+                            if !db_receipts_hash.contains(&hash) {
                                 db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
-                                    hash: tx.hash,
-                                    chain: tx.chain,
+                                    hash,
+                                    chain,
                                     block_number: tx.block_number,
                                 });
                             }
@@ -129,7 +141,7 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
 
                         db.store_blocks_and_txs(
                             db_blocks,
-                            db_txs_with_receipts,
+                            db_txs,
                             db_tx_receipts,
                             db_tx_logs,
                             db_contract_creation,
@@ -274,6 +286,84 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     }
 
     join_all(works).await;
+
+    Ok(())
+}
+
+pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) -> Result<()> {
+    let contracts = db.get_created_contracts().await.unwrap();
+    let contracts_with_abis = db.get_contracts_with_abis().await.unwrap();
+    let already_fetched_contracts_set = vec_string_to_set(contracts_with_abis);
+
+    let pending_contracts: Vec<String> = contracts
+        .into_iter()
+        .filter(|contract| !already_fetched_contracts_set.contains(contract))
+        .collect();
+
+    let pending_contracts_amount = pending_contracts.len();
+
+    info!("Fetching ABIs for {} contracts", pending_contracts_amount);
+
+    let client = Client::new();
+
+    for pending_contract in pending_contracts {
+        let uri_str = format!(
+            "{}api?module=contract&action=getabi&address={}&apikey={}",
+            config.chain.abi_source_url, pending_contract, token
+        );
+
+        let response = client.get(uri_str).send().await;
+
+        match response {
+            Ok(data) => match data.text().await {
+                Ok(response) => {
+                    let abi_response: Result<AbiResponse, Error> = serde_json::from_str(&response);
+                    match abi_response {
+                        Ok(abi_response_formatted) => {
+                            if abi_response_formatted.status == "1"
+                                && abi_response_formatted.message == "OK"
+                            {
+                                let db_contract_abi = DatabaseContractABI {
+                                    address_with_chain: format!(
+                                        "{}-{}",
+                                        pending_contract,
+                                        config.chain.name.clone()
+                                    ),
+                                    chain: config.chain.name.to_string(),
+                                    address: pending_contract,
+                                    abi: Some(abi_response_formatted.result),
+                                    verified: true,
+                                };
+
+                                db.store_contract_abi(&db_contract_abi).await;
+                            } else {
+                                if abi_response_formatted.result
+                                    == "Contract source code not verified"
+                                {
+                                    let db_contract_abi = DatabaseContractABI {
+                                        address_with_chain: format!(
+                                            "{}-{}",
+                                            pending_contract,
+                                            config.chain.name.clone()
+                                        ),
+                                        chain: config.chain.name.to_string(),
+                                        address: pending_contract,
+                                        abi: None,
+                                        verified: false,
+                                    };
+
+                                    db.store_contract_abi(&db_contract_abi).await;
+                                }
+                            }
+                        }
+                        Err(_) => continue,
+                    }
+                }
+                Err(_) => continue,
+            },
+            Err(_) => continue,
+        }
+    }
 
     Ok(())
 }

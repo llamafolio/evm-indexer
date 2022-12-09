@@ -159,11 +159,6 @@ impl Rpc {
                                     self.chain.name
                                 );
 
-                                let from = block_number.as_u64() as i64 - self.chain.blocks_reorg;
-                                let to = block_number.as_u64() as i64;
-
-                                let range: Vec<i64> = (from..to).collect();
-
                                 let (
                                     db_blocks,
                                     db_txs,
@@ -172,7 +167,10 @@ impl Rpc {
                                     db_contract_creations,
                                     db_contract_interactions,
                                     db_token_transfers,
-                                ) = self.get_blocks(range).await.unwrap();
+                                ) = self
+                                    .get_blocks([block_number.as_u64() as i64].to_vec())
+                                    .await
+                                    .unwrap();
 
                                 db.store_blocks_and_txs(
                                     db_blocks,

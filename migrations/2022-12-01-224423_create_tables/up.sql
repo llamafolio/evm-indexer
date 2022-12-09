@@ -73,7 +73,8 @@ CREATE TABLE txs (
   max_fee_per_gas VARCHAR,
   max_priority_fee_per_gas VARCHAR,
   input VARCHAR NOT NULL,
-  chain VARCHAR NOT NULL
+  chain VARCHAR NOT NULL,
+  method_call VARCHAR
 );
 
 CREATE TABLE state (
@@ -100,4 +101,12 @@ CREATE TABLE txs_no_receipt (
   hash VARCHAR PRIMARY KEY UNIQUE,
   chain VARCHAR NOT NULL,
   block_number BIGINT NOT NULL
+);
+
+CREATE TABLE contract_abis (
+  address_with_chain VARCHAR PRIMARY KEY UNIQUE NOT NULL,
+  chain VARCHAR NOT NULL,
+  address VARCHAR NOT NULL,
+  abi VARCHAR,
+  verified BOOLEAN
 );

@@ -618,6 +618,7 @@ dependencies = [
  "jsonrpsee",
  "jsonrpsee-http-client",
  "log",
+ "reqwest",
  "reth-primitives",
  "reth-rpc-types",
  "serde",

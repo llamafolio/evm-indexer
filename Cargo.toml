@@ -14,6 +14,7 @@ ethabi = "18"
 jsonrpsee = { version = "0.16", features = ["macros", "server"] }
 jsonrpsee-http-client = "0.16"
 log = "0.4"
+reqwest = "0.11.13"
 reth-primitives = { git = "https://github.com/paradigmxyz/reth" }
 reth-rpc-types = { git = "https://github.com/paradigmxyz/reth" }
 serde = "1"

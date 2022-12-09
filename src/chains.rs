@@ -47,6 +47,7 @@ pub struct Chain {
     pub llamanodes_available: bool,
     pub pokt_available: bool,
     pub blast_available: bool,
+    pub abi_source_url: &'static str,
 }
 
 impl Chain {
@@ -59,6 +60,7 @@ impl Chain {
             llamanodes_available: chain.llamanodes_available,
             pokt_available: chain.pokt_available,
             blast_available: chain.blast_available,
+            abi_source_url: chain.abi_source_url,
         }
     }
 
@@ -167,6 +169,7 @@ static ETHEREUM: Chain = Chain {
     llamanodes_available: true,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.etherscan.io/",
 };
 
 static POLYGON: Chain = Chain {
@@ -177,6 +180,7 @@ static POLYGON: Chain = Chain {
     llamanodes_available: true,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.polygonscan.com/",
 };
 
 static FTM: Chain = Chain {
@@ -187,6 +191,7 @@ static FTM: Chain = Chain {
     llamanodes_available: true,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.ftmscan.com/",
 };
 
 static OPTIMISM: Chain = Chain {
@@ -197,6 +202,7 @@ static OPTIMISM: Chain = Chain {
     llamanodes_available: false,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api-optimistic.etherscan.io/",
 };
 
 static ARBITTUM: Chain = Chain {
@@ -207,6 +213,7 @@ static ARBITTUM: Chain = Chain {
     llamanodes_available: false,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.arbiscan.io/",
 };
 
 static GNOSIS: Chain = Chain {
@@ -217,6 +224,7 @@ static GNOSIS: Chain = Chain {
     llamanodes_available: false,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.gnosisscan.io/",
 };
 
 static BNB_CHAIN: Chain = Chain {
@@ -227,6 +235,7 @@ static BNB_CHAIN: Chain = Chain {
     llamanodes_available: false,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.bscscan.com/",
 };
 
 static AVALANCHE: Chain = Chain {
@@ -237,6 +246,7 @@ static AVALANCHE: Chain = Chain {
     llamanodes_available: false,
     pokt_available: true,
     blast_available: true,
+    abi_source_url: "https://api.snowtrace.io/",
 };
 
 pub static AVAILABLE_CHAINS: [Chain; 8] = [

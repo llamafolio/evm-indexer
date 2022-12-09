@@ -78,7 +78,7 @@ async fn main() {
                 fetcher::fetch_blocks(&available_providers, &db, &config)
                     .await
                     .unwrap();
-                sleep(Duration::from_secs(120)).await;
+                sleep(Duration::from_secs(5)).await;
             }
         }
     });
@@ -92,7 +92,7 @@ async fn main() {
                 fetcher::fetch_tokens_metadata(&rpc, &db, &config)
                     .await
                     .unwrap();
-                sleep(Duration::from_secs(30)).await;
+                sleep(Duration::from_secs(5)).await;
             }
         }
     });
@@ -114,9 +114,29 @@ async fn main() {
                 fetcher::fetch_tx_no_receipts(&rpc, &config, &db)
                     .await
                     .unwrap();
+                sleep(Duration::from_secs(5)).await;
             }
         }
     });
+
+    let abi_source_token = config.abi_source_token.clone();
+
+    if abi_source_token != String::from("") {
+        tokio::spawn({
+            let db = db.clone();
+            let config = config.clone();
+            let abi_source_token = abi_source_token.clone();
+
+            async move {
+                loop {
+                    fetcher::fetch_contract_abis(&config, &db, &abi_source_token)
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_secs(5)).await;
+                }
+            }
+        });
+    }
 
     loop {
         let rpc = available_providers[0].clone();

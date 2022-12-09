@@ -16,6 +16,7 @@ use crate::config::Config;
 
 use self::models::DatabaseBlock;
 
+use self::models::DatabaseContractABI;
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
 use self::models::DatabaseExcludedToken;
@@ -28,6 +29,10 @@ use self::models::DatabaseTxNoReceipt;
 use self::models::DatabaseTxReceipt;
 use self::schema::blocks;
 use self::schema::blocks::table as blocks_table;
+use self::schema::contract_abis;
+use self::schema::contract_abis::table as contract_abis_table;
+use self::schema::contract_creations;
+use self::schema::contract_creations::table as contract_creations_table;
 use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
@@ -144,6 +149,34 @@ impl Database {
 
         match blocks {
             Ok(blocks) => Ok(blocks),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn get_created_contracts(&self) -> Result<Vec<String>> {
+        let mut connection = self.establish_connection();
+
+        let contracts = contract_creations_table
+            .select(contract_creations::contract)
+            .filter(contract_creations::chain.eq(self.chain.name.to_string()))
+            .load::<String>(&mut connection);
+
+        match contracts {
+            Ok(contracts) => Ok(contracts),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn get_contracts_with_abis(&self) -> Result<Vec<String>> {
+        let mut connection = self.establish_connection();
+
+        let contracts = contract_abis_table
+            .select(contract_abis::address)
+            .filter(contract_abis::chain.eq(self.chain.name.to_string()))
+            .load::<String>(&mut connection);
+
+        match contracts {
+            Ok(contracts) => Ok(contracts),
             Err(_) => Ok(Vec::new()),
         }
     }
@@ -363,6 +396,21 @@ impl Database {
                 .execute(&mut connection)
                 .expect("Unable to store transactions with no receipt into database");
         }
+    }
+
+    pub async fn store_contract_abi(&self, contract_abi: &DatabaseContractABI) {
+        let mut connection = self.establish_connection();
+
+        diesel::insert_into(schema::contract_abis::dsl::contract_abis)
+            .values(contract_abi)
+            .on_conflict(contract_abis::address_with_chain)
+            .do_update()
+            .set((
+                schema::contract_abis::dsl::abi.eq(&contract_abi.abi),
+                schema::contract_abis::dsl::verified.eq(&contract_abi.verified),
+            ))
+            .execute(&mut connection)
+            .expect("Unable to store contract abis into database");
     }
 
     async fn update_chain_state(&self) -> Result<()> {

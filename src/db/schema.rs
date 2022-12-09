@@ -19,6 +19,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    contract_abis (address_with_chain) {
+        address_with_chain -> Varchar,
+        chain -> Varchar,
+        address -> Varchar,
+        abi -> Nullable<Varchar>,
+        verified -> Nullable<Bool>,
+    }
+}
+
+diesel::table! {
     contract_creations (hash) {
         hash -> Varchar,
         block -> Int8,
@@ -107,6 +117,7 @@ diesel::table! {
         max_priority_fee_per_gas -> Nullable<Varchar>,
         input -> Varchar,
         chain -> Varchar,
+        method_call -> Nullable<Varchar>,
     }
 }
 
@@ -128,6 +139,7 @@ diesel::table! {
 
 diesel::allow_tables_to_appear_in_same_query!(
     blocks,
+    contract_abis,
     contract_creations,
     contract_interactions,
     excluded_tokens,

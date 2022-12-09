@@ -11,7 +11,7 @@ use crate::utils::{
 };
 
 use super::schema::{
-    blocks, contract_creations, contract_interactions, excluded_tokens, logs, state,
+    blocks, contract_abis, contract_creations, contract_interactions, excluded_tokens, logs, state,
     token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
 };
 
@@ -80,6 +80,7 @@ pub struct DatabaseTx {
     pub max_priority_fee_per_gas: String,
     pub input: String,
     pub chain: String,
+    pub method_call: Option<String>,
 }
 
 impl DatabaseTx {
@@ -126,6 +127,7 @@ impl DatabaseTx {
             input: format_bytes(&tx.input),
             chain,
             timestamp: parsed_timestamp.to_string(),
+            method_call: None,
         }
     }
 }
@@ -344,4 +346,14 @@ pub struct DatabaseTxNoReceipt {
     pub hash: String,
     pub chain: String,
     pub block_number: i64,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = contract_abis)]
+pub struct DatabaseContractABI {
+    pub address_with_chain: String,
+    pub chain: String,
+    pub address: String,
+    pub abi: Option<String>,
+    pub verified: bool,
 }

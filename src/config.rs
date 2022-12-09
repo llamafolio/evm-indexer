@@ -51,6 +51,7 @@ pub struct Config {
     pub use_local_rpc: bool,
     pub local_rpc: String,
     pub local_rpc_ws: String,
+    pub abi_source_token: String,
 }
 
 impl Config {
@@ -93,7 +94,9 @@ impl Config {
 
         let blast_provider = chain.get_provider(blast_key, "blast".to_string());
 
-        let (local_rpc, local_rpc_ws) = get_local_rpc(chainname);
+        let (local_rpc, local_rpc_ws) = get_local_rpc(chainname.clone());
+
+        let abi_source_token = get_abi_source_token(chainname.clone());
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
@@ -110,6 +113,7 @@ impl Config {
             use_local_rpc: local_rpc != String::from("") && local_rpc_ws != String::from(""),
             local_rpc,
             local_rpc_ws,
+            abi_source_token,
         }
     }
 }
@@ -258,4 +262,59 @@ pub fn get_local_rpc(chain: String) -> (String, String) {
     }
 
     return (local_rpc, local_ws);
+}
+
+pub fn get_abi_source_token(chain: String) -> String {
+    let mut abi_source_token = String::from("");
+
+    if chain == "mainnet" {
+        abi_source_token = match std::env::var("ETH_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "bsc" {
+        abi_source_token = match std::env::var("BSC_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "gnosis" {
+        abi_source_token = match std::env::var("GNOSIS_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "avalanche" {
+        abi_source_token = match std::env::var("AVALANCHE_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "fantom" {
+        abi_source_token = match std::env::var("FTM_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "polygon" {
+        abi_source_token = match std::env::var("POLYGON_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    if chain == "optimism" {
+        abi_source_token = match std::env::var("OPTIMISM_ABI_SOURCE_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
+    return abi_source_token;
 }
