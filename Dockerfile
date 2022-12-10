@@ -26,7 +26,7 @@ COPY . .
 
 RUN cargo build --release --bin evm-indexer
 
-FROM debian:stable-slim AS runtime
+FROM debian:stable AS runtime
 
 RUN apt install -y libpq-dev
 
