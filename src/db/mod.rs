@@ -5,7 +5,6 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use diesel::prelude::*;
-use diesel::result::Error;
 use diesel::PgConnection;
 use diesel_migrations::*;
 use log::*;
@@ -35,14 +34,10 @@ use self::schema::contract_abis;
 use self::schema::contract_abis::table as contract_abis_table;
 use self::schema::contract_creations;
 use self::schema::contract_creations::table as contract_creations_table;
-use self::schema::contract_interactions;
-use self::schema::contract_interactions::table as contract_interactions_table;
 use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
 use self::schema::token_transfers::table as token_transfers_table;
-use self::schema::txs;
-use self::schema::txs::table as txs_table;
 use self::schema::txs_no_receipt;
 use self::schema::txs_no_receipt::table as txs_no_receipt_table;
 
@@ -201,37 +196,6 @@ impl Database {
 
         match abi {
             Ok(interactions) => Ok(interactions),
-            Err(_) => Ok(None),
-        }
-    }
-
-    pub async fn get_pending_match_contract_interactions(
-        &self,
-    ) -> Result<Vec<DatabaseContractInteraction>> {
-        let mut connection = self.establish_connection();
-
-        let interactions = contract_interactions_table
-            .filter(contract_interactions::chain.eq(self.chain.name.to_string()))
-            .filter(contract_interactions::method_id.is_null())
-            .select(contract_interactions_table::all_columns())
-            .load::<DatabaseContractInteraction>(&mut connection);
-
-        match interactions {
-            Ok(interactions) => Ok(interactions),
-            Err(_) => Ok(Vec::new()),
-        }
-    }
-
-    pub async fn get_transaction_input(&self, hash: &String) -> Result<Option<String>> {
-        let mut connection = self.establish_connection();
-
-        let tx: Result<String, Error> = txs_table
-            .filter(txs::hash.eq(hash))
-            .select(txs::input)
-            .first::<String>(&mut connection);
-
-        match tx {
-            Ok(input) => Ok(Some(input)),
             Err(_) => Ok(None),
         }
     }
@@ -495,23 +459,6 @@ impl Database {
             .set(schema::state::dsl::blocks.eq(state.blocks))
             .execute(&mut connection)
             .expect("Unable to update chain state");
-
-        Ok(())
-    }
-
-    pub async fn update_contract_interaction(
-        &self,
-        interaction: &DatabaseContractInteraction,
-    ) -> Result<()> {
-        let mut connection = self.establish_connection();
-
-        diesel::insert_into(schema::contract_interactions::dsl::contract_interactions)
-            .values(interaction)
-            .on_conflict(contract_interactions::hash)
-            .do_update()
-            .set(schema::contract_interactions::dsl::method_id.eq(interaction.method_id.clone()))
-            .execute(&mut connection)
-            .expect("Unable to update contract interaction");
 
         Ok(())
     }

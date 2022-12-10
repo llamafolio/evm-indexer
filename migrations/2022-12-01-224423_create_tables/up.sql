@@ -37,8 +37,7 @@ CREATE TABLE contract_interactions (
   block BIGINT NOT NULL,
   address VARCHAR NOT NULL,
   contract VARCHAR NOT NULL,
-  chain VARCHAR NOT NULL,
-  method_id VARCHAR
+  chain VARCHAR NOT NULL
 );
 
 CREATE TABLE contract_creations (
@@ -74,6 +73,7 @@ CREATE TABLE txs (
   max_fee_per_gas VARCHAR,
   max_priority_fee_per_gas VARCHAR,
   input VARCHAR NOT NULL,
+  method_id VARCHAR NOT NULL,
   chain VARCHAR NOT NULL
 );
 
@@ -115,3 +115,5 @@ CREATE TABLE method_ids (
   method_id VARCHAR PRIMARY KEY UNIQUE NOT NULL,
   name VARCHAR NOT NULL
 );
+
+INSERT INTO method_ids (method_id, name) VALUES ('0x00000000', 'Transfer');

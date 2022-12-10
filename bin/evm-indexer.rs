@@ -138,19 +138,6 @@ async fn main() {
         });
     }
 
-    tokio::spawn({
-        let db = db.clone();
-
-        async move {
-            loop {
-                fetcher::fetch_contract_iteractions_method_id(&db)
-                    .await
-                    .unwrap();
-                sleep(Duration::from_secs(5)).await;
-            }
-        }
-    });
-
     loop {
         let rpc = available_providers[0].clone();
         rpc.subscribe_heads(&db).await;

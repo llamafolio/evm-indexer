@@ -80,6 +80,7 @@ pub struct DatabaseTx {
     pub max_priority_fee_per_gas: String,
     pub input: String,
     pub chain: String,
+    pub method_id: String,
 }
 
 impl DatabaseTx {
@@ -111,6 +112,8 @@ impl DatabaseTx {
             Some(timestamp) => timestamp,
         };
 
+        let input = format_bytes(&tx.input);
+
         Self {
             block_number: tx.block_number.unwrap().as_u64() as i64,
             from_address: format_address(tx.from),
@@ -123,9 +126,10 @@ impl DatabaseTx {
             transaction_type,
             max_fee_per_gas,
             max_priority_fee_per_gas,
-            input: format_bytes(&tx.input),
+            input: input.clone(),
             chain,
             timestamp: parsed_timestamp.to_string(),
+            method_id: format!("0x{}", hex::encode(byte4_from_input(&input))),
         }
     }
 }
@@ -177,7 +181,6 @@ pub struct DatabaseContractInteraction {
     pub address: String,
     pub contract: String,
     pub chain: String,
-    pub method_id: Option<String>,
 }
 
 impl DatabaseContractInteraction {
@@ -188,7 +191,6 @@ impl DatabaseContractInteraction {
             address: format_address(receipt.from),
             contract: format_address(receipt.to.unwrap()),
             chain,
-            method_id: None,
         }
     }
 }
@@ -363,4 +365,27 @@ pub struct DatabaseContractABI {
 pub struct DatabaseMethodID {
     pub method_id: String,
     pub name: String,
+}
+
+pub fn byte4_from_input(input: &String) -> [u8; 4] {
+    let input_sanitized = input.strip_prefix("0x").unwrap();
+
+    if input_sanitized == "" {
+        return [0x00, 0x00, 0x00, 0x00];
+    }
+
+    let input_bytes = hex::decode(input_sanitized).unwrap();
+
+    if input_bytes.len() < 4 {
+        return [0x00, 0x00, 0x00, 0x00];
+    }
+
+    let byte4: [u8; 4] = [
+        input_bytes[0],
+        input_bytes[1],
+        input_bytes[2],
+        input_bytes[3],
+    ];
+
+    return byte4;
 }

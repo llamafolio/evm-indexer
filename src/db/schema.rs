@@ -44,7 +44,6 @@ diesel::table! {
         address -> Varchar,
         contract -> Varchar,
         chain -> Varchar,
-        method_id -> Nullable<Varchar>,
     }
 }
 
@@ -124,6 +123,7 @@ diesel::table! {
         max_fee_per_gas -> Nullable<Varchar>,
         max_priority_fee_per_gas -> Nullable<Varchar>,
         input -> Varchar,
+        method_id -> Varchar,
         chain -> Varchar,
     }
 }

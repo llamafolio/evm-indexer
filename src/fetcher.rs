@@ -12,8 +12,8 @@ use crate::{
     config::Config,
     db::{
         models::{
-            DatabaseContractABI, DatabaseContractInteraction, DatabaseExcludedToken,
-            DatabaseMethodID, DatabaseToken, DatabaseTxNoReceipt,
+            DatabaseContractABI, DatabaseExcludedToken, DatabaseMethodID, DatabaseToken,
+            DatabaseTxNoReceipt,
         },
         Database,
     },
@@ -396,66 +396,10 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
     Ok(())
 }
 
-pub async fn fetch_contract_iteractions_method_id(db: &Database) -> Result<()> {
-    let interactions = db.get_pending_match_contract_interactions().await.unwrap();
-
-    let interactions_amount = interactions.len();
-
-    info!(
-        "Updating {} contract interactions with their method signature",
-        interactions_amount
-    );
-
-    for interaction in interactions {
-        let input = db.get_transaction_input(&interaction.hash).await.unwrap();
-
-        match input {
-            Some(tx_input) => {
-                let byte4 = byte4_from_input(tx_input);
-
-                let byte4_str = format!("0x{}", hex::encode(byte4));
-
-                let new_interaction = DatabaseContractInteraction {
-                    hash: interaction.hash,
-                    block: interaction.block,
-                    address: interaction.address,
-                    contract: interaction.contract,
-                    chain: interaction.chain,
-                    method_id: Some(byte4_str),
-                };
-
-                db.update_contract_interaction(&new_interaction)
-                    .await
-                    .unwrap();
-            }
-            None => continue,
-        }
-    }
-
-    Ok(())
-}
-
 fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {
     HashSet::from_iter(vec)
 }
 
 fn vec_string_to_set(vec: Vec<String>) -> HashSet<String> {
     HashSet::from_iter(vec)
-}
-
-fn byte4_from_input(input: String) -> [u8; 4] {
-    let input_bytes = input.as_bytes();
-
-    if input_bytes.len() < 4 {
-        return [0x00, 0x00, 0x00, 0x00];
-    }
-
-    let byte4: [u8; 4] = [
-        input_bytes[0],
-        input_bytes[1],
-        input_bytes[2],
-        input_bytes[3],
-    ];
-
-    return byte4;
 }
