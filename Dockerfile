@@ -20,14 +20,14 @@ WORKDIR /app
 
 COPY --from=planner /app/recipe.json recipe.json
 
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
 
 COPY . .
 
-RUN cargo build --release --bin evm-indexer
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin evm-indexer
 
-FROM debian:buster-slim AS runtime
+FROM alpine AS runtime
 
-COPY --from=builder /app/target/release/evm-indexer /usr/local/bin/
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/evm-indexer /usr/local/bin/
 
 CMD ["/usr/local/bin/evm-indexer"]
