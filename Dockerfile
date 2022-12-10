@@ -28,6 +28,8 @@ RUN cargo build --release --bin evm-indexer
 
 FROM debian:stable-slim AS runtime
 
+RUN apt install -y libpq-dev
+
 COPY --from=builder /app/target/release/evm-indexer /usr/local/bin/
 
 CMD ["/usr/local/bin/evm-indexer"]
