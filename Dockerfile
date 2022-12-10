@@ -26,7 +26,7 @@ COPY . .
 
 RUN cargo build --release --bin evm-indexer
 
-FROM debian:buster-slim AS runtime
+FROM debian:stable-slim AS runtime
 
 COPY --from=builder /app/target/release/evm-indexer /usr/local/bin/
 
