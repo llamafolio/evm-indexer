@@ -240,7 +240,7 @@ impl Rpc {
             tx_receipts.append(&mut receipts_chunk);
         }
 
-        let db_txs: Vec<DatabaseTx> = web3_txs
+        let mut db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
             .map(|tx| {
                 let block_hash = format_hash(tx.block_hash.unwrap());
@@ -252,13 +252,21 @@ impl Rpc {
             })
             .collect();
 
-        let (
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creations,
-            db_contract_interactions,
-            db_token_transfers,
-        ) = self.get_metadata_from_receipts(tx_receipts).await.unwrap();
+        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
+            self.get_metadata_from_receipts(tx_receipts).await.unwrap();
+
+        let mut db_contract_interactions = vec![];
+
+        for db_tx in db_txs.iter_mut() {
+            if db_tx.input != "0x" {
+                let db_contract_interaction = DatabaseContractInteraction::from_transaction(
+                    db_tx,
+                    self.chain.name.to_string(),
+                );
+
+                db_contract_interactions.push(db_contract_interaction);
+            }
+        }
 
         Ok((
             db_blocks,
@@ -278,7 +286,6 @@ impl Rpc {
         Vec<DatabaseTxReceipt>,
         Vec<DatabaseTxLogs>,
         Vec<DatabaseContractCreation>,
-        Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
     )> {
         let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
@@ -286,8 +293,6 @@ impl Rpc {
         let mut db_tx_logs: Vec<DatabaseTxLogs> = vec![];
 
         let mut db_contract_creations: Vec<DatabaseContractCreation> = vec![];
-
-        let mut db_contract_interactions: Vec<DatabaseContractInteraction> = vec![];
 
         let mut db_token_transfers: Vec<DatabaseTokenTransfers> = vec![];
 
@@ -316,13 +321,6 @@ impl Rpc {
                     }
                     None => {
                         if logs.len() > 0 {
-                            let db_contract_interaction = DatabaseContractInteraction::from_receipt(
-                                &tx_receipt,
-                                self.chain.name.to_string(),
-                            );
-
-                            db_contract_interactions.push(db_contract_interaction);
-
                             // Check for token transfers
                             for log in logs {
                                 match token_transfers_from_logs(
@@ -384,7 +382,6 @@ impl Rpc {
             db_tx_receipts,
             db_tx_logs,
             db_contract_creations,
-            db_contract_interactions,
             db_token_transfers,
         ))
     }

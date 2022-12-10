@@ -254,13 +254,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
                     return;
                 }
 
-                let (
-                    db_tx_receipts,
-                    db_tx_logs,
-                    db_contract_creations,
-                    db_contract_interactions,
-                    db_token_transfers,
-                ) = rpc
+                let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) = rpc
                     .get_metadata_from_receipts(tx_receipts.clone())
                     .await
                     .unwrap();
@@ -271,7 +265,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
                     db_tx_receipts,
                     db_tx_logs,
                     db_contract_creations,
-                    db_contract_interactions,
+                    Vec::new(),
                     db_token_transfers,
                 )
                 .await;

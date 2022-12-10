@@ -184,12 +184,12 @@ pub struct DatabaseContractInteraction {
 }
 
 impl DatabaseContractInteraction {
-    pub fn from_receipt(receipt: &TransactionReceipt, chain: String) -> Self {
+    pub fn from_transaction(tx: &DatabaseTx, chain: String) -> Self {
         Self {
-            hash: format_hash(receipt.transaction_hash),
-            block: receipt.block_number.unwrap().as_u64() as i64,
-            address: format_address(receipt.from),
-            contract: format_address(receipt.to.unwrap()),
+            hash: tx.hash.clone(),
+            block: tx.block_number,
+            address: tx.from_address.clone(),
+            contract: tx.to_address.clone(),
             chain,
         }
     }
