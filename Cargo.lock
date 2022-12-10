@@ -249,7 +249,7 @@ dependencies = [
 [[package]]
 name = "codecs-derive"
 version = "0.1.0"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "parity-scale-codec 3.2.1",
  "proc-macro2",
@@ -582,7 +582,7 @@ dependencies = [
 [[package]]
 name = "ethers-core"
 version = "1.0.2"
-source = "git+https://github.com/gakonst/ethers-rs#3dfc04f9fefa63082fd02b535ab173012fdf4235"
+source = "git+https://github.com/gakonst/ethers-rs#ea10f4b4dff471c1611eef45ce035524a9a7b550"
 dependencies = [
  "arrayvec",
  "bytes",
@@ -1016,9 +1016,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.23.1"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59df7c4e19c950e6e0e868dcc0a300b09a9b88e9ec55bd879ca819087a77355d"
+checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
 dependencies = [
  "http",
  "hyper",
@@ -1151,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.5.1"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f88c5561171189e69df9d98bcf18fd5f9558300f7ea7b801eb8a0fd748bd8745"
+checksum = "ec947b7a4ce12e3b87e353abae7ce124d025b6c7d6c5aea5cc0bcf92e9510ded"
 
 [[package]]
 name = "is-terminal"
@@ -1927,7 +1927,7 @@ dependencies = [
 [[package]]
 name = "reth-codecs"
 version = "0.1.0"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "bytes",
  "codecs-derive",
@@ -1937,7 +1937,7 @@ dependencies = [
 [[package]]
 name = "reth-primitives"
 version = "0.1.0"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "bytes",
  "crc",
@@ -1964,7 +1964,7 @@ dependencies = [
 [[package]]
 name = "reth-rlp"
 version = "0.1.2"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "arrayvec",
  "auto_impl",
@@ -1976,7 +1976,7 @@ dependencies = [
 [[package]]
 name = "reth-rlp-derive"
 version = "0.1.1"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "bytes",
  "proc-macro2",
@@ -1987,7 +1987,7 @@ dependencies = [
 [[package]]
 name = "reth-rpc-types"
 version = "0.1.0"
-source = "git+https://github.com/paradigmxyz/reth#6081cdfd2b520bfbdf3ab53cb1c6e8107d433f87"
+source = "git+https://github.com/paradigmxyz/reth#c117d4b44f63de8821160510cf9d492be9dc25b6"
 dependencies = [
  "reth-primitives",
  "reth-rlp",
@@ -2124,9 +2124,9 @@ checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 
 [[package]]
 name = "scale-info"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88d8a765117b237ef233705cc2cc4c6a27fccd46eea6ef0c8c6dae5f3ef407f8"
+checksum = "001cf62ece89779fd16105b5f515ad0e5cedcd5440d3dd806bb067978e7c3608"
 dependencies = [
  "cfg-if",
  "derive_more",
@@ -2136,9 +2136,9 @@ dependencies = [
 
 [[package]]
 name = "scale-info-derive"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdcd47b380d8c4541044e341dcd9475f55ba37ddc50c908d945fc036a8642496"
+checksum = "303959cf613a6f6efd19ed4b4ad5bf79966a13352716299ad532cfb115f4205c"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2972,9 +2972,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.22.5"
+version = "0.22.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368bfe657969fb01238bb756d351dcade285e0f6fcbd36dcb23359a5169975be"
+checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
 ]
