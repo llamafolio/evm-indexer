@@ -87,7 +87,7 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
                     let work_chunk = chunk.chunks(config.batch_size);
 
                     for worker_part in work_chunk {
-                        works.push(rpc.get_blocks(worker_part.to_vec()));
+                        works.push(rpc.get_blocks(&config, worker_part.to_vec()));
                     }
 
                     let block_responses = join_all(works).await;

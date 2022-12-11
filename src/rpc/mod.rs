@@ -1,6 +1,6 @@
 mod client;
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, f32::consts::E, str::FromStr};
 
 use anyhow::Result;
 use jsonrpsee::core::{client::ClientT, params::BatchRequestBuilder, rpc_params};
@@ -140,6 +140,41 @@ impl Rpc {
         }
     }
 
+    pub async fn get_block_receipts(&self, blocks: &Vec<i64>) -> Result<Vec<TransactionReceipt>> {
+        let mut batch = BatchRequestBuilder::new();
+
+        let mut receipts: Vec<TransactionReceipt> = Vec::new();
+
+        if blocks.len() == 0 {
+            return Ok(receipts);
+        }
+
+        for block in blocks.iter() {
+            batch
+                .insert("eth_getBlockReceipts", rpc_params![block])
+                .unwrap();
+        }
+
+        let receipts_res = self.http_client.batch_request(batch).await;
+
+        match receipts_res {
+            Ok(result) => {
+                for receipt in result.into_iter() {
+                    match receipt {
+                        Ok(tx_receipt) => match format_receipt(tx_receipt) {
+                            Ok(receipt_formatted) => receipts.push(receipt_formatted),
+                            Err(_) => continue,
+                        },
+                        Err(_) => continue,
+                    }
+                }
+
+                Ok(receipts)
+            }
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
     pub async fn subscribe_heads(&self, db: &Database) {
         match self.wss.clone() {
             Some(wss) => {
@@ -198,6 +233,7 @@ impl Rpc {
     }
     pub async fn get_blocks(
         &self,
+        config: &Config,
         range: Vec<i64>,
     ) -> Result<(
         Vec<DatabaseBlock>,
@@ -234,10 +270,16 @@ impl Rpc {
 
         let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
 
-        for chunk in receipts_chunks {
-            let tx_hashes: Vec<String> = chunk.into_iter().map(|tx| format_hash(tx.hash)).collect();
-            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-            tx_receipts.append(&mut receipts_chunk);
+        if config.chain.name.clone() == "mainnet" {
+            let mut receipts = self.get_block_receipts(&range).await.unwrap();
+            tx_receipts.append(&mut receipts);
+        } else {
+            for chunk in receipts_chunks {
+                let tx_hashes: Vec<String> =
+                    chunk.into_iter().map(|tx| format_hash(tx.hash)).collect();
+                let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
+                tx_receipts.append(&mut receipts_chunk);
+            }
         }
 
         let mut db_txs: Vec<DatabaseTx> = web3_txs
