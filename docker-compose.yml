@@ -25,7 +25,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    network_mode: host
+    networks:
+      - postgres
     ports:
       - "8000:5432"
 
@@ -43,9 +44,8 @@ services:
       HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
       HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -59,12 +59,13 @@ services:
     env_file:
       - .env
     command: "evm-indexer"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   polygon-indexer:
     container_name: polygon-indexer
@@ -75,9 +76,8 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain polygon"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -91,9 +91,8 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain fantom"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -107,9 +106,8 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain optimism"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -123,9 +121,8 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain gnosis"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -139,9 +136,8 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain bsc"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
@@ -155,9 +151,12 @@ services:
     env_file:
       - .env
     command: "evm-indexer --chain avalanche"
-    network_mode: host
-    extra_hosts:
-      - "db:db"
+    networks:
+      - postgres
     depends_on:
       db:
         condition: service_healthy
+
+networks:
+  postgres:
+    driver: host
