@@ -157,6 +157,5 @@ services:
       db:
         condition: service_healthy
 
-networks:
-  postgres:
-    driver: bridge
+networks: {postgres: {} }
+
