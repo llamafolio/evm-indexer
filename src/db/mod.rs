@@ -89,7 +89,7 @@ impl Database {
         let mut limit = 250;
 
         if self.is_local_rpc {
-            limit = 1000;
+            limit = 5000;
         }
 
         let txs: Vec<String> = txs_no_receipt_table
