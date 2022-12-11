@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=indexer
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=indexer
-    volumes: 
+    volumes:
       - ./database/:/var/lib/postgresql/data
     command: >
       -c work_mem=2GB
@@ -31,25 +31,25 @@ services:
       - "8000:5432"
 
   graphql-engine:
-      image: hasura/graphql-engine:latest
-      container_name: indexer-hasura
-      ports:
-        - "8080:8080"
-      restart: always
-      env_file:
-        - .env
-      environment:
-        HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
-        HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
-        HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
-        HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
-        HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
-      networks:
-        - postgres  
-      depends_on:
-        db:
-          condition: service_healthy   
-          
+    image: hasura/graphql-engine:latest
+    container_name: indexer-hasura
+    ports:
+      - "8080:8080"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
+      HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
+    networks:
+      - postgres
+    depends_on:
+      db:
+        condition: service_healthy
+
   eth-indexer:
     container_name: eth-indexer
     image: indexer:latest
@@ -58,12 +58,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer"
+    command: "evm-indexer"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy   
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -75,12 +75,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain polygon"
+    command: "evm-indexer --chain polygon"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy   
+        condition: service_healthy
 
   fantom-indexer:
     container_name: fantom-indexer
@@ -90,12 +90,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain fantom"
+    command: "evm-indexer --chain fantom"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy           
+        condition: service_healthy
 
   optimism-indexer:
     container_name: optimism-indexer
@@ -105,12 +105,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain optimism"
+    command: "evm-indexer --chain optimism"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy                
+        condition: service_healthy
 
   gnosis-indexer:
     container_name: gnosis-indexer
@@ -120,12 +120,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain gnosis"
+    command: "evm-indexer --chain gnosis"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy  
+        condition: service_healthy
 
   bsc-indexer:
     container_name: bsc-indexer
@@ -135,12 +135,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain bsc"
+    command: "evm-indexer --chain bsc"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy  
+        condition: service_healthy
 
   avalanche-indexer:
     container_name: avalanche-indexer
@@ -150,12 +150,12 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
     env_file:
       - .env
-    command:  "evm-indexer --chain avalanche"
+    command: "evm-indexer --chain avalanche"
     networks:
       - postgres
     depends_on:
       db:
-        condition: service_healthy  
+        condition: service_healthy
 
 networks:
   postgres:
