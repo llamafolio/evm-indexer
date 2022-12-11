@@ -273,7 +273,7 @@ impl Rpc {
 
         let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
 
-        if config.chain.name.clone() == "mainnet" {
+        if config.chain.name.clone() == "mainnet" || config.chain.name.clone() == "gnosis" {
             let mut receipts = self.get_block_receipts(&range).await.unwrap();
             tx_receipts.append(&mut receipts);
         } else {
