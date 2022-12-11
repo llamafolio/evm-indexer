@@ -36,12 +36,12 @@ services:
     environment:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
-      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
-      HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@10.0.0.1/postgres
+      HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -51,13 +51,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -67,13 +67,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain polygon"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -83,13 +83,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain fantom"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -99,13 +99,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain optimism"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -115,13 +115,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain gnosis"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -131,13 +131,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain bsc"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -147,13 +147,13 @@ services:
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@10.0.0.1/indexer
     env_file:
       - .env
     command: "evm-indexer --chain avalanche"
     network_mode: host
     extra_hosts:
-      - "db:db"
+      - "db:10.0.0.1"
     depends_on:
       db:
         condition: service_healthy
