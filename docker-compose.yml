@@ -9,7 +9,7 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
-    command: "evm-indexer"
+    command: "evm-indexer --bach-size 500 --workers 20"
     network_mode: host
 
   polygon-indexer:
@@ -53,7 +53,7 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain gnosis"
+    command: "evm-indexer --bach-size 500 --workers 20"
     network_mode: host
 
   bsc-indexer:
