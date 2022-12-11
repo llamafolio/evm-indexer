@@ -147,7 +147,7 @@ async fn main() {
 
     loop {
         let rpc = available_providers[0].clone();
-        rpc.subscribe_heads(&db).await;
+        rpc.subscribe_heads(&config, &db).await;
         sleep(Duration::from_secs(180)).await;
     }
 }

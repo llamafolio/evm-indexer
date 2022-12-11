@@ -1,6 +1,6 @@
 mod client;
 
-use std::{collections::HashMap, f32::consts::E, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
 use jsonrpsee::core::{client::ClientT, params::BatchRequestBuilder, rpc_params};
@@ -175,7 +175,7 @@ impl Rpc {
         }
     }
 
-    pub async fn subscribe_heads(&self, db: &Database) {
+    pub async fn subscribe_heads(&self, config: &Config, db: &Database) {
         match self.wss.clone() {
             Some(wss) => {
                 let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
@@ -203,7 +203,7 @@ impl Rpc {
                                     db_contract_interactions,
                                     db_token_transfers,
                                 ) = self
-                                    .get_blocks([block_number.as_u64() as i64].to_vec())
+                                    .get_blocks(config, [block_number.as_u64() as i64].to_vec())
                                     .await
                                     .unwrap();
 
