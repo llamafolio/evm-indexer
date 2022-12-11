@@ -26,10 +26,14 @@ services:
       timeout: 5s
       retries: 5
     network_mode: host
+    ports:
+      - "8000:5432"
 
   graphql-engine:
     image: hasura/graphql-engine:latest
     container_name: indexer-hasura
+    ports:
+      - "8080:8080"
     restart: always
     env_file:
       - .env
