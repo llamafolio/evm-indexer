@@ -36,4 +36,8 @@ pub fn format_receipt(b: serde_json::Value) -> Result<TransactionReceipt, serde_
     return serde_json::from_value(b);
 }
 
+pub fn format_receipts(b: serde_json::Value) -> Result<Vec<TransactionReceipt>, serde_json::Error> {
+    return serde_json::from_value(b);
+}
+
 pub static ERC20_ABI: &[u8] = include_bytes!("res/abi/erc20.json").as_slice();

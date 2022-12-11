@@ -30,7 +30,7 @@ use crate::{
     },
     utils::{
         format_address, format_block, format_bool, format_bytes, format_hash, format_receipt,
-        ERC20_ABI,
+        format_receipts, ERC20_ABI,
     },
 };
 
@@ -143,7 +143,7 @@ impl Rpc {
     pub async fn get_block_receipts(&self, blocks: &Vec<i64>) -> Result<Vec<TransactionReceipt>> {
         let mut batch = BatchRequestBuilder::new();
 
-        let mut receipts: Vec<TransactionReceipt> = Vec::new();
+        let mut receipts: Vec<Vec<TransactionReceipt>> = Vec::new();
 
         if blocks.len() == 0 {
             return Ok(receipts);
@@ -161,7 +161,7 @@ impl Rpc {
             Ok(result) => {
                 for receipt in result.into_iter() {
                     match receipt {
-                        Ok(tx_receipt) => match format_receipt(tx_receipt) {
+                        Ok(tx_receipt) => match format_receipts(tx_receipt) {
                             Ok(receipt_formatted) => receipts.push(receipt_formatted),
                             Err(_) => continue,
                         },
@@ -169,7 +169,10 @@ impl Rpc {
                     }
                 }
 
-                Ok(receipts)
+                let flatten_receipts: Vec<TransactionReceipt> =
+                    receipts.into_iter().flatten().collect();
+
+                Ok(flatten_receipts)
             }
             Err(_) => Ok(Vec::new()),
         }
