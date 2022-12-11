@@ -157,5 +157,6 @@ services:
       db:
         condition: service_healthy
 
-networks: {postgres: {} }
-
+networks:
+  postgres:
+    driver: host
