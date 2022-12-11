@@ -57,6 +57,7 @@ pub struct State {
 pub struct Database {
     pub db_url: String,
     pub chain: Chain,
+    pub is_local_rpc: bool,
 }
 
 impl Database {
@@ -71,6 +72,7 @@ impl Database {
         Ok(Self {
             db_url: config.db_url.to_string(),
             chain: config.chain,
+            is_local_rpc: config.use_local_rpc,
         })
     }
 
@@ -84,10 +86,16 @@ impl Database {
     pub async fn get_missing_receipts_txs(&self) -> Result<Vec<String>> {
         let mut connection = self.establish_connection();
 
+        let mut limit = 250;
+
+        if self.is_local_rpc {
+            limit = 1000;
+        }
+
         let txs: Vec<String> = txs_no_receipt_table
             .select(txs_no_receipt::hash)
             .filter(txs_no_receipt::chain.eq(self.chain.name.to_string()))
-            .limit(250)
+            .limit(limit)
             .load::<String>(&mut connection)
             .unwrap();
 
