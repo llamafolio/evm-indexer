@@ -1,164 +1,79 @@
 version: '3.7'
 
 services:
-  db:
-    image: postgres:14.1-alpine
-    container_name: indexer-db
-    restart: always
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_USER=indexer
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRES_DB=indexer
-    volumes:
-      - ./database/:/var/lib/postgresql/data
-    command: >
-      -c work_mem=2GB
-      -c max_wal_size=40GB  
-      -c max_connections=500  
-      -c max_parallel_maintenance_workers=16
-      -c max_parallel_workers=16
-      -c max_worker_processes=16
-      -c maintenance_work_mem=168GB
-      -c checkpoint_timeout=120min
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U indexer"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - postgres
-    ports:
-      - "8000:5432"
-
-  graphql-engine:
-    image: hasura/graphql-engine:latest
-    container_name: indexer-hasura
-    ports:
-      - "8080:8080"
-    restart: always
-    env_file:
-      - .env
-    environment:
-      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
-      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
-      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
-      HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
-
   eth-indexer:
     container_name: eth-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      
+    network_mode: host
+
   polygon-indexer:
     container_name: polygon-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain polygon"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
+    network_mode: host
 
   fantom-indexer:
     container_name: fantom-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain fantom"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
+    network_mode: host
 
   optimism-indexer:
     container_name: optimism-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain optimism"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
+    network_mode: host
 
   gnosis-indexer:
     container_name: gnosis-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain gnosis"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
+    network_mode: host
 
   bsc-indexer:
     container_name: bsc-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain bsc"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
+    network_mode: host
 
   avalanche-indexer:
     container_name: avalanche-indexer
     image: indexer:latest
     restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
     command: "evm-indexer --chain avalanche"
-    networks:
-      - postgres
-    depends_on:
-      db:
-        condition: service_healthy
-
-networks:
-  postgres:
-    driver: bridge
+    network_mode: host

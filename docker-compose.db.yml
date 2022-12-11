@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  db:
+    image: postgres:14.1-alpine
+    container_name: indexer-db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=indexer
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=indexer
+    volumes:
+      - ./database/:/var/lib/postgresql/data
+    command: >
+      -c work_mem=2GB
+      -c max_wal_size=40GB  
+      -c max_connections=500  
+      -c max_parallel_maintenance_workers=16
+      -c max_parallel_workers=16
+      -c max_worker_processes=16
+      -c maintenance_work_mem=168GB
+      -c checkpoint_timeout=120min
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indexer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - postgres
+    ports:
+      - "8000:5432"
+
+  graphql-engine:
+    image: hasura/graphql-engine:latest
+    container_name: indexer-hasura
+    ports:
+      - "8080:8080"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://indexer:${DATABASE_PASSWORD}@db/postgres
+      HASURA_GRAPHQL_DATABASE_URL: postgresql://indexer:${DATABASE_PASSWORD}@db/indexer
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_PASSWORD}
+    networks:
+      - postgres
+    depends_on:
+      db:
+        condition: service_healthy
+        
+networks:
+  postgres:
+    driver: bridge
