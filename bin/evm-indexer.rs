@@ -100,14 +100,21 @@ async fn main() {
     tokio::spawn({
         let db = db.clone();
         let config = config.clone();
-        let provider = &Provider {
+
+        let mut provider = Provider {
             name: String::from("fallback"),
             http: config.fallback_rpc.clone(),
             wss: String::from(""),
             wss_access: false,
         };
 
-        let rpc = Rpc::new(&config, provider).await.unwrap();
+        if config.use_local_rpc {
+            provider.http = config.clone().local_rpc;
+            provider.wss = config.clone().local_rpc_ws;
+            provider.wss_access = true;
+        }
+
+        let rpc = Rpc::new(&config, &provider).await.unwrap();
 
         async move {
             loop {
