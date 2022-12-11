@@ -1,7 +1,7 @@
 version: '3.7'
 
 services:
-  graphql-engine:
+  hasura:
     image: hasura/graphql-engine:latest
     container_name: indexer-hasura
     restart: always
