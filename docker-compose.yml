@@ -75,5 +75,5 @@ services:
       - DATABASE_URL=postgresql://indexer:${DATABASE_PASSWORD}@localhost:8000/indexer
     env_file:
       - .env
-    command: "evm-indexer --chain avalanche"
+    command: "evm-indexer --chain avalanche  --batch-size 500 --workers 20"
     network_mode: host
