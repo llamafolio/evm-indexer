@@ -1,3 +1,5 @@
+version: '3.7'
+
 services:
   db:
     image: postgres:14.1-alpine
@@ -64,7 +66,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      
   polygon-indexer:
     container_name: polygon-indexer
     image: indexer:latest
