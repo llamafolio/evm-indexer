@@ -232,8 +232,14 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         return Ok(());
     }
 
+    let mut chunk_size = 50;
+
+    if config.use_local_rpc {
+        chunk_size = 200;
+    }
+
     let chunks: Vec<Vec<String>> = missing_txs
-        .chunks(50)
+        .chunks(chunk_size)
         .into_iter()
         .map(|chunk| chunk.to_vec())
         .collect();
