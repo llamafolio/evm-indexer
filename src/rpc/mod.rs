@@ -146,7 +146,7 @@ impl Rpc {
         let mut receipts: Vec<Vec<TransactionReceipt>> = Vec::new();
 
         if blocks.len() == 0 {
-            return Ok(receipts);
+            return Ok(Vec::new());
         }
 
         for block in blocks.iter() {
