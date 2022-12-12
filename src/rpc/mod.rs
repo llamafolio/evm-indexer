@@ -274,7 +274,6 @@ impl Rpc {
         let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
 
         if config.chain.name.clone() == "mainnet"
-            || config.chain.name.clone() == "gnosis"
             || config.chain.name.clone() == "polygon"
             || config.chain.name.clone() == "bsc"
         {
