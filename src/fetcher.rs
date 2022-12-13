@@ -32,8 +32,8 @@ pub struct AbiResponse {
     pub result: String,
 }
 
-pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) -> Result<()> {
-    let rpc_last_block = providers[0].get_last_block().await.unwrap();
+pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<()> {
+    let rpc_last_block = rpc.get_last_block().await.unwrap();
 
     let full_blocks_set: Vec<i64> = (config.start_block..rpc_last_block).collect();
 
@@ -46,130 +46,89 @@ pub async fn fetch_blocks(providers: &Vec<Rpc>, db: &Database, config: &Config) 
 
     let missing_blocks_amount = missing_blocks.len();
 
-    let providers_amount = providers.len();
-
     info!(
-        "Fetching {} blocks with batches of {} blocks with {} workers from {} providers",
-        missing_blocks_amount, config.batch_size, config.workers, providers_amount
+        "Fetching {} blocks with batches of {} blocks with {} workers",
+        missing_blocks_amount, config.batch_size, config.workers
     );
 
     let chunks: Vec<Vec<i64>> = missing_blocks
         .clone()
-        .chunks(config.batch_size * providers_amount * config.workers)
+        .chunks(config.batch_size)
         .map(|chunk| chunk.to_vec())
         .collect();
 
     for chunk in chunks {
-        let mut providers_work = vec![];
+        info!(
+            "Procesing chunk from block {} to {} for chain {}",
+            chunk.first().unwrap(),
+            chunk.last().unwrap(),
+            config.chain.name
+        );
 
-        let providers_chunks: Vec<Vec<i64>> = chunk
-            .chunks(config.batch_size * config.workers)
-            .map(|chunk| chunk.to_vec())
-            .collect();
+        let (
+            db_blocks,
+            mut db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creation,
+            db_contract_interaction,
+            db_token_transfers,
+        ) = rpc.get_blocks(&config, chunk).await.unwrap();
 
-        for (i, provider) in providers.into_iter().enumerate() {
-            let provider_work = tokio::spawn({
-                let chunk = providers_chunks[i].clone();
-                let rpc = provider.clone();
-                let db = db.clone();
-                let config = config.clone();
+        let db_txs_count = db_txs.len();
+        let db_tx_receipts_count = db_tx_receipts.len();
 
-                async move {
-                    info!(
-                        "Procesing chunk from block {} to {} for chain {}",
-                        chunk.first().unwrap(),
-                        chunk.last().unwrap(),
-                        config.chain.name
-                    );
-
-                    let mut works = vec![];
-
-                    let work_chunk = chunk.chunks(config.batch_size);
-
-                    for worker_part in work_chunk {
-                        works.push(rpc.get_blocks(&config, worker_part.to_vec()));
-                    }
-
-                    let block_responses = join_all(works).await;
-
-                    let res = block_responses.into_iter().map(Result::unwrap);
-
-                    if res.len() < config.workers {
-                        info!("Incomplete result returned, omitting...")
-                    }
-
-                    for (
-                        db_blocks,
-                        mut db_txs,
-                        db_tx_receipts,
-                        db_tx_logs,
-                        db_contract_creation,
-                        db_contract_interaction,
-                        db_token_transfers,
-                    ) in res
-                    {
-                        let db_txs_count = db_txs.len();
-                        let db_tx_receipts_count = db_tx_receipts.len();
-
-                        if db_txs_count != db_tx_receipts_count {
-                            info!(
-                                "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
-                                db_txs_count,
-                                db_tx_receipts_count,
-                                db_blocks.first().unwrap().number,
-                                db_blocks.last().unwrap().number,
-                            );
-                        }
-
-                        let db_receipts_hash: HashSet<String> = vec_string_to_set(
-                            db_tx_receipts
-                                .clone()
-                                .into_iter()
-                                .map(|receipt| receipt.hash)
-                                .collect(),
-                        );
-
-                        let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
-
-                        for tx in &mut db_txs {
-                            let hash = tx.hash.clone();
-                            let chain = tx.chain.clone();
-                            if !db_receipts_hash.contains(&hash) {
-                                db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
-                                    hash,
-                                    chain,
-                                    block_number: tx.block_number,
-                                });
-                            }
-                        }
-
-                        db.store_blocks_and_txs(
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creation,
-                            db_contract_interaction,
-                            db_token_transfers,
-                        )
-                        .await;
-
-                        if db_txs_with_no_receipts.len() > 0 {
-                            info!(
-                                "Storing {} txs with no receipt for future check",
-                                db_txs_with_no_receipts.len(),
-                            );
-
-                            db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
-                        }
-                    }
-                }
-            });
-
-            providers_work.push(provider_work)
+        if db_txs_count != db_tx_receipts_count {
+            info!(
+                "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
+                db_txs_count,
+                db_tx_receipts_count,
+                db_blocks.first().unwrap().number,
+                db_blocks.last().unwrap().number,
+            );
         }
 
-        join_all(providers_work).await;
+        let db_receipts_hash: HashSet<String> = vec_string_to_set(
+            db_tx_receipts
+                .clone()
+                .into_iter()
+                .map(|receipt| receipt.hash)
+                .collect(),
+        );
+
+        let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
+
+        for tx in &mut db_txs {
+            let hash = tx.hash.clone();
+            let chain = tx.chain.clone();
+            if !db_receipts_hash.contains(&hash) {
+                db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                    hash,
+                    chain,
+                    block_number: tx.block_number,
+                });
+            }
+        }
+
+        db.store_blocks_and_txs(
+            db_blocks,
+            db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creation,
+            db_contract_interaction,
+            db_token_transfers,
+        )
+        .await;
+
+        if db_txs_with_no_receipts.len() > 0 {
+            info!(
+                "Storing {} txs with no receipt for future check",
+                db_txs_with_no_receipts.len(),
+            );
+
+            db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+        }
     }
 
     Ok(())
@@ -232,11 +191,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         return Ok(());
     }
 
-    let mut chunk_size = 50;
-
-    if config.use_local_rpc {
-        chunk_size = 200;
-    }
+    let chunk_size = 200;
 
     let chunks: Vec<Vec<String>> = missing_txs
         .chunks(chunk_size)

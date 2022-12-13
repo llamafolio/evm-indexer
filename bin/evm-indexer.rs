@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use dotenv::dotenv;
-use evm_indexer::{chains::Provider, config::Config, db::Database, fetcher, rpc::Rpc};
+use evm_indexer::{config::Config, db::Database, fetcher, rpc::Rpc};
 use log::*;
 use simple_logger::SimpleLogger;
 use tokio::time::sleep;
@@ -26,67 +26,28 @@ async fn main() {
         .await
         .expect("Unable to connect to the database");
 
-    let mut available_providers: Vec<Rpc> = vec![];
-
-    if !config.use_local_rpc {
-        let ankr_provider = config.ankr_provider.clone();
-        if ankr_provider.is_available(&config.chain) {
-            let rpc = Rpc::new(&config, &ankr_provider).await.unwrap();
-            available_providers.push(rpc);
-        }
-
-        let llamanodes_provider = config.llamanodes_provider.clone();
-        if llamanodes_provider.is_available(&config.chain) {
-            let rpc = Rpc::new(&config, &llamanodes_provider).await.unwrap();
-            available_providers.push(rpc);
-        }
-
-        let pokt_provider = config.pokt_provider.clone();
-        if pokt_provider.is_available(&config.chain) {
-            let rpc = Rpc::new(&config, &pokt_provider).await.unwrap();
-            available_providers.push(rpc);
-        }
-
-        let blast_provider = config.blast_provider.clone();
-        if blast_provider.is_available(&config.chain) {
-            let rpc = Rpc::new(&config, &blast_provider).await.unwrap();
-            available_providers.push(rpc);
-        }
-    } else {
-        let local_rpc = config.local_rpc.clone();
-        let local_rpc_ws = config.local_rpc_ws.clone();
-
-        let provider = &Provider {
-            name: String::from("local"),
-            http: local_rpc,
-            wss: local_rpc_ws,
-            wss_access: true,
-        };
-
-        let rpc = Rpc::new(&config, provider).await.unwrap();
-
-        available_providers.push(rpc);
-    }
+    let rpc = Rpc::new(&config)
+        .await
+        .expect("Unable to connect to the rpc");
 
     tokio::spawn({
         let db = db.clone();
         let config = config.clone();
-        let available_providers = available_providers.clone();
+        let rpc = rpc.clone();
 
         async move {
             loop {
-                fetcher::fetch_blocks(&available_providers, &db, &config)
-                    .await
-                    .unwrap();
+                fetcher::fetch_blocks(&db, &config, &rpc).await.unwrap();
                 sleep(Duration::from_secs(5)).await;
             }
         }
     });
 
     tokio::spawn({
-        let rpc = available_providers[0].clone();
         let db = db.clone();
         let config = config.clone();
+        let rpc = rpc.clone();
+
         async move {
             loop {
                 fetcher::fetch_tokens_metadata(&rpc, &db, &config)
@@ -100,21 +61,7 @@ async fn main() {
     tokio::spawn({
         let db = db.clone();
         let config = config.clone();
-
-        let mut provider = Provider {
-            name: String::from("fallback"),
-            http: config.fallback_rpc.clone(),
-            wss: String::from(""),
-            wss_access: false,
-        };
-
-        if config.use_local_rpc {
-            provider.http = config.clone().local_rpc;
-            provider.wss = config.clone().local_rpc_ws;
-            provider.wss_access = true;
-        }
-
-        let rpc = Rpc::new(&config, &provider).await.unwrap();
+        let rpc = rpc.clone();
 
         async move {
             loop {
@@ -126,7 +73,7 @@ async fn main() {
         }
     });
 
-    let abi_source_token = config.abi_source_token.clone();
+    let abi_source_token = config.abi_source_api_token.clone();
 
     if abi_source_token != String::from("") {
         tokio::spawn({
@@ -146,8 +93,8 @@ async fn main() {
     }
 
     loop {
-        let rpc = available_providers[0].clone();
+        let rpc = rpc.clone();
         rpc.subscribe_heads(&config, &db).await;
-        sleep(Duration::from_secs(180)).await;
+        sleep(Duration::from_secs(5)).await;
     }
 }
