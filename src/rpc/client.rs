@@ -1,6 +1,8 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use reth_primitives::{BlockNumber, H256, U256};
-use reth_rpc_types::{RichBlock, TransactionReceipt};
+use reth_primitives::{
+    rpc::{Block, Transaction, TransactionReceipt},
+    BlockNumber, H256, U256,
+};
 
 #[rpc(server, client)]
 #[async_trait]
@@ -13,9 +15,16 @@ pub trait EthApi {
         &self,
         number: BlockNumber,
         full: bool,
-    ) -> RpcResult<Option<RichBlock>>;
+    ) -> RpcResult<Option<Block<Transaction>>>;
 
     /// Returns the receipt of a transaction by transaction hash.
     #[method(name = "eth_getTransactionReceipt")]
     async fn transaction_receipt(&self, hash: H256) -> RpcResult<Option<TransactionReceipt>>;
+
+    /// Returns the receipt of a transaction by transaction hash.
+    #[method(name = "eth_getBlockReceipts")]
+    async fn block_receipts(
+        &self,
+        block: BlockNumber,
+    ) -> RpcResult<Option<Vec<TransactionReceipt>>>;
 }
