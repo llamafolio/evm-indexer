@@ -165,9 +165,9 @@ impl Rpc {
                     match receipt {
                         Ok(tx_receipt) => match format_receipts(tx_receipt) {
                             Ok(receipt_formatted) => receipts.push(receipt_formatted),
-                            Err(_) => continue,
+                            Err(err) => println!("{}", err),
                         },
-                        Err(_) => continue,
+                        Err(err) => println!("{}", err.message()),
                     }
                 }
 
