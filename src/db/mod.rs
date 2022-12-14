@@ -33,7 +33,6 @@ use self::schema::blocks::table as blocks_table;
 use self::schema::contract_abis;
 use self::schema::contract_abis::table as contract_abis_table;
 use self::schema::contract_creations;
-use self::schema::contract_creations::block;
 use self::schema::contract_creations::table as contract_creations_table;
 use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
