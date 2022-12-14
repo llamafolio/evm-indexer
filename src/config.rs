@@ -142,5 +142,12 @@ pub fn get_abi_source_token(chain: String) -> String {
         };
     }
 
+    if chain == "arbitrum" {
+        abi_source_token = match std::env::var("ARBISCAN_API_TOKEN") {
+            Ok(key) => key,
+            Err(_) => String::from(""),
+        };
+    }
+
     return abi_source_token;
 }
