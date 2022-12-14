@@ -75,8 +75,15 @@ static AVALANCHE: Chain = Chain {
     abi_source_url: "https://api.snowtrace.io/",
 };
 
-pub static AVAILABLE_CHAINS: [Chain; 8] = [
-    ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM, GNOSIS, BNB_CHAIN, AVALANCHE,
+static DOGECHAIN: Chain = Chain {
+    id: 2000,
+    name: "dogechain",
+    blocks_reorg: 12,
+    abi_source_url: "https://explorer.dogechain.dog/",
+};
+
+pub static AVAILABLE_CHAINS: [Chain; 9] = [
+    ETHEREUM, POLYGON, FTM, OPTIMISM, ARBITTUM, GNOSIS, BNB_CHAIN, AVALANCHE, DOGECHAIN,
 ];
 
 pub fn get_chains() -> HashMap<String, Chain> {
