@@ -33,6 +33,7 @@ use self::schema::blocks::table as blocks_table;
 use self::schema::contract_abis;
 use self::schema::contract_abis::table as contract_abis_table;
 use self::schema::contract_creations;
+use self::schema::contract_creations::block;
 use self::schema::contract_creations::table as contract_creations_table;
 use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
@@ -275,11 +276,13 @@ impl Database {
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::blocks::dsl::blocks)
-            .values(blocks)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store blocks into database");
+        for chunk in blocks.chunks(500) {
+            diesel::insert_into(schema::blocks::dsl::blocks)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store blocks into database");
+        }
 
         Ok(())
     }
@@ -287,11 +290,13 @@ impl Database {
     async fn store_txs(&self, txs: &Vec<DatabaseTx>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::txs::dsl::txs)
-            .values(txs)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store txs into database");
+        for chunk in txs.chunks(500) {
+            diesel::insert_into(schema::txs::dsl::txs)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store txs into database");
+        }
 
         Ok(())
     }
@@ -299,11 +304,13 @@ impl Database {
     async fn store_tx_receipts(&self, tx_receipts: &Vec<DatabaseTxReceipt>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::txs_receipts::dsl::txs_receipts)
-            .values(tx_receipts)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store tx_receipts into database");
+        for chunk in tx_receipts.chunks(500) {
+            diesel::insert_into(schema::txs_receipts::dsl::txs_receipts)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store tx_receipts into database");
+        }
 
         Ok(())
     }
@@ -311,11 +318,13 @@ impl Database {
     async fn store_tx_logs(&self, logs: &Vec<DatabaseTxLogs>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::logs::dsl::logs)
-            .values(logs)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store logs into database");
+        for chunk in logs.chunks(500) {
+            diesel::insert_into(schema::logs::dsl::logs)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store logs into database");
+        }
 
         Ok(())
     }
@@ -326,11 +335,13 @@ impl Database {
     ) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::contract_creations::dsl::contract_creations)
-            .values(contract_creations)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store contract creations into database");
+        for chunk in contract_creations.chunks(500) {
+            diesel::insert_into(schema::contract_creations::dsl::contract_creations)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store contract creations into database");
+        }
 
         Ok(())
     }
@@ -341,11 +352,13 @@ impl Database {
     ) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::contract_interactions::dsl::contract_interactions)
-            .values(contract_interactions)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store contract interactions into database");
+        for chunk in contract_interactions.chunks(500) {
+            diesel::insert_into(schema::contract_interactions::dsl::contract_interactions)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store contract interactions into database");
+        }
 
         Ok(())
     }
@@ -356,11 +369,13 @@ impl Database {
     ) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::token_transfers::dsl::token_transfers)
-            .values(token_transfers)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store token transfers into database");
+        for chunk in token_transfers.chunks(500) {
+            diesel::insert_into(schema::token_transfers::dsl::token_transfers)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store token transfers into database");
+        }
 
         Ok(())
     }
@@ -368,11 +383,13 @@ impl Database {
     pub async fn store_tokens(&self, tokens: &Vec<DatabaseToken>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::tokens::dsl::tokens)
-            .values(tokens)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store tokens into database");
+        for chunk in tokens.chunks(500) {
+            diesel::insert_into(schema::tokens::dsl::tokens)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store tokens into database");
+        }
 
         Ok(())
     }
@@ -380,11 +397,13 @@ impl Database {
     pub async fn store_excluded_tokens(&self, tokens: &Vec<DatabaseExcludedToken>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::excluded_tokens::dsl::excluded_tokens)
-            .values(tokens)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store excluded tokens into database");
+        for chunk in tokens.chunks(500) {
+            diesel::insert_into(schema::excluded_tokens::dsl::excluded_tokens)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store excluded tokens into database");
+        }
 
         Ok(())
     }
@@ -392,11 +411,13 @@ impl Database {
     pub async fn store_txs_no_receipt(&self, txs: &Vec<DatabaseTxNoReceipt>) {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::txs_no_receipt::dsl::txs_no_receipt)
-            .values(txs)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store transactions with no receipt into database");
+        for chunk in txs.chunks(500) {
+            diesel::insert_into(schema::txs_no_receipt::dsl::txs_no_receipt)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store transactions with no receipt into database");
+        }
     }
 
     pub async fn store_contract_abi(&self, contract_abi: &DatabaseContractABI) {
@@ -417,11 +438,13 @@ impl Database {
     pub async fn store_abi_method_ids(&self, method_ids: &Vec<DatabaseMethodID>) {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(schema::method_ids::dsl::method_ids)
-            .values(method_ids)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store method ids into database");
+        for chunk in method_ids.chunks(500) {
+            diesel::insert_into(schema::method_ids::dsl::method_ids)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store method ids into database");
+        }
     }
 
     async fn update_chain_state(&self) -> Result<()> {
