@@ -40,7 +40,7 @@ use self::client::EthApiClient;
 pub struct Rpc {
     pub web3: Web3<Http>,
     pub http_client: HttpClient,
-    pub wss: Web3<WebSocket>,
+    pub wss: Option<Web3<WebSocket>>,
     pub chain: Chain,
     pub requests_batch: usize,
 }
@@ -49,14 +49,17 @@ impl Rpc {
     pub async fn new(config: &Config) -> Result<Self> {
         let http = Http::new(&config.local_rpc_http).unwrap();
 
-        let wss = WebSocket::new(&config.local_rpc_wss).await.unwrap();
-
         let client = HttpClientBuilder::default()
             .build(&config.local_rpc_http.clone())
             .unwrap();
 
+        let wss = match WebSocket::new(&config.local_rpc_wss).await {
+            Ok(ws) => Some(Web3::new(ws)),
+            Err(_) => None,
+        };
+
         Ok(Self {
-            wss: Web3::new(wss),
+            wss,
             http_client: client,
             chain: config.chain,
             requests_batch: config.batch_size.clone(),
@@ -181,12 +184,12 @@ impl Rpc {
     }
 
     pub async fn subscribe_heads(&self, config: &Config, db: &Database) {
-        let mut sub = self
-            .wss
-            .eth_subscribe()
-            .subscribe_new_heads()
-            .await
-            .unwrap();
+        let wss = match &self.wss {
+            Some(wss) => wss,
+            None => return,
+        };
+
+        let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
 
         info!("Initializing new blocks listener");
 

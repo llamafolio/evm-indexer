@@ -95,6 +95,6 @@ async fn main() {
     loop {
         let rpc = rpc.clone();
         rpc.subscribe_heads(&config, &db).await;
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(10)).await;
     }
 }
