@@ -107,28 +107,6 @@ impl Rpc {
         }
     }
 
-    async fn get_block(&self, block: i64) -> Result<Option<Block<Transaction>>> {
-        let block = self
-            .http_client
-            .block_by_number(block as u64, true)
-            .await
-            .unwrap();
-
-        match block {
-            Some(block) => Ok(Some(block)),
-            None => Ok(None),
-        }
-    }
-
-    async fn get_block_receipts(&self, block: i64) -> Result<Option<Vec<TransactionReceipt>>> {
-        let receipts = self.http_client.block_receipts(block as u64).await.unwrap();
-
-        match receipts {
-            Some(block) => Ok(Some(block)),
-            None => Ok(None),
-        }
-    }
-
     pub async fn get_txs_receipts(&self, txs: &Vec<String>) -> Result<Vec<TransactionReceipt>> {
         let mut batch = BatchRequestBuilder::new();
 
@@ -164,7 +142,7 @@ impl Rpc {
         }
     }
 
-    pub async fn get_blocks_receipts(&self, blocks: &Vec<i64>) -> Result<Vec<TransactionReceipt>> {
+    pub async fn get_block_receipts(&self, blocks: &Vec<i64>) -> Result<Vec<TransactionReceipt>> {
         let mut batch = BatchRequestBuilder::new();
 
         let mut receipts: Vec<Vec<TransactionReceipt>> = Vec::new();
@@ -258,7 +236,6 @@ impl Rpc {
             }
         }
     }
-
     pub async fn get_blocks(
         &self,
         config: &Config,
@@ -302,7 +279,7 @@ impl Rpc {
             || config.chain.name.clone() == "polygon"
             || config.chain.name.clone() == "bsc"
         {
-            let mut receipts = self.get_blocks_receipts(&range).await.unwrap();
+            let mut receipts = self.get_block_receipts(&range).await.unwrap();
             tx_receipts.append(&mut receipts);
         } else {
             for chunk in receipts_chunks {
@@ -343,81 +320,6 @@ impl Rpc {
 
         Ok((
             db_blocks,
-            db_txs,
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creations,
-            db_contract_interactions,
-            db_token_transfers,
-        ))
-    }
-
-    pub async fn get_block_data(
-        &self,
-        config: &Config,
-        block_number: i64,
-    ) -> Result<(
-        DatabaseBlock,
-        Vec<DatabaseTx>,
-        Vec<DatabaseTxReceipt>,
-        Vec<DatabaseTxLogs>,
-        Vec<DatabaseContractCreation>,
-        Vec<DatabaseContractInteraction>,
-        Vec<DatabaseTokenTransfers>,
-    )> {
-        let block = self.get_block(block_number).await.unwrap().unwrap();
-
-        let db_block = DatabaseBlock::from_web3(&block, self.chain.name.to_string());
-
-        let web3_txs = block.transactions.clone();
-
-        let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
-
-        if config.chain.name.clone() == "mainnet"
-            || config.chain.name.clone() == "polygon"
-            || config.chain.name.clone() == "bsc"
-        {
-            let mut receipts = self
-                .get_block_receipts(block_number)
-                .await
-                .unwrap()
-                .unwrap();
-            tx_receipts.append(&mut receipts);
-        } else {
-            let tx_hashes: Vec<String> = web3_txs
-                .clone()
-                .into_iter()
-                .map(|tx| format_hash(tx.hash))
-                .collect();
-            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-            tx_receipts.append(&mut receipts_chunk);
-        }
-
-        let mut db_txs: Vec<DatabaseTx> = web3_txs
-            .into_iter()
-            .map(|tx| {
-                DatabaseTx::from_web3(&tx, self.chain.name.to_string(), Some(&db_block.timestamp))
-            })
-            .collect();
-
-        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
-            self.get_metadata_from_receipts(tx_receipts).await.unwrap();
-
-        let mut db_contract_interactions = vec![];
-
-        for db_tx in db_txs.iter_mut() {
-            if db_tx.input != "0x" {
-                let db_contract_interaction = DatabaseContractInteraction::from_transaction(
-                    db_tx,
-                    self.chain.name.to_string(),
-                );
-
-                db_contract_interactions.push(db_contract_interaction);
-            }
-        }
-
-        Ok((
-            db_block,
             db_txs,
             db_tx_receipts,
             db_tx_logs,

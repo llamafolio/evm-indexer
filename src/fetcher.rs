@@ -51,22 +51,29 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
         missing_blocks_amount, config.batch_size, config.workers
     );
 
-    for block in missing_blocks {
+    let chunks: Vec<Vec<i64>> = missing_blocks
+        .clone()
+        .chunks(config.batch_size)
+        .map(|chunk| chunk.to_vec())
+        .collect();
+
+    for chunk in chunks {
         info!(
-            "Procesing block {} for chain {}",
-            block.clone(),
+            "Procesing chunk from block {} to {} for chain {}",
+            chunk.first().unwrap(),
+            chunk.last().unwrap(),
             config.chain.name
         );
 
         let (
-            db_block,
+            db_blocks,
             mut db_txs,
             db_tx_receipts,
             db_tx_logs,
             db_contract_creation,
             db_contract_interaction,
             db_token_transfers,
-        ) = rpc.get_block_data(&config, block).await.unwrap();
+        ) = rpc.get_blocks(&config, chunk).await.unwrap();
 
         let db_txs_count = db_txs.len();
         let db_tx_receipts_count = db_tx_receipts.len();
@@ -75,8 +82,11 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
 
         if db_txs_count != db_tx_receipts_count {
             info!(
-                "Not enough receipts for block: txs({}) receipts ({})",
-                db_txs_count, db_tx_receipts_count,
+                "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
+                db_txs_count,
+                db_tx_receipts_count,
+                db_blocks.first().unwrap().number,
+                db_blocks.last().unwrap().number,
             );
 
             enough_receipts = false;
@@ -114,7 +124,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
         }
 
         db.store_blocks_and_txs(
-            vec![db_block],
+            db_blocks,
             db_txs,
             db_tx_receipts,
             db_tx_logs,
@@ -124,6 +134,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
         )
         .await;
     }
+
     Ok(())
 }
 
