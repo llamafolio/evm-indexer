@@ -70,6 +70,12 @@ impl Config {
 
         let abi_source_api_token = get_abi_source_token(chainname.clone());
 
+        let mut local_rpc_wss: String = format!("ws://localhost:{}", args.rpc_port);
+
+        if chainname == "dogechain" {
+            local_rpc_wss = format!("ws://localhost:{}/ws", args.rpc_port);
+        }
+
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
             debug: args.debug,
@@ -79,7 +85,7 @@ impl Config {
             chain,
             abi_source_api_token,
             local_rpc_http: format!("http://localhost:{}", args.rpc_port),
-            local_rpc_wss: format!("ws://localhost:{}", args.rpc_port),
+            local_rpc_wss,
         }
     }
 }
