@@ -1,1 +1,2 @@
 DROP TABLE contracts_adapters;
+DROP INDEX contracts_adapters_by_address;
