@@ -382,6 +382,8 @@ pub async fn fetch_adapters(config: &Config, db: &Database) -> Result<()> {
         chainname = "ethereum";
     }
 
+    info!("Fetching adapter IDs for {}", chainname);
+
     let uri = format!(
         "https://rifcoe52qb.execute-api.eu-central-1.amazonaws.com/adapters/{}",
         chainname
@@ -413,6 +415,8 @@ pub async fn fetch_adapters(config: &Config, db: &Database) -> Result<()> {
                                 address: contract_adapter.address,
                             })
                             .collect();
+
+                        info!("Storing {} adapter ids", contract_adapters.len());
 
                         db.store_contract_adapters(&contract_adapters).await;
 

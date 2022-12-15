@@ -38,16 +38,9 @@ The indexer creates tables for:
 6. Contract Interactions
 7. Token Transfers
 8. Tokens Details
+9. Contract ABIs (filled only if the abi source token is provided.)
 
 The information structure is explained in the [database structure documentation](./doc/DATABASE.md).
-
-## Providers
-
-TODO
-
-## Environment Variables
-
-TODO
 
 ## Install
 
@@ -79,13 +72,23 @@ cargo build --release
 
 ### Docker
 
-To use docker, you need to build the image and tag it as `indexer`
+1. Clone the repository
+
+```
+git clone https://github.com/eabz/evm-indexer && cd evm-indexer
+```
+
+2. Build the image and tag it as `indexer`
 
 ```
 docker build . -t indexer
 ```
 
-TODO
+3. Run the image
+
+```
+docker run --env-file ./.env indexer -d
+```
 
 ## Contribute
 

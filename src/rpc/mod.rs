@@ -53,6 +53,12 @@ impl Rpc {
             .build(&config.local_rpc_http.clone())
             .unwrap();
 
+        let client_id = client.chain_id().await.unwrap().as_u64() as i64;
+
+        if client_id != config.chain.id {
+            panic!("RPC client is not for the current chain")
+        }
+
         let wss = match WebSocket::new(&config.local_rpc_wss).await {
             Ok(ws) => Some(Web3::new(ws)),
             Err(_) => None,
