@@ -48,6 +48,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    contracts_adapters (address_with_chain) {
+        address_with_chain -> Varchar,
+        address -> Varchar,
+        chain -> Varchar,
+        adapter_id -> Varchar,
+    }
+}
+
+diesel::table! {
     excluded_tokens (address_with_chain) {
         address_with_chain -> Varchar,
         address -> Varchar,
@@ -149,6 +158,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     contract_abis,
     contract_creations,
     contract_interactions,
+    contracts_adapters,
     excluded_tokens,
     logs,
     method_ids,

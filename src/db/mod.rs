@@ -17,6 +17,7 @@ use crate::config::Config;
 use self::models::DatabaseBlock;
 
 use self::models::DatabaseContractABI;
+use self::models::DatabaseContractAdapter;
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
 use self::models::DatabaseExcludedToken;
@@ -443,6 +444,18 @@ impl Database {
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
                 .expect("Unable to store method ids into database");
+        }
+    }
+
+    pub async fn store_contract_adapters(&self, adapters: &Vec<DatabaseContractAdapter>) {
+        let mut connection = self.establish_connection();
+
+        for chunk in adapters.chunks(500) {
+            diesel::insert_into(schema::contracts_adapters::dsl::contracts_adapters)
+                .values(chunk)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to contract adapters into database");
         }
     }
 

@@ -11,8 +11,9 @@ use crate::utils::{
 };
 
 use super::schema::{
-    blocks, contract_abis, contract_creations, contract_interactions, excluded_tokens, logs,
-    method_ids, state, token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
+    blocks, contract_abis, contract_creations, contract_interactions, contracts_adapters,
+    excluded_tokens, logs, method_ids, state, token_transfers, tokens, txs, txs_no_receipt,
+    txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone)]
@@ -388,4 +389,13 @@ pub fn byte4_from_input(input: &String) -> [u8; 4] {
     ];
 
     return byte4;
+}
+
+#[derive(Queryable, Insertable, Debug, Clone)]
+#[diesel(table_name = contracts_adapters)]
+pub struct DatabaseContractAdapter {
+    pub address_with_chain: String,
+    pub adapter_id: String,
+    pub chain: String,
+    pub address: String,
 }

@@ -12,8 +12,8 @@ use crate::{
     config::Config,
     db::{
         models::{
-            DatabaseContractABI, DatabaseExcludedToken, DatabaseMethodID, DatabaseToken,
-            DatabaseTxNoReceipt,
+            DatabaseContractABI, DatabaseContractAdapter, DatabaseExcludedToken, DatabaseMethodID,
+            DatabaseToken, DatabaseTxNoReceipt,
         },
         Database,
     },
@@ -30,6 +30,17 @@ pub struct AbiResponse {
     pub status: String,
     pub message: String,
     pub result: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AdapterIDsResponse {
+    pub data: Vec<AdapterID>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AdapterID {
+    pub adapter_id: String,
+    pub address: String,
 }
 
 pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<()> {
@@ -362,6 +373,58 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
     }
 
     Ok(())
+}
+
+pub async fn fetch_adapters(config: &Config, db: &Database) -> Result<()> {
+    let mut chainname = config.chain.name;
+
+    if chainname == "mainnet" {
+        chainname = "ethereum";
+    }
+
+    let uri = format!(
+        "https://rifcoe52qb.execute-api.eu-central-1.amazonaws.com/adapters/{}",
+        chainname
+    );
+
+    let client = Client::new();
+
+    let response = client.get(uri).send().await;
+
+    match response {
+        Ok(data) => match data.text().await {
+            Ok(response) => {
+                let adapter_ids: Result<AdapterIDsResponse, Error> =
+                    serde_json::from_str(&response);
+
+                match adapter_ids {
+                    Ok(adapter_ids) => {
+                        let contract_adapters: Vec<DatabaseContractAdapter> = adapter_ids
+                            .data
+                            .into_iter()
+                            .map(|contract_adapter| DatabaseContractAdapter {
+                                address_with_chain: format!(
+                                    "{}-{}",
+                                    contract_adapter.address,
+                                    config.chain.name.clone()
+                                ),
+                                adapter_id: contract_adapter.adapter_id,
+                                chain: config.chain.name.to_string(),
+                                address: contract_adapter.address,
+                            })
+                            .collect();
+
+                        db.store_contract_adapters(&contract_adapters).await;
+
+                        Ok(())
+                    }
+                    Err(_) => Ok(()),
+                }
+            }
+            Err(_) => Ok(()),
+        },
+        Err(_) => Ok(()),
+    }
 }
 
 fn vec_to_set(vec: Vec<i64>) -> HashSet<i64> {

@@ -92,6 +92,18 @@ async fn main() {
         });
     }
 
+    tokio::spawn({
+        let db = db.clone();
+        let config = config.clone();
+
+        async move {
+            loop {
+                fetcher::fetch_adapters(&config, &db).await.unwrap();
+                sleep(Duration::from_secs(1800)).await;
+            }
+        }
+    });
+
     loop {
         let rpc = rpc.clone();
         rpc.subscribe_heads(&config, &db).await;
