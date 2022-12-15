@@ -270,10 +270,19 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
     let client = Client::new();
 
     for pending_contract in pending_contracts {
-        let uri_str = format!(
-            "{}api?module=contract&action=getabi&address={}&apikey={}",
-            config.chain.abi_source_url, pending_contract, token
-        );
+        let uri_str: String;
+
+        if config.chain.abi_source_require_auth {
+            uri_str = format!(
+                "{}api?module=contract&action=getabi&address={}&apikey={}",
+                config.chain.abi_source_url, pending_contract, token
+            );
+        } else {
+            uri_str = format!(
+                "{}api?module=contract&action=getabi&address={}",
+                config.chain.abi_source_url, pending_contract
+            );
+        }
 
         let response = client.get(uri_str).send().await;
 

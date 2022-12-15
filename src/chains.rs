@@ -6,6 +6,7 @@ pub struct Chain {
     pub name: &'static str,
     pub blocks_reorg: i64,
     pub abi_source_url: &'static str,
+    pub abi_source_require_auth: bool,
 }
 
 impl Chain {
@@ -15,6 +16,7 @@ impl Chain {
             name: chain.name,
             blocks_reorg: chain.blocks_reorg,
             abi_source_url: chain.abi_source_url,
+            abi_source_require_auth: chain.abi_source_require_auth,
         }
     }
 }
@@ -24,6 +26,7 @@ static ETHEREUM: Chain = Chain {
     name: "mainnet",
     blocks_reorg: 12,
     abi_source_url: "https://api.etherscan.io/",
+    abi_source_require_auth: true,
 };
 
 static POLYGON: Chain = Chain {
@@ -31,6 +34,7 @@ static POLYGON: Chain = Chain {
     name: "polygon",
     blocks_reorg: 128,
     abi_source_url: "https://api.polygonscan.com/",
+    abi_source_require_auth: true,
 };
 
 static FTM: Chain = Chain {
@@ -38,6 +42,7 @@ static FTM: Chain = Chain {
     name: "fantom",
     blocks_reorg: 5,
     abi_source_url: "https://api.ftmscan.com/",
+    abi_source_require_auth: true,
 };
 
 static OPTIMISM: Chain = Chain {
@@ -45,6 +50,7 @@ static OPTIMISM: Chain = Chain {
     name: "optimism",
     blocks_reorg: 20,
     abi_source_url: "https://api-optimistic.etherscan.io/",
+    abi_source_require_auth: true,
 };
 
 static ARBITTUM: Chain = Chain {
@@ -52,6 +58,7 @@ static ARBITTUM: Chain = Chain {
     name: "arbitrum",
     blocks_reorg: 20,
     abi_source_url: "https://api.arbiscan.io/",
+    abi_source_require_auth: true,
 };
 
 static GNOSIS: Chain = Chain {
@@ -59,6 +66,7 @@ static GNOSIS: Chain = Chain {
     name: "gnosis",
     blocks_reorg: 20,
     abi_source_url: "https://api.gnosisscan.io/",
+    abi_source_require_auth: true,
 };
 
 static BNB_CHAIN: Chain = Chain {
@@ -66,6 +74,7 @@ static BNB_CHAIN: Chain = Chain {
     name: "bsc",
     blocks_reorg: 16,
     abi_source_url: "https://api.bscscan.com/",
+    abi_source_require_auth: true,
 };
 
 static AVALANCHE: Chain = Chain {
@@ -73,6 +82,7 @@ static AVALANCHE: Chain = Chain {
     name: "avalanche",
     blocks_reorg: 16,
     abi_source_url: "https://api.snowtrace.io/",
+    abi_source_require_auth: true,
 };
 
 static DOGECHAIN: Chain = Chain {
@@ -80,6 +90,7 @@ static DOGECHAIN: Chain = Chain {
     name: "dogechain",
     blocks_reorg: 12,
     abi_source_url: "https://explorer.dogechain.dog/",
+    abi_source_require_auth: false,
 };
 
 pub static AVAILABLE_CHAINS: [Chain; 9] = [
