@@ -16,13 +16,15 @@ The frontend app repository can be found here [https://github.com/eabz/evm-index
 
 Currently, the indexer can index the following chains:
 
-- Ethereum (mainnet)
+- Ethereum
 - Polygon
 - Avalanche
 - Fantom
 - Gnosis Chain
 - Optimism
 - BNB Chain
+- Dogechain
+- Arbitrum
 
 ## Database Information
 
@@ -37,75 +39,15 @@ The indexer creates tables for:
 7. Token Transfers
 8. Tokens Details
 
-The information structure is explained in the [database structure document](./doc/DATABASE.md).
+The information structure is explained in the [database structure documentation](./doc/DATABASE.md).
 
 ## Providers
 
-The indexer connects automatically to four different providers through the RPC.
-
-The available providers are:
-
-- [LlamaNodes](https://llamanodes.com)
-- [Ankr](https://www.ankr.com/rpc)
-- [Pokt](https://www.pokt.network/)
-- [Blast](https://blastapi.io)
-
-The indexer automatically selects the providers added.
-
-During our first indexings we realized that all providers sometimes deliver the information incomplete. To do so, the indexer stores all the incomplete transactions into a separate table and refetchs the using a fallback provider.
-
-We tried a lot of public and paid RPC providers, for some reason, the only provider that delivers complete information is [QuickNode](https://www.quicknode.com/).
-
-To enable this service you need to add the quicknode RPC (or a local node will also work) as a `FALLBACK_PROVIDER` in the `env` variables.
-
-To sync from a local node, configure the variables using your local node.
+TODO
 
 ## Environment Variables
 
-The indexer requires the following environment variables.
-
-| Variable                 | Purpose                              | Required Local | Required Docker |
-| ------------------------ | ------------------------------------ | -------------- | --------------- |
-| `DATABASE_URL`           | Url of the PostgreSQL database       | `true`         | `false `        |
-| `DATABASE_URL`           | Password for the PostgreSQL database | `false`        | `true `         |
-| `ANKR_PROVIDER_ID`       | Ankr RPC nodes provider ID           | `false `       | `false `        |
-| `LLAMANODES_PROVIDER_ID` | LlamaNodes RPC nodes provider ID     | `false `       | `false `        |
-| `POKT_PROVIDER_ID`       | Pokt RPC provider ID                 | `false `       | `false `        |
-| `HASURA_ADMIN_PASSWORD`  | Hasura console and GraphQL API token | `false `       | `true `         |
-
-To add the fallback providers (QuickNode or local nodes) to refetch failed transaction receipts.
-
-| Variable                |
-| ----------------------- |
-| `ETH_FALLBACK_RPC`      |
-| `BSC_FALLBACK_RPC`      |
-| `GNOSIS_FALLBACK_RPC`   |
-| `AVAX_FALLBACK_RPC`     |
-| `FTM_FALLBACK_RPC`      |
-| `POLYGON_FALLBACK_RPC`  |
-| `OPTIMISM_FALLBACK_RPC` |
-
-If the provider is not specified, the refetcher won't start and the indexer will work normally without refetching the transaction receipts.
-
-If you want to download from a local node (node inside the same private network or the same computer) use the following variables.
-If this is set, the program will ignore all other providers and use the local node only to sync.
-
-| Variable                  |
-| ------------------------- |
-| `ETH_LOCAL_HTTP_RPC`      |
-| `ETH_LOCAL_WSS_RPC`       |
-| `BSC_LOCAL_HTTP_RPC`      |
-| `BSC_LOCAL_WSS_RPC`       |
-| `GNOSIS_LOCAL_HTTP_RPC`   |
-| `GNOSIS_LOCAL_WSS_RPC`    |
-| `AVAX_LOCAL_HTTP_RPC`     |
-| `AVAX_LOCAL_WSS_RPC`      |
-| `FTM_LOCAL_HTTP_RPC`      |
-| `FTM_LOCAL_WSS_RPC`       |
-| `POLYGON_LOCAL_HTTP_RPC`  |
-| `POLYGON_LOCAL_WSS_RPC`   |
-| `OPTIMISM_LOCAL_HTTP_RPC` |
-| `OPTIMISM_LOCAL_WSS_RPC`  |
+TODO
 
 ## Install
 
@@ -143,13 +85,7 @@ To use docker, you need to build the image and tag it as `indexer`
 docker build . -t indexer
 ```
 
-Now you can run the image isolated or run it within the prepared docker-compose file.
-
-```
-docker-compose up
-```
-
-Note: When using the docker-compose the database is exposed on the port `8000` of the host.
+TODO
 
 ## Contribute
 
@@ -158,5 +94,4 @@ We appreciate your contributions. PR are accepted and open.
 Some ideas for contributions are:
 
 1. Add more chains
-2. Increment providers to sync simultaneously.
-3. Speed up the information deserialization/storing.
+2. Speed up the information deserialization/storing.
