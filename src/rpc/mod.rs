@@ -205,6 +205,11 @@ impl Rpc {
                             self.chain.name
                         );
 
+                        let from_block = block_number.as_u64() as i64 - self.chain.blocks_reorg;
+                        let to_block = block_number.as_u64() as i64;
+
+                        let range: Vec<i64> = (from_block..to_block).collect();
+
                         let (
                             db_blocks,
                             db_txs,
@@ -213,10 +218,7 @@ impl Rpc {
                             db_contract_creations,
                             db_contract_interactions,
                             db_token_transfers,
-                        ) = self
-                            .get_blocks(config, [block_number.as_u64() as i64].to_vec())
-                            .await
-                            .unwrap();
+                        ) = self.get_blocks(config, range).await.unwrap();
 
                         db.store_blocks_and_txs(
                             db_blocks,
@@ -276,15 +278,18 @@ impl Rpc {
 
         let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
 
-        let receipts_chunks = web3_txs.chunks(self.requests_batch.clone() / 2);
-
         if config.chain.name.clone() == "mainnet"
             || config.chain.name.clone() == "polygon"
             || config.chain.name.clone() == "bsc"
         {
-            let mut receipts = self.get_block_receipts(&range).await.unwrap();
-            tx_receipts.append(&mut receipts);
+            let blocks_chunk = range.chunks(50);
+            for chunk in blocks_chunk {
+                let mut receipts = self.get_block_receipts(&chunk.to_vec()).await.unwrap();
+                tx_receipts.append(&mut receipts);
+            }
         } else {
+            let receipts_chunks = web3_txs.chunks(100);
+
             for chunk in receipts_chunks {
                 let tx_hashes: Vec<String> =
                     chunk.into_iter().map(|tx| format_hash(tx.hash)).collect();
