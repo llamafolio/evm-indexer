@@ -62,7 +62,7 @@ static ARBITTUM: Chain = Chain {
 };
 
 static GNOSIS: Chain = Chain {
-    id: 20,
+    id: 100,
     name: "gnosis",
     blocks_reorg: 20,
     abi_source_url: "https://api.gnosisscan.io/",
