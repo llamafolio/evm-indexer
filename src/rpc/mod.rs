@@ -112,7 +112,11 @@ impl Rpc {
 
                 Ok(blocks)
             }
-            Err(err) => Ok(Vec::new()),
+            Err(err) => {
+                println!("{}", err);
+
+                return Ok(Vec::new());
+            }
         }
     }
 
