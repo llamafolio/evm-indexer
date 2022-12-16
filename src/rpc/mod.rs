@@ -104,15 +104,15 @@ impl Rpc {
                     match block {
                         Ok(block) => match format_block(block) {
                             Ok(block_formated) => blocks.push(block_formated),
-                            Err(_) => continue,
+                            Err(err) => println!("{}", err),
                         },
-                        Err(_) => continue,
+                        Err(err) => println!("{}", err.message()),
                     }
                 }
 
                 Ok(blocks)
             }
-            Err(_) => Ok(Vec::new()),
+            Err(err) => Ok(Vec::new()),
         }
     }
 
