@@ -96,6 +96,8 @@ impl Rpc {
 
         let blocks_res = self.http_client.batch_request(batch).await;
 
+        println!("{:?}", blocks_res);
+
         match blocks_res {
             Ok(result) => {
                 let mut blocks: Vec<Block<Transaction>> = Vec::new();
