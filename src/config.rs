@@ -41,6 +41,20 @@ pub struct Args {
         default_value_t = String::from("8545")
     )]
     pub rpc_port: String,
+
+    #[arg(
+        long,
+        help = "URL of the remote server to use if not syncing from local",
+        default_value_t = String::from("")
+    )]
+    pub remote_rpc: String,
+
+    #[arg(
+        long,
+        help = "WSS of the remote server to use if not syncing from local",
+        default_value_t = String::from("")
+    )]
+    pub remote_wss: String,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +68,8 @@ pub struct Config {
     pub abi_source_api_token: String,
     pub local_rpc_http: String,
     pub local_rpc_wss: String,
+    pub remote_rpc: String,
+    pub remote_wss: String,
 }
 
 impl Config {
@@ -86,6 +102,8 @@ impl Config {
             abi_source_api_token,
             local_rpc_http: format!("http://localhost:{}", args.rpc_port),
             local_rpc_wss,
+            remote_rpc: args.remote_rpc,
+            remote_wss: args.remote_wss,
         }
     }
 }

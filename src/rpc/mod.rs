@@ -47,10 +47,21 @@ pub struct Rpc {
 
 impl Rpc {
     pub async fn new(config: &Config) -> Result<Self> {
-        let http = Http::new(&config.local_rpc_http).unwrap();
+        let rpc_url: String;
+        let rpc_wss: String;
+
+        if config.remote_rpc != String::from("") {
+            rpc_url = config.remote_rpc.clone();
+            rpc_wss = config.remote_wss.clone();
+        } else {
+            rpc_url = config.local_rpc_http.clone();
+            rpc_wss = config.remote_wss.clone();
+        }
+
+        let http = Http::new(&rpc_url).unwrap();
 
         let client = HttpClientBuilder::default()
-            .build(&config.local_rpc_http.clone())
+            .build(&rpc_url.clone())
             .unwrap();
 
         let client_id = client.chain_id().await.unwrap().as_u64() as i64;
@@ -59,7 +70,7 @@ impl Rpc {
             panic!("RPC client is not for the current chain")
         }
 
-        let wss = match WebSocket::new(&config.local_rpc_wss).await {
+        let wss = match WebSocket::new(&rpc_wss).await {
             Ok(ws) => Some(Web3::new(ws)),
             Err(_) => None,
         };
