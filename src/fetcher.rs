@@ -58,8 +58,8 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
     let missing_blocks_amount = missing_blocks.len();
 
     info!(
-        "Fetching {} blocks with batches of {} blocks with {} workers",
-        missing_blocks_amount, config.batch_size, config.workers
+        "Fetching {} blocks with batches of {} blocks",
+        missing_blocks_amount, config.batch_size
     );
 
     let chunks: Vec<Vec<i64>> = missing_blocks
