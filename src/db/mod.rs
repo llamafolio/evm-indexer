@@ -58,6 +58,7 @@ pub struct State {
 pub struct Database {
     pub db_url: String,
     pub chain: Chain,
+    pub receipts_fetch_batch: usize,
 }
 
 impl Database {
@@ -69,9 +70,16 @@ impl Database {
 
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
+        let mut limit = 1000;
+
+        if config.remote_rpc != String::from("") {
+            limit = 200;
+        }
+
         Ok(Self {
             db_url: config.db_url.to_string(),
             chain: config.chain,
+            receipts_fetch_batch: limit,
         })
     }
 
@@ -85,12 +93,10 @@ impl Database {
     pub async fn get_missing_receipts_txs(&self) -> Result<Vec<String>> {
         let mut connection = self.establish_connection();
 
-        let limit = 1000;
-
         let txs: Vec<String> = txs_no_receipt_table
             .select(txs_no_receipt::hash)
             .filter(txs_no_receipt::chain.eq(self.chain.name.to_string()))
-            .limit(limit)
+            .limit(self.receipts_fetch_batch as i64)
             .load::<String>(&mut connection)
             .unwrap();
 
