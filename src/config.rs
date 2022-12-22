@@ -4,6 +4,8 @@ use crate::chains::{get_chain, Chain};
 
 pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
 
+pub const DEFAULT_FETCHER_WORKERS: usize = 20;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "EVM Indexer",
@@ -16,15 +18,19 @@ pub struct Args {
     #[arg(short, long, help = "Chain name to sync", default_value_t = String::from("mainnet"))]
     pub chain: String,
 
-    #[arg(short, long, help = "Initial block to fetch from", default_value_t = 1)]
-    pub start_block: i64,
-
     #[arg(
         short, long,
         help = "Amount of blocks to fetch by batch",
         default_value_t = DEFAULT_FETCHER_BATCH_SIZE
     )]
     pub batch_size: usize,
+
+    #[arg(
+        short, long,
+        help = "Amount of workers to fetch blocks",
+        default_value_t = DEFAULT_FETCHER_WORKERS
+    )]
+    pub workers: usize,
 
     #[arg(
         short,
@@ -53,8 +59,8 @@ pub struct Args {
 pub struct Config {
     pub db_url: String,
     pub debug: bool,
-    pub start_block: i64,
     pub batch_size: usize,
+    pub workers: usize,
     pub chain: Chain,
     pub abi_source_api_token: String,
     pub local_rpc_http: String,
@@ -86,8 +92,8 @@ impl Config {
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
             debug: args.debug,
-            start_block: args.start_block,
             batch_size: args.batch_size,
+            workers: args.workers,
             chain,
             abi_source_api_token,
             local_rpc_http: format!("http://localhost:{}", args.rpc_port),

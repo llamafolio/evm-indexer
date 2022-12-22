@@ -7,3 +7,8 @@ DROP INDEX  txs_by_block_number;
 DROP INDEX  txs_by_sender;
 DROP INDEX  txs_by_receiver;
 DROP INDEX  contract_interactions_by_address;
+DROP INDEX contracts_adapters_by_address;
+DROP INDEX txs_by_chain;
+DROP INDEX contracts_adapters_by_adapter_id;
+DROP INDEX contract_interactions_by_contract;
+DROP INDEX txs_by_timestamp;

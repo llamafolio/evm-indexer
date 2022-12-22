@@ -30,3 +30,18 @@ ON logs (hash);
 
 CREATE INDEX IF NOT EXISTS contract_abis_by_address
 ON contract_abis (address);
+
+CREATE INDEX IF NOT EXISTS contracts_adapters_by_address
+ON contracts_adapters (address);
+
+CREATE INDEX IF NOT EXISTS txs_by_chain
+ON txs (chain);
+
+CREATE INDEX IF NOT EXISTS contracts_adapters_by_adapter_id
+ON contracts_adapters (adapter_id);
+
+CREATE INDEX IF NOT EXISTS contract_interactions_by_contract
+ON contract_interactions (contract);
+
+CREATE INDEX IF NOT EXISTS txs_by_timestamp
+ON txs (timestamp DESC);

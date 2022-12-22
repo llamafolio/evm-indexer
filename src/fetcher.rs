@@ -46,7 +46,7 @@ pub struct AdapterID {
 pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<()> {
     let rpc_last_block = rpc.get_last_block().await.unwrap();
 
-    let full_blocks_set: Vec<i64> = (config.start_block..rpc_last_block).collect();
+    let full_blocks_set: Vec<i64> = (1..rpc_last_block).collect();
 
     let db_blocks_set = vec_to_set(db.get_block_numbers().await.unwrap());
 

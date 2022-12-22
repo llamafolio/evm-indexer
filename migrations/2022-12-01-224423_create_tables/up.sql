@@ -117,3 +117,10 @@ CREATE TABLE method_ids (
 );
 
 INSERT INTO method_ids (method_id, name) VALUES ('0x00000000', 'Transfer');
+
+CREATE TABLE contracts_adapters (
+  address_with_chain VARCHAR PRIMARY KEY UNIQUE,
+  address VARCHAR NOT NULL,
+  chain VARCHAR NOT NULL,
+  adapter_id VARCHAR NOT NULL
+);

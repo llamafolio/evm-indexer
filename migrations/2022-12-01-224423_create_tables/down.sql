@@ -9,3 +9,4 @@ DROP TABLE state;
 DROP TABLE tokens;
 DROP TABLE excluded_tokens;
 DROP TABLE txs_no_receipt;
+DROP TABLE contracts_adapters;
