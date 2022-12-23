@@ -288,8 +288,6 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     let mut db_contract_creations: Vec<DatabaseContractCreation> = Vec::new();
     let mut db_token_transfers: Vec<DatabaseTokenTransfers> = Vec::new();
 
-    let mut delete_receipts: Vec<String> = Vec::new();
-
     results.into_iter().for_each(|result| {
         let (mut receipts, mut logs, mut contract_creations, mut token_transfers) = result.unwrap();
 
@@ -297,12 +295,13 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         db_tx_logs.append(&mut logs);
         db_contract_creations.append(&mut contract_creations);
         db_token_transfers.append(&mut token_transfers);
-
-        let mut receipts_hashes: Vec<String> =
-            receipts.into_iter().map(|receipt| receipt.hash).collect();
-
-        delete_receipts.append(&mut receipts_hashes);
     });
+
+    let delete_receipts: Vec<String> = db_tx_receipts
+        .clone()
+        .into_iter()
+        .map(|receipt| receipt.hash.clone())
+        .collect();
 
     db.store_blocks_and_txs(
         Vec::new(),
