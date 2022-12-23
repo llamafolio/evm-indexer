@@ -38,10 +38,12 @@ async fn main() {
         async move {
             loop {
                 match fetcher::fetch_blocks(&db, &config, &rpc).await {
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
                     Err(err) => println!("{}", err),
                 };
-                sleep(Duration::from_secs(5)).await;
             }
         }
     });
@@ -54,10 +56,12 @@ async fn main() {
         async move {
             loop {
                 match fetcher::fetch_tokens_metadata(&rpc, &db, &config).await {
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
                     Err(err) => println!("{}", err),
                 };
-                sleep(Duration::from_secs(5)).await;
             }
         }
     });
@@ -70,10 +74,12 @@ async fn main() {
         async move {
             loop {
                 match fetcher::fetch_tx_no_receipts(&rpc, &config, &db).await {
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
                     Err(err) => println!("{}", err),
                 };
-                sleep(Duration::from_secs(5)).await;
             }
         }
     });
@@ -89,10 +95,12 @@ async fn main() {
             async move {
                 loop {
                     match fetcher::fetch_contract_abis(&config, &db, &abi_source_token).await {
-                        Ok(_) => continue,
+                        Ok(_) => {
+                            sleep(Duration::from_secs(5)).await;
+                            continue;
+                        }
                         Err(err) => println!("{}", err),
                     };
-                    sleep(Duration::from_secs(5)).await;
                 }
             }
         });
@@ -105,10 +113,12 @@ async fn main() {
         async move {
             loop {
                 match fetcher::fetch_adapters(&config, &db).await {
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        sleep(Duration::from_secs(1800)).await;
+                        continue;
+                    }
                     Err(err) => println!("{}", err),
                 };
-                sleep(Duration::from_secs(1800)).await;
             }
         }
     });
@@ -116,6 +126,6 @@ async fn main() {
     loop {
         let rpc = rpc.clone();
         rpc.subscribe_heads(&config, &db).await;
-        sleep(Duration::from_secs(10)).await;
+        sleep(Duration::from_secs(5)).await;
     }
 }
