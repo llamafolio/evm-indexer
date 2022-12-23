@@ -37,7 +37,10 @@ async fn main() {
 
         async move {
             loop {
-                fetcher::fetch_blocks(&db, &config, &rpc).await.unwrap();
+                match fetcher::fetch_blocks(&db, &config, &rpc).await {
+                    Ok(_) => continue,
+                    Err(err) => println!("{}", err),
+                };
                 sleep(Duration::from_secs(5)).await;
             }
         }
@@ -50,9 +53,10 @@ async fn main() {
 
         async move {
             loop {
-                fetcher::fetch_tokens_metadata(&rpc, &db, &config)
-                    .await
-                    .unwrap();
+                match fetcher::fetch_tokens_metadata(&rpc, &db, &config).await {
+                    Ok(_) => continue,
+                    Err(err) => println!("{}", err),
+                };
                 sleep(Duration::from_secs(5)).await;
             }
         }
@@ -65,9 +69,10 @@ async fn main() {
 
         async move {
             loop {
-                fetcher::fetch_tx_no_receipts(&rpc, &config, &db)
-                    .await
-                    .unwrap();
+                match fetcher::fetch_tx_no_receipts(&rpc, &config, &db).await {
+                    Ok(_) => continue,
+                    Err(err) => println!("{}", err),
+                };
                 sleep(Duration::from_secs(5)).await;
             }
         }
@@ -83,9 +88,10 @@ async fn main() {
 
             async move {
                 loop {
-                    fetcher::fetch_contract_abis(&config, &db, &abi_source_token)
-                        .await
-                        .unwrap();
+                    match fetcher::fetch_contract_abis(&config, &db, &abi_source_token).await {
+                        Ok(_) => continue,
+                        Err(err) => println!("{}", err),
+                    };
                     sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -98,7 +104,10 @@ async fn main() {
 
         async move {
             loop {
-                fetcher::fetch_adapters(&config, &db).await.unwrap();
+                match fetcher::fetch_adapters(&config, &db).await {
+                    Ok(_) => continue,
+                    Err(err) => println!("{}", err),
+                };
                 sleep(Duration::from_secs(1800)).await;
             }
         }
