@@ -1,6 +1,7 @@
 use anyhow::bail;
 use diesel::prelude::*;
 use ethabi::ParamType;
+use field_count::FieldCount;
 use reth_primitives::{
     rpc::{Block, Log, Transaction, TransactionReceipt},
     H160,
@@ -16,7 +17,7 @@ use super::schema::{
     txs_receipts,
 };
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone)]
+#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = blocks)]
 pub struct DatabaseBlock {
     pub number: i64,
@@ -64,7 +65,7 @@ impl DatabaseBlock {
     }
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = txs)]
 pub struct DatabaseTx {
     pub block_number: i64,
@@ -135,7 +136,7 @@ impl DatabaseTx {
     }
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = txs_receipts)]
 pub struct DatabaseTxReceipt {
     pub hash: String,
@@ -158,7 +159,7 @@ impl DatabaseTxReceipt {
     }
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = logs)]
 pub struct DatabaseTxLogs {
     pub hash_with_index: String,
@@ -174,7 +175,7 @@ pub struct DatabaseTxLogs {
 
 impl DatabaseTxLogs {}
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = contract_interactions)]
 pub struct DatabaseContractInteraction {
     pub hash: String,
@@ -196,7 +197,7 @@ impl DatabaseContractInteraction {
     }
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = contract_creations)]
 pub struct DatabaseContractCreation {
     pub hash: String,
@@ -216,7 +217,7 @@ impl DatabaseContractCreation {
     }
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = token_transfers)]
 pub struct DatabaseTokenTransfers {
     pub hash_with_index: String,
@@ -317,14 +318,14 @@ pub fn token_transfers_from_logs(
     });
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = state)]
 pub struct DatabaseState {
     pub chain: String,
     pub blocks: i64,
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = tokens)]
 pub struct DatabaseToken {
     pub address_with_chain: String,
@@ -335,7 +336,7 @@ pub struct DatabaseToken {
     pub symbol: String,
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = excluded_tokens)]
 pub struct DatabaseExcludedToken {
     pub address_with_chain: String,
@@ -343,7 +344,7 @@ pub struct DatabaseExcludedToken {
     pub chain: String,
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = txs_no_receipt)]
 pub struct DatabaseTxNoReceipt {
     pub hash: String,
@@ -351,7 +352,7 @@ pub struct DatabaseTxNoReceipt {
     pub block_number: i64,
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = contract_abis)]
 pub struct DatabaseContractABI {
     pub address_with_chain: String,
@@ -361,7 +362,7 @@ pub struct DatabaseContractABI {
     pub verified: bool,
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = method_ids)]
 pub struct DatabaseMethodID {
     pub method_id: String,
@@ -391,7 +392,7 @@ pub fn byte4_from_input(input: &String) -> [u8; 4] {
     return byte4;
 }
 
-#[derive(Queryable, Insertable, Debug, Clone)]
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = contracts_adapters)]
 pub struct DatabaseContractAdapter {
     pub address_with_chain: String,
