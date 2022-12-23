@@ -223,14 +223,9 @@ impl Database {
 
         let mut log = String::new();
 
-        if blocks.len() > 0 {
-            stores.push(Box::pin(self.store_blocks(&blocks)));
-            log.push_str(&format!("blocks({})", blocks.len()));
-        }
-
         if txs.len() > 0 {
             stores.push(Box::pin(self.store_txs(&txs)));
-            log.push_str(&format!(" txs({})", txs.len()));
+            log.push_str(&format!("txs({})", txs.len()));
         }
 
         if receipts.len() > 0 {
@@ -264,6 +259,11 @@ impl Database {
         if token_transfers.len() > 0 {
             stores.push(Box::pin(self.store_token_transfers(&token_transfers)));
             log.push_str(&format!(" token_transfers({})", token_transfers.len()));
+        }
+
+        if blocks.len() > 0 {
+            stores.push(Box::pin(self.store_blocks(&blocks)));
+            log.push_str(&format!(" blocks({})", blocks.len()));
         }
 
         join_all(stores).await;

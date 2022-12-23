@@ -96,7 +96,7 @@ impl Rpc {
     async fn get_block_batch(&self, range: &Vec<i64>) -> Result<Vec<Block<Transaction>>> {
         let mut batch = BatchRequestBuilder::new();
 
-        for block_height in range.iter() {
+        for block_height in range {
             batch
                 .insert(
                     "eth_getBlockByNumber",
@@ -271,25 +271,21 @@ impl Rpc {
     )> {
         let blocks = self.get_block_batch(&range).await.unwrap();
 
-        let (db_blocks, web3_vec_txs): (Vec<DatabaseBlock>, Vec<Vec<Transaction>>) = blocks
-            .into_iter()
-            .map(|block| {
-                (
-                    DatabaseBlock::from_web3(&block, self.chain.name.to_string()),
-                    block.transactions,
-                )
-            })
-            .unzip();
+        let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
 
-        let blocks_timestamps = db_blocks
-            .clone()
-            .into_iter()
-            .map(|block| (block.hash, block.timestamp));
+        let mut block_timestamps: HashMap<String, String> = HashMap::new();
 
-        let block_timestamps_hashmap: HashMap<String, String> =
-            HashMap::from_iter(blocks_timestamps);
+        let mut web3_txs: Vec<Transaction> = Vec::new();
 
-        let web3_txs: Vec<Transaction> = web3_vec_txs.into_iter().flatten().collect();
+        for mut block in blocks.into_iter() {
+            web3_txs.append(&mut block.transactions);
+
+            let db_block = DatabaseBlock::from_web3(&block, self.chain.name.to_string());
+
+            block_timestamps.insert(db_block.hash.clone(), db_block.timestamp.clone());
+
+            db_blocks.push(db_block);
+        }
 
         let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
 
@@ -320,7 +316,7 @@ impl Rpc {
                 DatabaseTx::from_web3(
                     &tx,
                     self.chain.name.to_string(),
-                    block_timestamps_hashmap.get(&block_hash),
+                    block_timestamps.get(&block_hash),
                 )
             })
             .collect();
