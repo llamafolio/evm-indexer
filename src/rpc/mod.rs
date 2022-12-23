@@ -293,20 +293,13 @@ impl Rpc {
             || config.chain.name.clone() == "polygon"
             || config.chain.name.clone() == "bsc"
         {
-            let blocks_chunk = range.chunks(50);
-            for chunk in blocks_chunk {
-                let mut receipts = self.get_block_receipts(&chunk.to_vec()).await.unwrap();
-                tx_receipts.append(&mut receipts);
-            }
+            let mut receipts = self.get_block_receipts(&range).await.unwrap();
+            tx_receipts.append(&mut receipts);
         } else {
-            let receipts_chunks = web3_txs.chunks(100);
-
-            for chunk in receipts_chunks {
-                let tx_hashes: Vec<String> =
-                    chunk.into_iter().map(|tx| format_hash(tx.hash)).collect();
-                let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-                tx_receipts.append(&mut receipts_chunk);
-            }
+            let tx_hashes: Vec<String> =
+                web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
+            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
+            tx_receipts.append(&mut receipts_chunk);
         }
 
         let mut db_txs: Vec<DatabaseTx> = web3_txs
