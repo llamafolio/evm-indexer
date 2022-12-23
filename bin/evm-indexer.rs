@@ -40,7 +40,6 @@ async fn main() {
                 match fetcher::fetch_blocks(&db, &config, &rpc).await {
                     Ok(_) => {
                         sleep(Duration::from_secs(5)).await;
-                        continue;
                     }
                     Err(err) => println!("{}", err),
                 };
@@ -58,7 +57,6 @@ async fn main() {
                 match fetcher::fetch_tokens_metadata(&rpc, &db, &config).await {
                     Ok(_) => {
                         sleep(Duration::from_secs(5)).await;
-                        continue;
                     }
                     Err(err) => println!("{}", err),
                 };
@@ -76,7 +74,6 @@ async fn main() {
                 match fetcher::fetch_tx_no_receipts(&rpc, &config, &db).await {
                     Ok(_) => {
                         sleep(Duration::from_secs(5)).await;
-                        continue;
                     }
                     Err(err) => println!("{}", err),
                 };
@@ -97,7 +94,6 @@ async fn main() {
                     match fetcher::fetch_contract_abis(&config, &db, &abi_source_token).await {
                         Ok(_) => {
                             sleep(Duration::from_secs(5)).await;
-                            continue;
                         }
                         Err(err) => println!("{}", err),
                     };
@@ -115,7 +111,6 @@ async fn main() {
                 match fetcher::fetch_adapters(&config, &db).await {
                     Ok(_) => {
                         sleep(Duration::from_secs(1800)).await;
-                        continue;
                     }
                     Err(err) => println!("{}", err),
                 };
