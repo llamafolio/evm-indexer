@@ -4,7 +4,6 @@ use std::collections::HashMap;
 pub struct Chain {
     pub id: i64,
     pub name: &'static str,
-    pub blocks_reorg: i64,
     pub abi_source_url: &'static str,
     pub abi_source_require_auth: bool,
 }
@@ -14,7 +13,6 @@ impl Chain {
         Self {
             id: chain.id,
             name: chain.name,
-            blocks_reorg: chain.blocks_reorg,
             abi_source_url: chain.abi_source_url,
             abi_source_require_auth: chain.abi_source_require_auth,
         }
@@ -24,7 +22,6 @@ impl Chain {
 static ETHEREUM: Chain = Chain {
     id: 1,
     name: "mainnet",
-    blocks_reorg: 12,
     abi_source_url: "https://api.etherscan.io/",
     abi_source_require_auth: true,
 };
@@ -32,7 +29,6 @@ static ETHEREUM: Chain = Chain {
 static POLYGON: Chain = Chain {
     id: 137,
     name: "polygon",
-    blocks_reorg: 128,
     abi_source_url: "https://api.polygonscan.com/",
     abi_source_require_auth: true,
 };
@@ -40,7 +36,6 @@ static POLYGON: Chain = Chain {
 static FTM: Chain = Chain {
     id: 250,
     name: "fantom",
-    blocks_reorg: 5,
     abi_source_url: "https://api.ftmscan.com/",
     abi_source_require_auth: true,
 };
@@ -48,7 +43,6 @@ static FTM: Chain = Chain {
 static OPTIMISM: Chain = Chain {
     id: 10,
     name: "optimism",
-    blocks_reorg: 20,
     abi_source_url: "https://api-optimistic.etherscan.io/",
     abi_source_require_auth: true,
 };
@@ -56,7 +50,6 @@ static OPTIMISM: Chain = Chain {
 static ARBITTUM: Chain = Chain {
     id: 42161,
     name: "arbitrum",
-    blocks_reorg: 20,
     abi_source_url: "https://api.arbiscan.io/",
     abi_source_require_auth: true,
 };
@@ -64,7 +57,6 @@ static ARBITTUM: Chain = Chain {
 static GNOSIS: Chain = Chain {
     id: 100,
     name: "gnosis",
-    blocks_reorg: 20,
     abi_source_url: "https://api.gnosisscan.io/",
     abi_source_require_auth: true,
 };
@@ -72,7 +64,6 @@ static GNOSIS: Chain = Chain {
 static BNB_CHAIN: Chain = Chain {
     id: 56,
     name: "bsc",
-    blocks_reorg: 16,
     abi_source_url: "https://api.bscscan.com/",
     abi_source_require_auth: true,
 };
@@ -80,7 +71,6 @@ static BNB_CHAIN: Chain = Chain {
 static AVALANCHE: Chain = Chain {
     id: 43114,
     name: "avalanche",
-    blocks_reorg: 16,
     abi_source_url: "https://api.snowtrace.io/",
     abi_source_require_auth: true,
 };
@@ -88,7 +78,6 @@ static AVALANCHE: Chain = Chain {
 static DOGECHAIN: Chain = Chain {
     id: 2000,
     name: "dogechain",
-    blocks_reorg: 12,
     abi_source_url: "https://explorer.dogechain.dog/",
     abi_source_require_auth: false,
 };
