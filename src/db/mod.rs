@@ -73,7 +73,7 @@ impl Database {
 
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
-        let mut limit = 5000;
+        let mut limit = 20000;
 
         if config.remote_rpc != String::from("") {
             limit = 200;
