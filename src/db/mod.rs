@@ -10,8 +10,6 @@ use diesel::PgConnection;
 use diesel_migrations::*;
 use field_count::FieldCount;
 use log::*;
-use web3::futures::future::join_all;
-use web3::futures::future::BoxFuture;
 
 use crate::chains::Chain;
 use crate::config::Config;
@@ -222,8 +220,6 @@ impl Database {
         contract_interactions: Vec<DatabaseContractInteraction>,
         token_transfers: Vec<DatabaseTokenTransfers>,
     ) {
-        let mut stores: Vec<BoxFuture<_>> = vec![];
-
         let mut log = String::new();
 
         if txs.len() > 0 {
