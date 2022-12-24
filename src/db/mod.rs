@@ -268,7 +268,7 @@ impl Database {
             log.push_str(&format!(" blocks({})", blocks.len()));
         }
 
-        self.update_chain_state().await.unwrap();
+        //self.update_chain_state().await.unwrap();
 
         if log.len() > 0 {
             info!(
