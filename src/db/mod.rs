@@ -302,6 +302,7 @@ impl Database {
         let chunks = get_chunks(txs.len(), DatabaseTx::field_count());
 
         info!("Chunks split");
+        info!("{} chunks {}", txs.len(), chunks.len());
 
         for (start, end) in chunks {
             diesel::insert_into(schema::txs::dsl::txs)
