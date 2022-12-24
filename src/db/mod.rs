@@ -297,8 +297,11 @@ impl Database {
 
     async fn store_txs(&self, txs: &Vec<DatabaseTx>) -> Result<()> {
         let mut connection = self.establish_connection();
+        info!("Connected");
 
         let chunks = get_chunks(txs.len(), DatabaseTx::field_count());
+
+        info!("Chunks split");
 
         for (start, end) in chunks {
             diesel::insert_into(schema::txs::dsl::txs)
@@ -307,6 +310,8 @@ impl Database {
                 .execute(&mut connection)
                 .expect("Unable to store txs into database");
         }
+
+        info!("Query finished split");
 
         Ok(())
     }
