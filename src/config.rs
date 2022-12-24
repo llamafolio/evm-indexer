@@ -50,6 +50,14 @@ pub struct Args {
     pub rpc_port: String,
 
     #[arg(
+        short,
+        long,
+        help = "Port of the WSS local node",
+        default_value_t = String::from("8545")
+    )]
+    pub wss_port: String,
+
+    #[arg(
         long,
         help = "URL of the remote server to use if not syncing from local",
         default_value_t = String::from("")
@@ -93,7 +101,7 @@ impl Config {
 
         let abi_source_api_token = get_abi_source_token(chainname.clone());
 
-        let mut local_rpc_wss: String = format!("ws://localhost:{}", args.rpc_port);
+        let mut local_rpc_wss: String = format!("ws://localhost:{}", args.wss_port);
 
         if chainname == "dogechain" {
             local_rpc_wss = format!("ws://localhost:{}/ws", args.rpc_port);
