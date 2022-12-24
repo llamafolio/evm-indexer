@@ -235,6 +235,8 @@ impl Rpc {
                             .await
                             .unwrap();
 
+                        info!("Starting block storing");
+
                         db.store_blocks_and_txs(
                             db_blocks,
                             db_txs,
@@ -245,6 +247,8 @@ impl Rpc {
                             db_token_transfers,
                         )
                         .await;
+
+                        info!("Finished block storing");
                     }
                     Err(_) => {
                         return;
