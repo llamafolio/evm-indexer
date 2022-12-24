@@ -248,7 +248,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         return Ok(());
     }
 
-    let chunk_size = 200;
+    let chunk_size = 1000;
 
     let chunks: Vec<Vec<String>> = missing_txs
         .chunks(chunk_size)
