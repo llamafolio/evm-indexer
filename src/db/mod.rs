@@ -68,7 +68,7 @@ impl Database {
 
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
-        let mut limit = 10000;
+        let mut limit = config.receipts_batch_size;
 
         if config.remote_rpc != String::from("") {
             limit = 200;
