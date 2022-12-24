@@ -55,7 +55,7 @@ impl Rpc {
             rpc_wss = config.remote_wss.clone();
         } else {
             rpc_url = config.local_rpc_http.clone();
-            rpc_wss = config.remote_wss.clone();
+            rpc_wss = config.local_rpc_wss.clone();
         }
 
         let http = Http::new(&rpc_url).unwrap();
