@@ -275,10 +275,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
                     return (Vec::new(), Vec::new(), Vec::new(), Vec::new());
                 }
 
-                return rpc
-                    .get_metadata_from_receipts(tx_receipts.clone())
-                    .await
-                    .unwrap();
+                return rpc.get_metadata_from_receipts(&tx_receipts).await.unwrap();
             }
         });
 

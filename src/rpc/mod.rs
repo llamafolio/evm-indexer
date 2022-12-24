@@ -315,7 +315,7 @@ impl Rpc {
             .collect();
 
         let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
-            self.get_metadata_from_receipts(tx_receipts).await.unwrap();
+            self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
 
         let mut db_contract_interactions = vec![];
 
@@ -343,7 +343,7 @@ impl Rpc {
 
     pub async fn get_metadata_from_receipts(
         &self,
-        receipts: Vec<TransactionReceipt>,
+        receipts: &Vec<TransactionReceipt>,
     ) -> Result<(
         Vec<DatabaseTxReceipt>,
         Vec<DatabaseTxLogs>,
@@ -360,7 +360,7 @@ impl Rpc {
 
         for tx_receipt in receipts {
             let db_tx_receipt =
-                DatabaseTxReceipt::from_web3(tx_receipt.clone(), self.chain.name.to_string());
+                DatabaseTxReceipt::from_web3(&tx_receipt, self.chain.name.to_string());
 
             db_tx_receipts.push(db_tx_receipt);
 
