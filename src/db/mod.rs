@@ -268,8 +268,6 @@ impl Database {
             log.push_str(&format!(" blocks({})", blocks.len()));
         }
 
-        //self.update_chain_state().await.unwrap();
-
         if log.len() > 0 {
             info!(
                 "Inserted: {} for chain {}",
@@ -501,7 +499,7 @@ impl Database {
         }
     }
 
-    async fn update_chain_state(&self) -> Result<()> {
+    pub async fn update_chain_state(&self) -> Result<()> {
         let mut connection = self.establish_connection();
 
         let blocks = self.get_block_numbers().await.unwrap();

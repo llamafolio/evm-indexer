@@ -175,8 +175,6 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
                 db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
             }
 
-            info!("Starting blocks storing");
-
             db.store_blocks_and_txs(
                 db_blocks,
                 db_txs,
@@ -187,8 +185,6 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
                 db_token_transfers,
             )
             .await;
-
-            info!("Finished blocks storing");
         }
     }
 

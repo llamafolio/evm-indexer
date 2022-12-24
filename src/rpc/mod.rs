@@ -235,8 +235,6 @@ impl Rpc {
                             .await
                             .unwrap();
 
-                        info!("Starting block storing");
-
                         db.store_blocks_and_txs(
                             db_blocks,
                             db_txs,
@@ -247,8 +245,6 @@ impl Rpc {
                             db_token_transfers,
                         )
                         .await;
-
-                        info!("Finished block storing");
                     }
                     Err(_) => {
                         return;
@@ -273,10 +269,7 @@ impl Rpc {
         Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
     )> {
-        info!("Start get_blocks");
-
         let blocks = self.get_block_batch(&range).await.unwrap();
-        info!("Fetched blocks get_blocks");
 
         let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
 
@@ -294,8 +287,6 @@ impl Rpc {
             db_blocks.push(db_block);
         }
 
-        info!("Finished blocks format and timestamp map");
-
         let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
 
         if config.chain.name.clone() == "mainnet"
@@ -311,8 +302,6 @@ impl Rpc {
             tx_receipts.append(&mut receipts_chunk);
         }
 
-        info!("Finished fetching block receipts");
-
         let mut db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
             .map(|tx| {
@@ -325,12 +314,8 @@ impl Rpc {
             })
             .collect();
 
-        info!("Finished txs parse");
-
         let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
             self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
-
-        info!("Finished receipts metadata");
 
         let mut db_contract_interactions = vec![];
 
@@ -344,8 +329,6 @@ impl Rpc {
                 db_contract_interactions.push(db_contract_interaction);
             }
         }
-
-        info!("Finished contract interactions");
 
         Ok((
             db_blocks,
