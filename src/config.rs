@@ -6,6 +6,8 @@ pub const DEFAULT_FETCHER_BATCH_SIZE: usize = 100;
 
 pub const DEFAULT_FETCHER_WORKERS: usize = 20;
 
+pub const DEFAULT_RECEIPTS_FETCH_AMOUNT: usize = 10000;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "EVM Indexer",
@@ -24,6 +26,13 @@ pub struct Args {
         default_value_t = DEFAULT_FETCHER_BATCH_SIZE
     )]
     pub batch_size: usize,
+
+    #[arg(
+        short, long,
+        help = "Amount of receipts to fetch by batch",
+        default_value_t = DEFAULT_RECEIPTS_FETCH_AMOUNT
+    )]
+    pub receipts_batch_size: usize,
 
     #[arg(
         short, long,
@@ -60,6 +69,7 @@ pub struct Config {
     pub db_url: String,
     pub debug: bool,
     pub batch_size: usize,
+    pub receipts_batch_size: usize,
     pub workers: usize,
     pub chain: Chain,
     pub abi_source_api_token: String,
@@ -93,6 +103,7 @@ impl Config {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
             debug: args.debug,
             batch_size: args.batch_size,
+            receipts_batch_size: args.receipts_batch_size,
             workers: args.workers,
             chain,
             abi_source_api_token,
