@@ -227,22 +227,25 @@ impl Database {
         let mut log = String::new();
 
         if txs.len() > 0 {
-            stores.push(Box::pin(self.store_txs(&txs)));
+            self.store_txs(&txs).await.unwrap();
             log.push_str(&format!("txs({})", txs.len()));
         }
 
         if receipts.len() > 0 {
-            stores.push(Box::pin(self.store_tx_receipts(&receipts)));
+            self.store_tx_receipts(&receipts).await.unwrap();
             log.push_str(&format!(" receipts({})", receipts.len()));
         }
 
         if logs.len() > 0 {
-            stores.push(Box::pin(self.store_tx_logs(&logs)));
+            self.store_tx_logs(&logs).await.unwrap();
             log.push_str(&format!(" logs({})", logs.len()));
         }
 
         if contract_creations.len() > 0 {
-            stores.push(Box::pin(self.store_contract_creations(&contract_creations)));
+            self.store_contract_creations(&contract_creations)
+                .await
+                .unwrap();
+
             log.push_str(&format!(
                 " contract_creations({})",
                 contract_creations.len()
@@ -250,9 +253,9 @@ impl Database {
         }
 
         if contract_interactions.len() > 0 {
-            stores.push(Box::pin(
-                self.store_contract_interactions(&contract_interactions),
-            ));
+            self.store_contract_interactions(&contract_interactions)
+                .await
+                .unwrap();
             log.push_str(&format!(
                 " contract_interactions({})",
                 contract_interactions.len()
@@ -260,16 +263,14 @@ impl Database {
         }
 
         if token_transfers.len() > 0 {
-            stores.push(Box::pin(self.store_token_transfers(&token_transfers)));
+            self.store_token_transfers(&token_transfers).await.unwrap();
             log.push_str(&format!(" token_transfers({})", token_transfers.len()));
         }
 
         if blocks.len() > 0 {
-            stores.push(Box::pin(self.store_blocks(&blocks)));
+            self.store_blocks(&blocks).await.unwrap();
             log.push_str(&format!(" blocks({})", blocks.len()));
         }
-
-        join_all(stores).await;
 
         self.update_chain_state().await.unwrap();
 
