@@ -77,11 +77,6 @@ CREATE TABLE txs (
   chain VARCHAR NOT NULL
 );
 
-CREATE TABLE state (
-  chain VARCHAR PRIMARY KEY UNIQUE NOT NULL, 
-  blocks BIGINT NOT NULL
-);
-
 CREATE TABLE tokens (
   address_with_chain VARCHAR PRIMARY KEY UNIQUE NOT NULL,
   address VARCHAR NOT NULL,
