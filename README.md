@@ -1,6 +1,6 @@
 # EVM Indexer
 
-> Minimalistic EVM-compatible blockchain indexer written in rust.
+> EVM-compatible blockchain indexer written in rust.
 
 This repository contains a program to index helpful information from any EVM-compatible chain into a PostgreSQL database.
 
