@@ -118,16 +118,6 @@ async fn main() {
         }
     });
 
-    tokio::spawn({
-        let db = db.clone();
-        async move {
-            loop {
-                db.update_chain_state().await.unwrap();
-                sleep(Duration::from_secs(1800)).await;
-            }
-        }
-    });
-
     loop {
         let rpc = rpc.clone();
         rpc.subscribe_heads(&config, &db).await;

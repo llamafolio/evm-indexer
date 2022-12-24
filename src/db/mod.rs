@@ -22,7 +22,6 @@ use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
 use self::models::DatabaseExcludedToken;
 use self::models::DatabaseMethodID;
-use self::models::DatabaseState;
 use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
 use self::models::DatabaseTx;
@@ -44,8 +43,6 @@ use self::schema::txs_no_receipt::table as txs_no_receipt_table;
 
 use self::schema::tokens;
 use self::schema::tokens::table as tokens_table;
-
-use self::schema::state;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -491,27 +488,6 @@ impl Database {
                 .execute(&mut connection)
                 .expect("Unable to contract adapters into database");
         }
-    }
-
-    pub async fn update_chain_state(&self) -> Result<()> {
-        let mut connection = self.establish_connection();
-
-        let blocks = self.get_block_numbers().await.unwrap();
-
-        let state = DatabaseState {
-            chain: self.chain.name.to_string(),
-            blocks: blocks.len() as i64,
-        };
-
-        diesel::insert_into(schema::state::dsl::state)
-            .values(&state)
-            .on_conflict(state::chain)
-            .do_update()
-            .set(schema::state::dsl::blocks.eq(state.blocks))
-            .execute(&mut connection)
-            .expect("Unable to update chain state");
-
-        Ok(())
     }
 
     pub async fn delete_no_receipt_txs(&self, txs: &Vec<String>) {

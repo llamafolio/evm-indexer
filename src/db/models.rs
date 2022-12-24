@@ -13,8 +13,7 @@ use crate::utils::{
 
 use super::schema::{
     blocks, contract_abis, contract_creations, contract_interactions, contracts_adapters,
-    excluded_tokens, logs, method_ids, state, token_transfers, tokens, txs, txs_no_receipt,
-    txs_receipts,
+    excluded_tokens, logs, method_ids, token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
@@ -316,13 +315,6 @@ pub fn token_transfers_from_logs(
         log_index: log.log_index.unwrap().as_u64() as i64,
         chain,
     });
-}
-
-#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = state)]
-pub struct DatabaseState {
-    pub chain: String,
-    pub blocks: i64,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
