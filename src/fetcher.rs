@@ -44,6 +44,96 @@ pub struct AdapterID {
     pub address: String,
 }
 
+pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> Result<()> {
+    let rpc_last_block = rpc.get_last_block().await.unwrap();
+
+    let full_blocks_set: Vec<i64> = (1..rpc_last_block).collect();
+
+    let db_blocks_set = vec_to_set(db.get_block_numbers().await.unwrap());
+
+    let missing_blocks: Vec<i64> = full_blocks_set
+        .into_iter()
+        .filter(|n| !db_blocks_set.contains(n))
+        .collect();
+
+    let missing_blocks_amount = missing_blocks.len();
+
+    info!(
+        "Fetching {} blocks with batches of {} blocks",
+        missing_blocks_amount, config.batch_size
+    );
+
+    for block in missing_blocks {
+        let (
+            db_block,
+            mut db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creation,
+            db_contract_interaction,
+            db_token_transfers,
+        ) = rpc.get_block(&config, block).await.unwrap();
+
+        let db_txs_count = db_txs.len();
+        let db_tx_receipts_count = db_tx_receipts.len();
+
+        let mut enough_receipts = true;
+
+        if db_txs_count != db_tx_receipts_count {
+            info!(
+                "Not enough receipts for batch: txs({}) receipts ({})",
+                db_txs_count, db_tx_receipts_count,
+            );
+
+            enough_receipts = false;
+        }
+
+        if !enough_receipts {
+            let db_receipts_hash: HashSet<String> = vec_string_to_set(
+                db_tx_receipts
+                    .clone()
+                    .into_iter()
+                    .map(|receipt| receipt.hash)
+                    .collect(),
+            );
+
+            let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
+
+            for tx in &mut db_txs {
+                let hash = tx.hash.clone();
+                let chain = tx.chain.clone();
+                if !db_receipts_hash.contains(&hash) {
+                    db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                        hash,
+                        chain,
+                        block_number: tx.block_number,
+                    });
+                }
+            }
+
+            info!(
+                "Storing {} txs with no receipt for future check",
+                db_txs_with_no_receipts.len(),
+            );
+
+            db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+        }
+
+        db.store_blocks_and_txs(
+            vec![db_block],
+            db_txs,
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creation,
+            db_contract_interaction,
+            db_token_transfers,
+        )
+        .await;
+    }
+
+    Ok(())
+}
+
 pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<()> {
     let rpc_last_block = rpc.get_last_block().await.unwrap();
 

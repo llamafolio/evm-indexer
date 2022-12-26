@@ -50,6 +50,13 @@ pub struct Args {
     pub rpc_port: String,
 
     #[arg(
+        long,
+        help = "Fetch the blocks in singles instead of batches",
+        default_value_t = false
+    )]
+    pub singles_fetch: bool,
+
+    #[arg(
         short,
         long,
         help = "Port of the WSS local node",
@@ -78,6 +85,7 @@ pub struct Config {
     pub debug: bool,
     pub batch_size: usize,
     pub receipts_batch_size: usize,
+    pub fetch_in_singles: bool,
     pub workers: usize,
     pub chain: Chain,
     pub abi_source_api_token: String,
@@ -119,6 +127,7 @@ impl Config {
             local_rpc_wss,
             remote_rpc: args.remote_rpc,
             remote_wss: args.remote_wss,
+            fetch_in_singles: args.singles_fetch,
         }
     }
 }

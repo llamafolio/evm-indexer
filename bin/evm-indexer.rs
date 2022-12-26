@@ -30,22 +30,41 @@ async fn main() {
         .await
         .expect("Unable to connect to the rpc");
 
-    tokio::spawn({
-        let db = db.clone();
-        let config = config.clone();
-        let rpc = rpc.clone();
+    if config.fetch_in_singles {
+        tokio::spawn({
+            let db = db.clone();
+            let config = config.clone();
+            let rpc = rpc.clone();
 
-        async move {
-            loop {
-                match fetcher::fetch_blocks(&db, &config, &rpc).await {
-                    Ok(_) => {
-                        sleep(Duration::from_secs(5)).await;
-                    }
-                    Err(err) => println!("{}", err),
-                };
+            async move {
+                loop {
+                    match fetcher::fetch_blocks_singles(&db, &config, &rpc).await {
+                        Ok(_) => {
+                            sleep(Duration::from_secs(5)).await;
+                        }
+                        Err(err) => println!("{}", err),
+                    };
+                }
             }
-        }
-    });
+        });
+    } else {
+        tokio::spawn({
+            let db = db.clone();
+            let config = config.clone();
+            let rpc = rpc.clone();
+
+            async move {
+                loop {
+                    match fetcher::fetch_blocks(&db, &config, &rpc).await {
+                        Ok(_) => {
+                            sleep(Duration::from_secs(5)).await;
+                        }
+                        Err(err) => println!("{}", err),
+                    };
+                }
+            }
+        });
+    }
 
     tokio::spawn({
         let db = db.clone();
