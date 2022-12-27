@@ -222,29 +222,37 @@ impl Rpc {
                             self.chain.name
                         );
 
-                        let (
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        ) = self
-                            .get_blocks(&config, vec![block_number.as_u64() as i64])
-                            .await
-                            .unwrap();
+                        tokio::spawn({
+                            let db = db.clone();
+                            let config = config.clone();
+                            let rpc = self.clone();
 
-                        db.store_blocks_and_txs(
-                            db_blocks,
-                            db_txs,
-                            db_tx_receipts,
-                            db_tx_logs,
-                            db_contract_creations,
-                            db_contract_interactions,
-                            db_token_transfers,
-                        )
-                        .await;
+                            async move {
+                                let (
+                                    db_blocks,
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creations,
+                                    db_contract_interactions,
+                                    db_token_transfers,
+                                ) = rpc
+                                    .get_blocks(&config, vec![block_number.as_u64() as i64])
+                                    .await
+                                    .unwrap();
+
+                                db.store_blocks_and_txs(
+                                    db_blocks,
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creations,
+                                    db_contract_interactions,
+                                    db_token_transfers,
+                                )
+                                .await;
+                            }
+                        });
                     }
                     Err(_) => {
                         return;
