@@ -85,61 +85,66 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
                         db_token_transfers,
                     ) = rpc.get_block(&config, block).await.unwrap();
 
-                    let db_txs_count = db_txs.len();
-                    let db_tx_receipts_count = db_tx_receipts.len();
+                    match db_block {
+                        Some(db_block) => {
+                            let db_txs_count = db_txs.len();
+                            let db_tx_receipts_count = db_tx_receipts.len();
 
-                    let mut enough_receipts = true;
+                            let mut enough_receipts = true;
 
-                    if db_txs_count != db_tx_receipts_count {
-                        info!(
-                            "Not enough receipts for batch: txs({}) receipts ({})",
-                            db_txs_count, db_tx_receipts_count,
-                        );
+                            if db_txs_count != db_tx_receipts_count {
+                                info!(
+                                    "Not enough receipts for batch: txs({}) receipts ({})",
+                                    db_txs_count, db_tx_receipts_count,
+                                );
 
-                        enough_receipts = false;
-                    }
-
-                    if !enough_receipts {
-                        let db_receipts_hash: HashSet<String> = vec_string_to_set(
-                            db_tx_receipts
-                                .clone()
-                                .into_iter()
-                                .map(|receipt| receipt.hash)
-                                .collect(),
-                        );
-
-                        let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
-
-                        for tx in &mut db_txs {
-                            let hash = tx.hash.clone();
-                            let chain = tx.chain.clone();
-                            if !db_receipts_hash.contains(&hash) {
-                                db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
-                                    hash,
-                                    chain,
-                                    block_number: tx.block_number,
-                                });
+                                enough_receipts = false;
                             }
+
+                            if !enough_receipts {
+                                let db_receipts_hash: HashSet<String> = vec_string_to_set(
+                                    db_tx_receipts
+                                        .clone()
+                                        .into_iter()
+                                        .map(|receipt| receipt.hash)
+                                        .collect(),
+                                );
+
+                                let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
+
+                                for tx in &mut db_txs {
+                                    let hash = tx.hash.clone();
+                                    let chain = tx.chain.clone();
+                                    if !db_receipts_hash.contains(&hash) {
+                                        db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                                            hash,
+                                            chain,
+                                            block_number: tx.block_number,
+                                        });
+                                    }
+                                }
+
+                                info!(
+                                    "Storing {} txs with no receipt for future check",
+                                    db_txs_with_no_receipts.len(),
+                                );
+
+                                db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                            }
+
+                            db.store_blocks_and_txs(
+                                vec![db_block],
+                                db_txs,
+                                db_tx_receipts,
+                                db_tx_logs,
+                                db_contract_creation,
+                                db_contract_interaction,
+                                db_token_transfers,
+                            )
+                            .await;
                         }
-
-                        info!(
-                            "Storing {} txs with no receipt for future check",
-                            db_txs_with_no_receipts.len(),
-                        );
-
-                        db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                        None => continue,
                     }
-
-                    db.store_blocks_and_txs(
-                        vec![db_block],
-                        db_txs,
-                        db_tx_receipts,
-                        db_tx_logs,
-                        db_contract_creation,
-                        db_contract_interaction,
-                        db_token_transfers,
-                    )
-                    .await;
                 }
             }
         });

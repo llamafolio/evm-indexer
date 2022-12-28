@@ -355,7 +355,7 @@ impl Rpc {
         config: &Config,
         block: i64,
     ) -> Result<(
-        DatabaseBlock,
+        Option<DatabaseBlock>,
         Vec<DatabaseTx>,
         Vec<DatabaseTxReceipt>,
         Vec<DatabaseTxLogs>,
@@ -365,57 +365,74 @@ impl Rpc {
     )> {
         let web3_block = self.get_block_batch(&vec![block]).await.unwrap();
 
-        let db_block = DatabaseBlock::from_web3(&web3_block[0], self.chain.name.to_string());
+        if web3_block.len() > 0 {
+            let db_block =
+                DatabaseBlock::from_web3(&web3_block.first().unwrap(), self.chain.name.to_string());
 
-        let mut web3_txs: Vec<Transaction> = web3_block[0].transactions.clone();
+            let mut web3_txs: Vec<Transaction> = web3_block[0].transactions.clone();
 
-        let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
+            let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
 
-        if config.chain.name.clone() == "mainnet"
-            || config.chain.name.clone() == "polygon"
-            || config.chain.name.clone() == "bsc"
-        {
-            let mut receipts = self.get_block_receipts(&vec![block]).await.unwrap();
-            tx_receipts.append(&mut receipts);
-        } else {
-            let tx_hashes: Vec<String> =
-                web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
-            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-            tx_receipts.append(&mut receipts_chunk);
-        }
-
-        let mut db_txs: Vec<DatabaseTx> = web3_txs
-            .into_iter()
-            .map(|tx| {
-                DatabaseTx::from_web3(&tx, self.chain.name.to_string(), Some(&db_block.timestamp))
-            })
-            .collect();
-
-        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
-            self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
-
-        let mut db_contract_interactions = vec![];
-
-        for db_tx in db_txs.iter_mut() {
-            if db_tx.input != "0x" {
-                let db_contract_interaction = DatabaseContractInteraction::from_transaction(
-                    db_tx,
-                    self.chain.name.to_string(),
-                );
-
-                db_contract_interactions.push(db_contract_interaction);
+            if config.chain.name.clone() == "mainnet"
+                || config.chain.name.clone() == "polygon"
+                || config.chain.name.clone() == "bsc"
+            {
+                let mut receipts = self.get_block_receipts(&vec![block]).await.unwrap();
+                tx_receipts.append(&mut receipts);
+            } else {
+                let tx_hashes: Vec<String> =
+                    web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
+                let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
+                tx_receipts.append(&mut receipts_chunk);
             }
-        }
 
-        Ok((
-            db_block,
-            db_txs,
-            db_tx_receipts,
-            db_tx_logs,
-            db_contract_creations,
-            db_contract_interactions,
-            db_token_transfers,
-        ))
+            let mut db_txs: Vec<DatabaseTx> = web3_txs
+                .into_iter()
+                .map(|tx| {
+                    DatabaseTx::from_web3(
+                        &tx,
+                        self.chain.name.to_string(),
+                        Some(&db_block.timestamp),
+                    )
+                })
+                .collect();
+
+            let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
+                self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
+
+            let mut db_contract_interactions = vec![];
+
+            for db_tx in db_txs.iter_mut() {
+                if db_tx.input != "0x" {
+                    let db_contract_interaction = DatabaseContractInteraction::from_transaction(
+                        db_tx,
+                        self.chain.name.to_string(),
+                    );
+
+                    db_contract_interactions.push(db_contract_interaction);
+                }
+            }
+
+            Ok((
+                Some(db_block),
+                db_txs,
+                db_tx_receipts,
+                db_tx_logs,
+                db_contract_creations,
+                db_contract_interactions,
+                db_token_transfers,
+            ))
+        } else {
+            Ok((
+                None,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            ))
+        }
     }
 
     pub async fn get_metadata_from_receipts(
