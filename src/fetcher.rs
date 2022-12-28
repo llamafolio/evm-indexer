@@ -63,7 +63,7 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
         missing_blocks_amount, config.batch_size
     );
 
-    let single_fetch_worker_batch = missing_blocks.chunks(config.workers);
+    let single_fetch_worker_batch = missing_blocks.chunks(missing_blocks_amount / config.workers);
 
     let mut works = vec![];
     for worker_chunk in single_fetch_worker_batch {
@@ -83,7 +83,7 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
                         db_contract_creation,
                         db_contract_interaction,
                         db_token_transfers,
-                    ) = rpc.get_block(&config, block.clone()).await.unwrap();
+                    ) = rpc.get_block(&config, block).await.unwrap();
 
                     let db_txs_count = db_txs.len();
                     let db_tx_receipts_count = db_tx_receipts.len();
