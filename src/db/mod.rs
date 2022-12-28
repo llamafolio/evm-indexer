@@ -68,7 +68,7 @@ impl Database {
 
         connection.run_pending_migrations(MIGRATIONS).unwrap();
 
-        let mut limit = config.receipts_batch_size;
+        let limit = config.receipts_batch_size;
 
         Ok(Self {
             db_url: config.db_url.to_string(),
