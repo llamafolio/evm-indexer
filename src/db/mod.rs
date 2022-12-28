@@ -70,10 +70,6 @@ impl Database {
 
         let mut limit = config.receipts_batch_size;
 
-        if config.remote_rpc != String::from("") {
-            limit = 200;
-        }
-
         Ok(Self {
             db_url: config.db_url.to_string(),
             chain: config.chain,
