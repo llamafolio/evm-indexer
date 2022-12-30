@@ -14,7 +14,7 @@ The frontend app repository can be found here [https://github.com/eabz/evm-index
 
 ## Chains
 
-Currently, the indexer can index the following chains:
+Currently, the indexer has been tested indexing the following chains:
 
 - Ethereum
 - Polygon
@@ -38,7 +38,7 @@ The indexer creates tables for:
 6. Contract Interactions
 7. Token Transfers
 8. Tokens Details
-9. Contract ABIs (filled only if the abi source token is provided.)
+9. Contract ABIs (filled only if the abi source token is provided)
 
 The information structure is explained in the [database structure documentation](./doc/DATABASE.md).
 
