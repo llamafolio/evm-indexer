@@ -59,13 +59,22 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
     let missing_blocks_amount = missing_blocks.len();
 
     info!(
-        "Fetching {} blocks with batches of {} blocks",
-        missing_blocks_amount, config.batch_size
+        "Fetching {} blocks by singles with {} workers",
+        missing_blocks_amount, config.workers
     );
 
-    let single_fetch_worker_batch = missing_blocks.chunks(missing_blocks_amount / config.workers);
+    let chunk_size;
+
+    if missing_blocks_amount > config.workers {
+        chunk_size = missing_blocks_amount / config.workers
+    } else {
+        chunk_size = missing_blocks_amount
+    }
+
+    let single_fetch_worker_batch = missing_blocks.chunks(chunk_size);
 
     let mut works = vec![];
+
     for worker_chunk in single_fetch_worker_batch {
         let worker = tokio::spawn({
             let config = config.clone();
