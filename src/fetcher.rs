@@ -497,28 +497,6 @@ pub async fn fetch_contract_abis(config: &Config, db: &Database, token: &str) ->
                                 };
 
                                 db.store_contract_abi(&db_contract_abi).await;
-
-                                let contract: Contract = serde_json::from_str(&abi).unwrap();
-
-                                let functions = contract.functions();
-
-                                let mut db_methods: Vec<DatabaseMethodID> = vec![];
-
-                                for function in functions {
-                                    let signature =
-                                        format!("0x{}", hex::encode(function.short_signature()));
-
-                                    let db_method = DatabaseMethodID {
-                                        name: function.name.clone(),
-                                        method_id: signature,
-                                    };
-
-                                    db_methods.push(db_method);
-                                }
-
-                                info!("Storing {} method IDs from ABI", db_methods.len());
-
-                                db.store_abi_method_ids(&db_methods).await
                             } else {
                                 if abi_response_formatted.result
                                     == "Contract source code not verified"
