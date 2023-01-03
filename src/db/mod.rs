@@ -24,6 +24,8 @@ use self::models::DatabaseExcludedToken;
 use self::models::DatabaseMethodID;
 use self::models::DatabaseToken;
 use self::models::DatabaseTokenTransfers;
+use self::models::DatabaseNft;
+use self::models::DatabaseNftTransfers;
 use self::models::DatabaseTx;
 use self::models::DatabaseTxLogs;
 use self::models::DatabaseTxNoReceipt;
@@ -212,6 +214,7 @@ impl Database {
         contract_creations: Vec<DatabaseContractCreation>,
         contract_interactions: Vec<DatabaseContractInteraction>,
         token_transfers: Vec<DatabaseTokenTransfers>,
+        nft_transfers: Vec<DatabaseNftTransfers>
     ) {
         let mut log = String::new();
 
@@ -424,6 +427,41 @@ impl Database {
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
                 .expect("Unable to store excluded tokens into database");
+        }
+
+        Ok(())
+    }
+
+    async fn store_nft_transfers(
+        &self,
+        nft_transfers: &Vec<DatabaseNftTransfers>,
+    ) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        let chunks = get_chunks(nft_transfers.len(), DatabaseNftTransfers::field_count());
+
+        for (start, end) in chunks {
+            diesel::insert_into(schema::nft_transfers::dsl::nft_transfers)
+                .values(&nft_transfers[start..end])
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store NFT transfers into database");
+        }
+
+        Ok(())
+    }
+
+    pub async fn store_nfts(&self, nfts: &Vec<DatabaseNft>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        let chunks = get_chunks(nfts.len(), DatabaseNft::field_count());
+
+        for (start, end) in chunks {
+            diesel::insert_into(schema::nfts::dsl::nfts)
+                .values(&nfts[start..end])
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store nfts into database");
         }
 
         Ok(())

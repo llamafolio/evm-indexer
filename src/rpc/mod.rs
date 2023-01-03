@@ -22,8 +22,8 @@ use crate::{
     config::Config,
     db::{
         models::{
-            token_transfers_from_logs, DatabaseBlock, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseToken, DatabaseTokenTransfers, DatabaseTx,
+            token_transfers_from_logs, nft_transfers_from_logs, DatabaseBlock, DatabaseContractCreation,
+            DatabaseContractInteraction, DatabaseToken, DatabaseTokenTransfers, DatabaseNft, DatabaseNftTransfers, DatabaseTx,
             DatabaseTxLogs, DatabaseTxReceipt,
         },
         Database,
@@ -236,6 +236,7 @@ impl Rpc {
                                     db_contract_creations,
                                     db_contract_interactions,
                                     db_token_transfers,
+                                    db_nft_transfers,
                                 ) = rpc
                                     .get_blocks(&config, vec![block_number.as_u64() as i64])
                                     .await
@@ -249,6 +250,7 @@ impl Rpc {
                                     db_contract_creations,
                                     db_contract_interactions,
                                     db_token_transfers,
+                                    db_nft_transfers,
                                 )
                                 .await;
                             }
@@ -277,6 +279,7 @@ impl Rpc {
         Vec<DatabaseContractCreation>,
         Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
+        Vec<DatabaseNftTransfers>,
     )> {
         let blocks = self.get_block_batch(&range).await.unwrap();
 
@@ -323,7 +326,7 @@ impl Rpc {
             })
             .collect();
 
-        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
+        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers, db_nft_transfers) =
             self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
 
         let mut db_contract_interactions = vec![];
@@ -347,6 +350,7 @@ impl Rpc {
             db_contract_creations,
             db_contract_interactions,
             db_token_transfers,
+            db_nft_transfers,
         ))
     }
 
@@ -362,6 +366,7 @@ impl Rpc {
         Vec<DatabaseContractCreation>,
         Vec<DatabaseContractInteraction>,
         Vec<DatabaseTokenTransfers>,
+        Vec<DatabaseNftTransfers>,
     )> {
         let web3_block = self.get_block_batch(&vec![block]).await.unwrap();
 
@@ -397,7 +402,7 @@ impl Rpc {
                 })
                 .collect();
 
-            let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers) =
+            let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers, db_nft_transfers) =
                 self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
 
             let mut db_contract_interactions = vec![];
@@ -421,10 +426,12 @@ impl Rpc {
                 db_contract_creations,
                 db_contract_interactions,
                 db_token_transfers,
+                db_nft_transfers,
             ))
         } else {
             Ok((
                 None,
+                Vec::new(),
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
@@ -443,6 +450,7 @@ impl Rpc {
         Vec<DatabaseTxLogs>,
         Vec<DatabaseContractCreation>,
         Vec<DatabaseTokenTransfers>,
+        Vec<DatabaseNftTransfers>,
     )> {
         let mut db_tx_receipts: Vec<DatabaseTxReceipt> = vec![];
 
@@ -451,6 +459,8 @@ impl Rpc {
         let mut db_contract_creations: Vec<DatabaseContractCreation> = vec![];
 
         let mut db_token_transfers: Vec<DatabaseTokenTransfers> = vec![];
+
+        let mut db_nft_transfers: Vec<DatabaseNftTransfers> = vec![];
 
         for tx_receipt in receipts {
             let db_tx_receipt =
@@ -485,6 +495,19 @@ impl Rpc {
                                     self.chain.name.to_string(),
                                 ) {
                                     Ok(token_transfer) => db_token_transfers.push(token_transfer),
+                                    Err(_) => continue,
+                                };
+
+                                match nft_transfers_from_logs(
+                                    &log,
+                                    &tx_receipt,
+                                    self.chain.name.to_string(),
+                                ) {
+                                    Ok(nft_transfers) => {
+                                        for nft_transfer in nft_transfers {
+                                            db_nft_transfers.push(nft_transfer)
+                                        }
+                                    },
                                     Err(_) => continue,
                                 };
 
@@ -539,6 +562,7 @@ impl Rpc {
             db_tx_logs,
             db_contract_creations,
             db_token_transfers,
+            db_nft_transfers,
         ))
     }
 

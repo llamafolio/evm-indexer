@@ -14,7 +14,7 @@ use crate::{
         models::{
             DatabaseBlock, DatabaseContractABI, DatabaseContractAdapter, DatabaseContractCreation,
             DatabaseContractInteraction, DatabaseExcludedToken, DatabaseMethodID, DatabaseToken,
-            DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxNoReceipt,
+            DatabaseTokenTransfers, DatabaseNft, DatabaseNftTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxNoReceipt,
             DatabaseTxReceipt,
         },
         Database,
@@ -92,6 +92,7 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
                         db_contract_creation,
                         db_contract_interaction,
                         db_token_transfers,
+                        db_nft_transfers,
                     ) = rpc.get_block(&config, block).await.unwrap();
 
                     match db_block {
@@ -149,6 +150,7 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
                                 db_contract_creation,
                                 db_contract_interaction,
                                 db_token_transfers,
+                                db_nft_transfers,
                             )
                             .await;
                         }
@@ -211,6 +213,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
         let mut db_contract_creation: Vec<DatabaseContractCreation> = Vec::new();
         let mut db_contract_interaction: Vec<DatabaseContractInteraction> = Vec::new();
         let mut db_token_transfers: Vec<DatabaseTokenTransfers> = Vec::new();
+        let mut db_nft_transfers: Vec<DatabaseNftTransfers> = Vec::new();
 
         for worker_chunk in worker_chunks {
             let worker = tokio::spawn({
@@ -235,6 +238,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
                 mut contract_creations,
                 mut contract_interactions,
                 mut token_transfers,
+                mut nft_transfers,
             ) = result.unwrap();
 
             db_blocks.append(&mut blocks);
@@ -244,6 +248,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
             db_contract_creation.append(&mut contract_creations);
             db_contract_interaction.append(&mut contract_interactions);
             db_token_transfers.append(&mut token_transfers);
+            db_nft_transfers.append(&mut nft_transfers);
         });
 
         let db_txs_count = db_txs.len();
@@ -303,6 +308,7 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
                 db_contract_creation,
                 db_contract_interaction,
                 db_token_transfers,
+                db_nft_transfers,
             )
             .await;
         }
@@ -392,7 +398,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
                 let tx_receipts = rpc.get_txs_receipts(&work_chunk.to_vec()).await.unwrap();
 
                 if tx_receipts.len() == 0 {
-                    return (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+                    return (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
                 }
 
                 return rpc.get_metadata_from_receipts(&tx_receipts).await.unwrap();
@@ -408,14 +414,16 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     let mut db_tx_logs: Vec<DatabaseTxLogs> = Vec::new();
     let mut db_contract_creations: Vec<DatabaseContractCreation> = Vec::new();
     let mut db_token_transfers: Vec<DatabaseTokenTransfers> = Vec::new();
+    let mut db_nft_transfers: Vec<DatabaseNftTransfers> = Vec::new();
 
     results.into_iter().for_each(|result| {
-        let (mut receipts, mut logs, mut contract_creations, mut token_transfers) = result.unwrap();
+        let (mut receipts, mut logs, mut contract_creations, mut token_transfers, mut nft_transfers) = result.unwrap();
 
         db_tx_receipts.append(&mut receipts);
         db_tx_logs.append(&mut logs);
         db_contract_creations.append(&mut contract_creations);
         db_token_transfers.append(&mut token_transfers);
+        db_nft_transfers.append(&mut nft_transfers);
     });
 
     let delete_receipts: Vec<String> = db_tx_receipts
@@ -432,6 +440,7 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
         db_contract_creations,
         Vec::new(),
         db_token_transfers,
+        db_nft_transfers,
     )
     .await;
 
