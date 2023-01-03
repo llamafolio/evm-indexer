@@ -450,10 +450,9 @@ pub fn nft_transfers_from_logs(
     };
 
     // Check the first topic against
-    // keccak256(Transfer(address,address,uint256))
-    // keccak256(TransferSingle(address,address,address,uint256,uint256))
-    // keccak256(TransferBatch(address,address,address,uint256[],uint256[]))
     if format_hash(log.topics[0]) == format!("{:?}", event721.signature()) {
+        // keccak256(Transfer(address,address,uint256))
+
         let from_address: String =
             match ethabi::decode(&[ParamType::Address], log.topics[1].as_bytes()) {
                 Ok(address) => {
@@ -506,6 +505,8 @@ pub fn nft_transfers_from_logs(
             chain,
         });
     } else if format_hash(log.topics[0]) == format!("{:?}", event1155single.signature()) {
+        // keccak256(TransferSingle(address,address,address,uint256,uint256))
+
         let from_address: String =
             match ethabi::decode(&[ParamType::Address], log.topics[2].as_bytes()) {
                 Ok(address) => {
@@ -564,6 +565,8 @@ pub fn nft_transfers_from_logs(
             chain,
         });
     } else if format_hash(log.topics[0]) != format!("{:?}", event1155batch.signature()) {
+        // keccak256(TransferBatch(address,address,address,uint256[],uint256[]))
+
         let from_address: String =
             match ethabi::decode(&[ParamType::Address], log.topics[2].as_bytes()) {
                 Ok(address) => {
@@ -602,7 +605,7 @@ pub fn nft_transfers_from_logs(
                         .iter()
                         .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
                         .collect();
-                    
+
                     let amounts: Vec<String> = value[1]
                         .clone()
                         .into_fixed_array()
@@ -611,7 +614,8 @@ pub fn nft_transfers_from_logs(
                         .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
                         .collect();
 
-                    for (i, (token_id, amount)) in token_ids.iter().zip(amounts.iter()).enumerate() {
+                    for (i, (token_id, amount)) in token_ids.iter().zip(amounts.iter()).enumerate()
+                    {
                         transfers.push(DatabaseNftTransfers {
                             hash_with_index: format!(
                                 "{}-{}-{}",

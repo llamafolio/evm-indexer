@@ -13,9 +13,9 @@ use crate::{
     db::{
         models::{
             DatabaseBlock, DatabaseContractABI, DatabaseContractAdapter, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseMethodID, DatabaseToken,
-            DatabaseTokenTransfers, DatabaseNft, DatabaseNftTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxNoReceipt,
-            DatabaseTxReceipt,
+            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseMethodID, DatabaseNft,
+            DatabaseNftTransfers, DatabaseToken, DatabaseTokenTransfers, DatabaseTx,
+            DatabaseTxLogs, DatabaseTxNoReceipt, DatabaseTxReceipt,
         },
         Database,
     },
@@ -417,7 +417,13 @@ pub async fn fetch_tx_no_receipts(rpc: &Rpc, config: &Config, db: &Database) -> 
     let mut db_nft_transfers: Vec<DatabaseNftTransfers> = Vec::new();
 
     results.into_iter().for_each(|result| {
-        let (mut receipts, mut logs, mut contract_creations, mut token_transfers, mut nft_transfers) = result.unwrap();
+        let (
+            mut receipts,
+            mut logs,
+            mut contract_creations,
+            mut token_transfers,
+            mut nft_transfers,
+        ) = result.unwrap();
 
         db_tx_receipts.append(&mut receipts);
         db_tx_logs.append(&mut logs);

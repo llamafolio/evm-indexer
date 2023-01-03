@@ -22,8 +22,9 @@ use crate::{
     config::Config,
     db::{
         models::{
-            token_transfers_from_logs, nft_transfers_from_logs, DatabaseBlock, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseToken, DatabaseTokenTransfers, DatabaseNft, DatabaseNftTransfers, DatabaseTx,
+            nft_transfers_from_logs, token_transfers_from_logs, DatabaseBlock,
+            DatabaseContractCreation, DatabaseContractInteraction, DatabaseNft,
+            DatabaseNftTransfers, DatabaseToken, DatabaseTokenTransfers, DatabaseTx,
             DatabaseTxLogs, DatabaseTxReceipt,
         },
         Database,
@@ -326,8 +327,13 @@ impl Rpc {
             })
             .collect();
 
-        let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers, db_nft_transfers) =
-            self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
+        let (
+            db_tx_receipts,
+            db_tx_logs,
+            db_contract_creations,
+            db_token_transfers,
+            db_nft_transfers,
+        ) = self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
 
         let mut db_contract_interactions = vec![];
 
@@ -402,8 +408,13 @@ impl Rpc {
                 })
                 .collect();
 
-            let (db_tx_receipts, db_tx_logs, db_contract_creations, db_token_transfers, db_nft_transfers) =
-                self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
+            let (
+                db_tx_receipts,
+                db_tx_logs,
+                db_contract_creations,
+                db_token_transfers,
+                db_nft_transfers,
+            ) = self.get_metadata_from_receipts(&tx_receipts).await.unwrap();
 
             let mut db_contract_interactions = vec![];
 
@@ -507,7 +518,7 @@ impl Rpc {
                                         for nft_transfer in nft_transfers {
                                             db_nft_transfers.push(nft_transfer)
                                         }
-                                    },
+                                    }
                                     Err(_) => continue,
                                 };
 
