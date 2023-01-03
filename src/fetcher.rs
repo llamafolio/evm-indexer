@@ -1,7 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
 use anyhow::Result;
-use ethabi::Contract;
 use log::*;
 use reqwest::Client;
 use serde_json::Error;
@@ -13,7 +12,7 @@ use crate::{
     db::{
         models::{
             DatabaseBlock, DatabaseContractABI, DatabaseContractAdapter, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseMethodID, DatabaseToken,
+            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseToken,
             DatabaseTokenTransfers, DatabaseTx, DatabaseTxLogs, DatabaseTxNoReceipt,
             DatabaseTxReceipt,
         },
