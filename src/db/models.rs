@@ -13,7 +13,8 @@ use crate::utils::{
 
 use super::schema::{
     blocks, contract_abis, contract_creations, contract_interactions, contracts_adapters,
-    excluded_tokens, logs, method_ids, token_transfers, tokens, nft_transfers, nfts, txs, txs_no_receipt, txs_receipts,
+    excluded_tokens, logs, method_ids, nft_transfers, nfts, token_transfers, tokens, txs,
+    txs_no_receipt, txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
@@ -245,12 +246,12 @@ pub fn token_transfers_from_logs(
             ethabi::EventParam {
                 name: "from".to_owned(),
                 kind: ParamType::Address,
-                indexed: false,
+                indexed: true,
             },
             ethabi::EventParam {
                 name: "to".to_owned(),
                 kind: ParamType::Address,
-                indexed: false,
+                indexed: true,
             },
             ethabi::EventParam {
                 name: "amount".to_owned(),
@@ -349,6 +350,295 @@ pub struct DatabaseNftTransfers {
     pub amount: String,
     pub log_index: i64,
     pub chain: String,
+}
+
+pub fn nft_transfers_from_logs(
+    log: &Log,
+    receipt: &TransactionReceipt,
+    chain: String,
+) -> anyhow::Result<Vec<DatabaseNftTransfers>> {
+    if log.topics.len() != 4 {
+        bail!("No topics for log");
+    }
+
+    let mut transfers: Vec<DatabaseNftTransfers> = Vec::new();
+
+    let event721 = ethabi::Event {
+        name: "Transfer".to_owned(),
+        inputs: vec![
+            ethabi::EventParam {
+                name: "from".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "to".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "tokenId".to_owned(),
+                kind: ParamType::Uint(256),
+                indexed: true,
+            },
+        ],
+        anonymous: false,
+    };
+
+    let event1155single = ethabi::Event {
+        name: "TransferSingle".to_owned(),
+        inputs: vec![
+            ethabi::EventParam {
+                name: "operator".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "from".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "to".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "id".to_owned(),
+                kind: ParamType::Uint(256),
+                indexed: false,
+            },
+            ethabi::EventParam {
+                name: "value".to_owned(),
+                kind: ParamType::Uint(256),
+                indexed: false,
+            },
+        ],
+        anonymous: false,
+    };
+
+    let event1155batch = ethabi::Event {
+        name: "TransferBatch".to_owned(),
+        inputs: vec![
+            ethabi::EventParam {
+                name: "operator".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "from".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "to".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            },
+            ethabi::EventParam {
+                name: "ids".to_owned(),
+                kind: ParamType::Array(Box::new(ParamType::Uint(256))),
+                indexed: false,
+            },
+            ethabi::EventParam {
+                name: "values".to_owned(),
+                kind: ParamType::Array(Box::new(ParamType::Uint(256))),
+                indexed: false,
+            },
+        ],
+        anonymous: false,
+    };
+
+    // Check the first topic against
+    // keccak256(Transfer(address,address,uint256))
+    // keccak256(TransferSingle(address,address,address,uint256,uint256))
+    // keccak256(TransferBatch(address,address,address,uint256[],uint256[]))
+    if format_hash(log.topics[0]) == format!("{:?}", event721.signature()) {
+        let from_address: String =
+            match ethabi::decode(&[ParamType::Address], log.topics[1].as_bytes()) {
+                Ok(address) => {
+                    if address.len() == 0 {
+                        bail!("From address not found");
+                    } else {
+                        format!("{:?}", address[0].clone().into_address().unwrap())
+                    }
+                }
+                Err(_) => bail!("Topic doesn't include the from_address"),
+            };
+
+        let to_address = match ethabi::decode(&[ParamType::Address], log.topics[2].as_bytes()) {
+            Ok(address) => {
+                if address.len() == 0 {
+                    bail!("To address not found");
+                } else {
+                    format!("{:?}", address[0].clone().into_address().unwrap())
+                }
+            }
+            Err(_) => bail!("Topic doesn't include the to_address"),
+        };
+
+        let token_id = match ethabi::decode(&[ParamType::Uint(256)], log.topics[3].as_bytes()) {
+            Ok(id) => {
+                if id.len() == 0 {
+                    bail!("Token ID not found");
+                } else {
+                    format!("{:?}", id[0].clone().into_uint().unwrap())
+                }
+            }
+            Err(_) => bail!("Topic doesn't include the token ID"),
+        };
+
+        transfers.push(DatabaseNftTransfers {
+            hash_with_index: format!(
+                "{}-{}-{}",
+                format_hash(receipt.transaction_hash),
+                0,
+                log.log_index.unwrap().as_u64()
+            ),
+            hash: format_hash(receipt.transaction_hash),
+            block: receipt.block_number.unwrap().as_u64() as i64,
+            token: format_address(log.address),
+            from_address,
+            to_address,
+            token_id,
+            amount: "1".to_owned(),
+            log_index: log.log_index.unwrap().as_u64() as i64,
+            chain,
+        });
+    } else if format_hash(log.topics[0]) == format!("{:?}", event1155single.signature()) {
+        let from_address: String =
+            match ethabi::decode(&[ParamType::Address], log.topics[2].as_bytes()) {
+                Ok(address) => {
+                    if address.len() == 0 {
+                        bail!("From address not found");
+                    } else {
+                        format!("{:?}", address[0].clone().into_address().unwrap())
+                    }
+                }
+                Err(_) => bail!("Topic doesn't include the from_address"),
+            };
+
+        let to_address = match ethabi::decode(&[ParamType::Address], log.topics[3].as_bytes()) {
+            Ok(address) => {
+                if address.len() == 0 {
+                    bail!("To address not found");
+                } else {
+                    format!("{:?}", address[0].clone().into_address().unwrap())
+                }
+            }
+            Err(_) => bail!("Topic doesn't include the to_address"),
+        };
+
+        let (token_id, amount) = match ethabi::decode(
+            &[ParamType::Uint(256), ParamType::Uint(256)],
+            &log.data.0[..],
+        ) {
+            Ok(value) => {
+                if value.len() < 2 {
+                    bail!("Token ID or amount not found");
+                } else {
+                    (
+                        format!("{:?}", value[0].clone().into_uint().unwrap()),
+                        format!("{:?}", value[1].clone().into_uint().unwrap()),
+                    )
+                }
+            }
+            Err(_) => bail!("Unable to decode token ID or amount"),
+        };
+
+        transfers.push(DatabaseNftTransfers {
+            hash_with_index: format!(
+                "{}-{}-{}",
+                format_hash(receipt.transaction_hash),
+                0,
+                log.log_index.unwrap().as_u64()
+            ),
+            hash: format_hash(receipt.transaction_hash),
+            block: receipt.block_number.unwrap().as_u64() as i64,
+            token: format_address(log.address),
+            from_address,
+            to_address,
+            token_id,
+            amount,
+            log_index: log.log_index.unwrap().as_u64() as i64,
+            chain,
+        });
+    } else if format_hash(log.topics[0]) != format!("{:?}", event1155batch.signature()) {
+        let from_address: String =
+            match ethabi::decode(&[ParamType::Address], log.topics[2].as_bytes()) {
+                Ok(address) => {
+                    if address.len() == 0 {
+                        bail!("From address not found");
+                    } else {
+                        format!("{:?}", address[0].clone().into_address().unwrap())
+                    }
+                }
+                Err(_) => bail!("Topic doesn't include the from_address"),
+            };
+
+        let to_address = match ethabi::decode(&[ParamType::Address], log.topics[3].as_bytes()) {
+            Ok(address) => {
+                if address.len() == 0 {
+                    bail!("To address not found");
+                } else {
+                    format!("{:?}", address[0].clone().into_address().unwrap())
+                }
+            }
+            Err(_) => bail!("Topic doesn't include the to_address"),
+        };
+
+        match ethabi::decode(
+            &[ParamType::Uint(256), ParamType::Uint(256)],
+            &log.data.0[..],
+        ) {
+            Ok(value) => {
+                if value.len() < 2 {
+                    bail!("Token IDs or amounts not found");
+                } else {
+                    let token_ids: Vec<String> = value[0]
+                        .clone()
+                        .into_fixed_array()
+                        .unwrap()
+                        .iter()
+                        .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
+                        .collect();
+                    
+                    let amounts: Vec<String> = value[1]
+                        .clone()
+                        .into_fixed_array()
+                        .unwrap()
+                        .iter()
+                        .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
+                        .collect();
+
+                    for (i, (token_id, amount)) in token_ids.iter().zip(amounts.iter()).enumerate() {
+                        transfers.push(DatabaseNftTransfers {
+                            hash_with_index: format!(
+                                "{}-{}-{}",
+                                format_hash(receipt.transaction_hash),
+                                i,
+                                log.log_index.unwrap().as_u64()
+                            ),
+                            hash: format_hash(receipt.transaction_hash),
+                            block: receipt.block_number.unwrap().as_u64() as i64,
+                            token: format_address(log.address),
+                            from_address: from_address.clone(),
+                            to_address: to_address.clone(),
+                            token_id: token_id.clone(),
+                            amount: amount.clone(),
+                            log_index: log.log_index.unwrap().as_u64() as i64,
+                            chain: chain.clone(),
+                        });
+                    }
+                }
+            }
+            Err(_) => bail!("Unable to decode token IDs or amounts"),
+        };
+    } else {
+        bail!("Topic doesn't match the Transfer event");
+    }
+
+    return Ok(transfers);
 }
 
 #[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
