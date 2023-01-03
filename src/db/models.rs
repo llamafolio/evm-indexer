@@ -13,7 +13,7 @@ use crate::utils::{
 
 use super::schema::{
     blocks, contract_abis, contract_creations, contract_interactions, contracts_adapters,
-    excluded_tokens, logs, method_ids, token_transfers, tokens, txs, txs_no_receipt, txs_receipts,
+    excluded_tokens, logs, method_ids, token_transfers, tokens, nft_transfers, nfts, txs, txs_no_receipt, txs_receipts,
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
@@ -334,6 +334,32 @@ pub struct DatabaseExcludedToken {
     pub address_with_chain: String,
     pub address: String,
     pub chain: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
+#[diesel(table_name = nft_transfers)]
+pub struct DatabaseNftTransfers {
+    pub hash_with_index: String,
+    pub hash: String,
+    pub block: i64,
+    pub token: String,
+    pub from_address: String,
+    pub to_address: String,
+    pub token_id: String,
+    pub amount: String,
+    pub log_index: i64,
+    pub chain: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
+#[diesel(table_name = nfts)]
+pub struct DatabaseNft {
+    pub address_with_chain: String,
+    pub address: String,
+    pub chain: String,
+    pub nft_type: String,
+    pub name: String,
+    pub symbol: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone, FieldCount)]

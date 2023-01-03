@@ -118,6 +118,32 @@ diesel::table! {
 }
 
 diesel::table! {
+    nft_transfers (hash_with_index) {
+        hash_with_index -> Varchar,
+        hash -> Varchar,
+        log_index -> Int8,
+        block -> Int8,
+        token -> Varchar,
+        from_address -> Varchar,
+        to_address -> Varchar,
+        token_id -> Varchar,
+        amount -> Varchar,
+        chain -> Varchar,
+    }
+}
+
+diesel::table! {
+    nfts (address_with_chain) {
+        address_with_chain -> Varchar,
+        address -> Varchar,
+        chain -> Varchar,
+        nft_type -> Varchar,
+        name -> Varchar,
+        symbol -> Varchar,
+    }
+}
+
+diesel::table! {
     txs (hash) {
         hash -> Varchar,
         block_number -> Int8,
