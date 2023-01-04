@@ -13,7 +13,7 @@ use crate::utils::{
 
 use super::schema::{
     blocks, contract_abis, contract_creations, contract_interactions, contracts_adapters,
-    excluded_tokens, logs, method_ids, nft_transfers, nfts, token_transfers, tokens, txs,
+    excluded_tokens, excluded_nfts, logs, method_ids, nft_transfers, nfts, token_transfers, tokens, txs,
     txs_no_receipt, txs_receipts,
 };
 
@@ -349,6 +349,7 @@ pub struct DatabaseNftTransfers {
     pub token_id: String,
     pub amount: String,
     pub log_index: i64,
+    pub log_type: String,
     pub chain: String,
 }
 
@@ -502,6 +503,7 @@ pub fn nft_transfers_from_logs(
             token_id,
             amount: "1".to_owned(),
             log_index: log.log_index.unwrap().as_u64() as i64,
+            log_type: "721-Transfer".to_owned(),
             chain,
         });
     } else if format_hash(log.topics[0]) == format!("{:?}", event1155single.signature()) {
@@ -562,6 +564,7 @@ pub fn nft_transfers_from_logs(
             token_id,
             amount,
             log_index: log.log_index.unwrap().as_u64() as i64,
+            log_type: "1155-TransferSingle".to_owned(),
             chain,
         });
     } else if format_hash(log.topics[0]) != format!("{:?}", event1155batch.signature()) {
@@ -631,6 +634,7 @@ pub fn nft_transfers_from_logs(
                             token_id: token_id.clone(),
                             amount: amount.clone(),
                             log_index: log.log_index.unwrap().as_u64() as i64,
+                            log_type: "1155-TransferBatch".to_owned(),
                             chain: chain.clone(),
                         });
                     }
@@ -654,6 +658,14 @@ pub struct DatabaseNft {
     pub nft_type: String,
     pub name: String,
     pub symbol: String,
+}
+
+#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
+#[diesel(table_name = excluded_nfts)]
+pub struct DatabaseExcludedNft {
+    pub address_with_chain: String,
+    pub address: String,
+    pub chain: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone, FieldCount)]

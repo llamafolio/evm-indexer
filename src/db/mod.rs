@@ -20,6 +20,7 @@ use self::models::DatabaseContractABI;
 use self::models::DatabaseContractAdapter;
 use self::models::DatabaseContractCreation;
 use self::models::DatabaseContractInteraction;
+use self::models::DatabaseExcludedNft;
 use self::models::DatabaseExcludedToken;
 use self::models::DatabaseMethodID;
 use self::models::DatabaseToken;
@@ -40,11 +41,17 @@ use self::schema::excluded_tokens;
 use self::schema::excluded_tokens::table as excluded_tokens_table;
 use self::schema::token_transfers;
 use self::schema::token_transfers::table as token_transfers_table;
+use self::schema::excluded_nfts;
+use self::schema::excluded_nfts::table as excluded_nfts_table;
+use self::schema::nft_transfers;
+use self::schema::nft_transfers::table as nft_transfers_table;
 use self::schema::txs_no_receipt;
 use self::schema::txs_no_receipt::table as txs_no_receipt_table;
 
 use self::schema::tokens;
 use self::schema::tokens::table as tokens_table;
+use self::schema::nfts;
+use self::schema::nfts::table as nfts_table;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -143,6 +150,52 @@ impl Database {
             .collect();
 
         Ok(missing_tokens)
+    }
+
+    pub async fn get_nfts_missing_data(&self) -> Result<Vec<(String, String)>> {
+        let mut connection = self.establish_connection();
+
+        let nft_addresses: Result<Vec<(String,String)>, diesel::result::Error> = nft_transfers_table
+            .select((nft_transfers::token, nft_transfers::log_type))
+            .filter(nft_transfers::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<(String,String)>(&mut connection);
+
+        let nft_transfers_addresses = match nft_addresses {
+            Ok(nft_addresses) => nft_addresses,
+            Err(_) => Vec::new(),
+        };
+
+        let nfts_stored = nfts_table
+            .select(nfts::address)
+            .filter(nfts::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<String>(&mut connection);
+
+        let nft_stored_addresses: HashSet<String> = match nfts_stored {
+            Ok(nft_addresses) => HashSet::from_iter(nft_addresses),
+            Err(_) => HashSet::new(),
+        };
+
+        let excluded_nfts_stored = excluded_nfts_table
+            .select(excluded_nfts::address)
+            .filter(excluded_nfts::chain.eq(self.chain.name.to_string()))
+            .distinct()
+            .load::<String>(&mut connection);
+
+        let excluded_nfts_stored_addresses: HashSet<String> = match excluded_nfts_stored {
+            Ok(nft_addresses) => HashSet::from_iter(nft_addresses),
+            Err(_) => HashSet::new(),
+        };
+
+        let missing_nfts: Vec<(String,String)> = nft_transfers_addresses
+            .into_iter()
+            .filter(|n| {
+                !nft_stored_addresses.contains(&n.0) && !excluded_nfts_stored_addresses.contains(&n.0)
+            })
+            .collect();
+
+        Ok(missing_nfts)
     }
 
     pub async fn get_block_numbers(&self) -> Result<Vec<i64>> {
@@ -257,6 +310,11 @@ impl Database {
         if token_transfers.len() > 0 {
             self.store_token_transfers(&token_transfers).await.unwrap();
             log.push_str(&format!(" token_transfers({})", token_transfers.len()));
+        }
+
+        if nft_transfers.len() > 0 {
+            self.store_nft_transfers(&nft_transfers).await.unwrap();
+            log.push_str(&format!(" nft_transfers({})", nft_transfers.len()));
         }
 
         if blocks.len() > 0 {
@@ -427,6 +485,22 @@ impl Database {
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
                 .expect("Unable to store excluded tokens into database");
+        }
+
+        Ok(())
+    }
+
+    pub async fn store_excluded_nfts(&self, nfts: &Vec<DatabaseExcludedNft>) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        let chunks = get_chunks(nfts.len(), DatabaseExcludedNft::field_count());
+
+        for (start, end) in chunks {
+            diesel::insert_into(schema::excluded_nfts::dsl::excluded_nfts)
+                .values(&nfts[start..end])
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store excluded nfts into database");
         }
 
         Ok(())

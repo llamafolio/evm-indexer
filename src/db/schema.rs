@@ -65,6 +65,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    excluded_nfts (address_with_chain) {
+        address_with_chain -> Varchar,
+        address -> Varchar,
+        chain -> Varchar,
+    }
+}
+
+diesel::table! {
     logs (hash_with_index) {
         hash_with_index -> Varchar,
         hash -> Nullable<Varchar>,
@@ -122,6 +130,7 @@ diesel::table! {
         hash_with_index -> Varchar,
         hash -> Varchar,
         log_index -> Int8,
+        log_type -> Varchar,
         block -> Int8,
         token -> Varchar,
         from_address -> Varchar,
@@ -186,11 +195,13 @@ diesel::allow_tables_to_appear_in_same_query!(
     contract_interactions,
     contracts_adapters,
     excluded_tokens,
+    excluded_nfts,
     logs,
     method_ids,
     state,
     token_transfers,
     tokens,
+    nfts,
     txs,
     txs_no_receipt,
     txs_receipts,

@@ -41,3 +41,5 @@ pub fn format_receipts(b: serde_json::Value) -> Result<Vec<TransactionReceipt>, 
 }
 
 pub static ERC20_ABI: &[u8] = include_bytes!("res/abi/erc20.json").as_slice();
+pub static ERC721_ABI: &[u8] = include_bytes!("res/abi/erc721.json").as_slice();
+pub static ERC1155_ABI: &[u8] = include_bytes!("res/abi/erc1155.json").as_slice();

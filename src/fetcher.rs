@@ -13,7 +13,7 @@ use crate::{
     db::{
         models::{
             DatabaseBlock, DatabaseContractABI, DatabaseContractAdapter, DatabaseContractCreation,
-            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseMethodID, DatabaseNft,
+            DatabaseContractInteraction, DatabaseExcludedToken, DatabaseExcludedNft, DatabaseMethodID, DatabaseNft,
             DatabaseNftTransfers, DatabaseToken, DatabaseTokenTransfers, DatabaseTx,
             DatabaseTxLogs, DatabaseTxNoReceipt, DatabaseTxReceipt,
         },
@@ -355,6 +355,43 @@ pub async fn fetch_tokens_metadata(rpc: &Rpc, db: &Database, config: &Config) ->
         db.store_excluded_tokens(&excluded).await.unwrap();
 
         info!("Stored data for {} excluded tokens", excluded.len());
+    }
+
+    Ok(())
+}
+
+pub async fn fetch_nfts_metadata(rpc: &Rpc, db: &Database, config: &Config) -> Result<()> {
+    let missing_nfts = db.get_nfts_missing_data().await.unwrap();
+
+    let chunks = missing_nfts.chunks(100);
+
+    for chunk in chunks {
+        let data = rpc.get_nfts_metadata(chunk.to_vec()).await.unwrap();
+
+        let filtered_nfts: Vec<DatabaseNft> = data
+            .clone()
+            .into_iter()
+            .collect();
+
+        db.store_nfts(&filtered_nfts).await.unwrap();
+
+        info!("Stored data for {} nfts", filtered_nfts.len());
+
+        let included_addresses: Vec<String> = data.into_iter().map(|nft| nft.address).collect();
+
+        let excluded = chunk
+            .into_iter()
+            .filter(|nft| !included_addresses.contains(&nft.0))
+            .map(|excluded| DatabaseExcludedNft {
+                address: excluded.0.to_string(),
+                address_with_chain: format!("{}-{}", excluded.0.to_string(), config.chain.name),
+                chain: config.chain.name.to_string(),
+            })
+            .collect();
+
+        db.store_excluded_nfts(&excluded).await.unwrap();
+
+        info!("Stored data for {} excluded nfts", excluded.len());
     }
 
     Ok(())

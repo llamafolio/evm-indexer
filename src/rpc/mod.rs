@@ -31,7 +31,7 @@ use crate::{
     },
     utils::{
         format_address, format_block, format_bool, format_bytes, format_hash, format_receipt,
-        format_receipts, ERC20_ABI,
+        format_receipts, ERC20_ABI, ERC721_ABI,
     },
 };
 
@@ -648,5 +648,98 @@ impl Rpc {
         };
 
         Ok((name, symbol, decimals, token))
+    }
+
+    pub async fn get_nfts_metadata(&self, nfts: Vec<(String,String)>) -> Result<Vec<DatabaseNft>> {
+        let mut nfts_metadata: Vec<DatabaseNft> = Vec::new();
+
+        let mut nfts_721_req = vec![];
+        let mut nfts_1155_req = vec![];
+
+        for nft in nfts {
+            let token = Address::from_str(&nft.0).unwrap();
+            if nft.1 == "721-Transfer" {
+                nfts_721_req.push(self.get_erc721_details(token));
+            } else {
+                nfts_1155_req.push(self.get_erc1155_details(token));
+            }
+        }
+
+        let nfts_721_data = join_all(nfts_721_req).await;
+        let nfts_1155_data = join_all(nfts_1155_req).await;
+
+        for nft_data in nfts_721_data {
+            match nft_data {
+                Ok((name, symbol, address)) => nfts_metadata.push(DatabaseNft {
+                    address_with_chain: format!(
+                        "{}-{}",
+                        format!("{:?}", address),
+                        self.chain.name.to_string()
+                    ),
+                    address: format!("{:?}", address),
+                    chain: self.chain.name.to_string(),
+                    // Name and Symbol are reformatted to prevent non utf8 characters
+                    name: format!("{}", name),
+                    symbol: format!("{}", symbol),
+                    nft_type: "ERC721".to_string(),
+                }),
+                Err(_) => continue,
+            }
+        }
+
+        for nft_data in nfts_1155_data {
+            match nft_data {
+                Ok((name, symbol, address)) => nfts_metadata.push(DatabaseNft {
+                    address_with_chain: format!(
+                        "{}-{}",
+                        format!("{:?}", address),
+                        self.chain.name.to_string()
+                    ),
+                    address: format!("{:?}", address),
+                    chain: self.chain.name.to_string(),
+                    // Name and Symbol are reformatted to prevent non utf8 characters
+                    name: format!("{}", name),
+                    symbol: format!("{}", symbol),
+                    nft_type: "ERC1155".to_string(),
+                }),
+                Err(_) => continue,
+            }
+        }
+
+        Ok(nfts_metadata)
+    }
+
+    pub async fn get_erc721_details(
+        &self,
+        token: Address,
+    ) -> Result<(String, String, Address), anyhow::Error> {
+        let erc721_abi = ERC721_ABI;
+
+        let contract = Contract::from_json(self.web3.eth(), token, erc721_abi).unwrap();
+
+        let name: String = match contract
+            .query("name", (), None, Options::default(), None)
+            .await
+        {
+            Ok(result) => result,
+            Err(_) => "".to_string(),
+        };
+
+        let symbol: String = match contract
+            .query("symbol", (), None, Options::default(), None)
+            .await
+        {
+            Ok(result) => result,
+            Err(_) => "".to_string(),
+        };
+
+        Ok((name, symbol, token))
+    }
+
+    pub async fn get_erc1155_details(
+        &self,
+        token: Address,
+    ) -> Result<(String, String, Address), anyhow::Error> {
+        Ok(("".to_string(), "".to_string(), token))
     }
 }
