@@ -57,108 +57,112 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
 
     let missing_blocks_amount = missing_blocks.len();
 
-    info!(
-        "Fetching {} blocks by singles with {} workers",
-        missing_blocks_amount, config.workers
-    );
+    if missing_blocks_amount > 0 {
+        info!(
+            "Fetching {} blocks by singles with {} workers",
+            missing_blocks_amount, config.workers
+        );
 
-    let chunk_size;
+        let chunk_size;
 
-    if missing_blocks_amount > config.workers {
-        chunk_size = missing_blocks_amount / config.workers
-    } else {
-        chunk_size = missing_blocks_amount
-    }
+        if missing_blocks_amount > config.workers {
+            chunk_size = missing_blocks_amount / config.workers
+        } else {
+            chunk_size = missing_blocks_amount
+        }
 
-    let single_fetch_worker_batch = missing_blocks.chunks(chunk_size);
+        let single_fetch_worker_batch = missing_blocks.chunks(chunk_size);
 
-    let mut works = vec![];
+        let mut works = vec![];
 
-    for worker_chunk in single_fetch_worker_batch {
-        let worker = tokio::spawn({
-            let rpc = rpc.clone();
-            let db = db.clone();
-            let chunk = worker_chunk.to_vec();
+        for worker_chunk in single_fetch_worker_batch {
+            let worker = tokio::spawn({
+                let rpc = rpc.clone();
+                let db = db.clone();
+                let chunk = worker_chunk.to_vec();
 
-            async move {
-                for block in chunk {
-                    let (
-                        db_block,
-                        mut db_txs,
-                        db_tx_receipts,
-                        db_tx_logs,
-                        db_contract_creation,
-                        db_contract_interaction,
-                        db_token_transfers,
-                    ) = rpc.get_block(block).await.unwrap();
+                async move {
+                    for block in chunk {
+                        let (
+                            db_block,
+                            mut db_txs,
+                            db_tx_receipts,
+                            db_tx_logs,
+                            db_contract_creation,
+                            db_contract_interaction,
+                            db_token_transfers,
+                        ) = rpc.get_block(block).await.unwrap();
 
-                    match db_block {
-                        Some(db_block) => {
-                            let db_txs_count = db_txs.len();
-                            let db_tx_receipts_count = db_tx_receipts.len();
+                        match db_block {
+                            Some(db_block) => {
+                                let db_txs_count = db_txs.len();
+                                let db_tx_receipts_count = db_tx_receipts.len();
 
-                            let mut enough_receipts = true;
+                                let mut enough_receipts = true;
 
-                            if db_txs_count != db_tx_receipts_count {
-                                info!(
-                                    "Not enough receipts for batch: txs({}) receipts ({})",
-                                    db_txs_count, db_tx_receipts_count,
-                                );
+                                if db_txs_count != db_tx_receipts_count {
+                                    info!(
+                                        "Not enough receipts for batch: txs({}) receipts ({})",
+                                        db_txs_count, db_tx_receipts_count,
+                                    );
 
-                                enough_receipts = false;
-                            }
-
-                            if !enough_receipts {
-                                let db_receipts_hash: HashSet<String> = vec_string_to_set(
-                                    db_tx_receipts
-                                        .clone()
-                                        .into_iter()
-                                        .map(|receipt| receipt.hash)
-                                        .collect(),
-                                );
-
-                                let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
-
-                                for tx in &mut db_txs {
-                                    let hash = tx.hash.clone();
-                                    let chain = tx.chain.clone();
-                                    if !db_receipts_hash.contains(&hash) {
-                                        db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
-                                            hash,
-                                            chain,
-                                            block_number: tx.block_number,
-                                        });
-                                    }
+                                    enough_receipts = false;
                                 }
 
-                                info!(
-                                    "Storing {} txs with no receipt for future check",
-                                    db_txs_with_no_receipts.len(),
-                                );
+                                if !enough_receipts {
+                                    let db_receipts_hash: HashSet<String> = vec_string_to_set(
+                                        db_tx_receipts
+                                            .clone()
+                                            .into_iter()
+                                            .map(|receipt| receipt.hash)
+                                            .collect(),
+                                    );
 
-                                db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                                    let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> =
+                                        vec![];
+
+                                    for tx in &mut db_txs {
+                                        let hash = tx.hash.clone();
+                                        let chain = tx.chain.clone();
+                                        if !db_receipts_hash.contains(&hash) {
+                                            db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                                                hash,
+                                                chain,
+                                                block_number: tx.block_number,
+                                            });
+                                        }
+                                    }
+
+                                    info!(
+                                        "Storing {} txs with no receipt for future check",
+                                        db_txs_with_no_receipts.len(),
+                                    );
+
+                                    db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                                }
+
+                                db.store_blocks_and_txs(
+                                    vec![db_block],
+                                    db_txs,
+                                    db_tx_receipts,
+                                    db_tx_logs,
+                                    db_contract_creation,
+                                    db_contract_interaction,
+                                    db_token_transfers,
+                                )
+                                .await;
                             }
-
-                            db.store_blocks_and_txs(
-                                vec![db_block],
-                                db_txs,
-                                db_tx_receipts,
-                                db_tx_logs,
-                                db_contract_creation,
-                                db_contract_interaction,
-                                db_token_transfers,
-                            )
-                            .await;
+                            None => continue,
                         }
-                        None => continue,
                     }
                 }
-            }
-        });
-        works.push(worker)
+            });
+            works.push(worker)
+        }
+
+        join_all(works).await;
     }
 
-    join_all(works).await;
     Ok(())
 }
 
@@ -176,132 +180,134 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
 
     let missing_blocks_amount = missing_blocks.len();
 
-    info!(
-        "Fetching {} blocks with batches of {} blocks",
-        missing_blocks_amount, config.batch_size
-    );
-
-    let chunks: Vec<Vec<i64>> = missing_blocks
-        .clone()
-        .chunks(config.batch_size * config.workers)
-        .map(|chunk| chunk.to_vec())
-        .collect();
-
-    for chunk in chunks {
+    if missing_blocks_amount > 0 {
         info!(
-            "Procesing chunk from block {} to {} for chain {}",
-            chunk.first().unwrap(),
-            chunk.last().unwrap(),
-            config.chain.name
+            "Fetching {} blocks with batches of {} blocks",
+            missing_blocks_amount, config.batch_size
         );
 
-        let mut works = vec![];
-
-        let worker_chunks: Vec<Vec<i64>> = chunk
-            .chunks(config.batch_size)
+        let chunks: Vec<Vec<i64>> = missing_blocks
+            .clone()
+            .chunks(config.batch_size * config.workers)
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
-        let mut db_txs: Vec<DatabaseTx> = Vec::new();
-        let mut db_tx_receipts: Vec<DatabaseTxReceipt> = Vec::new();
-        let mut db_tx_logs: Vec<DatabaseTxLogs> = Vec::new();
-        let mut db_contract_creation: Vec<DatabaseContractCreation> = Vec::new();
-        let mut db_contract_interaction: Vec<DatabaseContractInteraction> = Vec::new();
-        let mut db_token_transfers: Vec<DatabaseTokenTransfers> = Vec::new();
+        for chunk in chunks {
+            info!(
+                "Procesing chunk from block {} to {} for chain {}",
+                chunk.first().unwrap(),
+                chunk.last().unwrap(),
+                config.chain.name
+            );
 
-        for worker_chunk in worker_chunks {
-            let worker = tokio::spawn({
-                let chunk = worker_chunk.clone();
-                let rpc = rpc.clone();
-                async move {
-                    return rpc.get_blocks(chunk.to_vec()).await.unwrap();
-                }
-            });
-            works.push(worker);
-        }
+            let mut works = vec![];
 
-        let results = join_all(works).await;
+            let worker_chunks: Vec<Vec<i64>> = chunk
+                .chunks(config.batch_size)
+                .map(|chunk| chunk.to_vec())
+                .collect();
 
-        results.into_iter().for_each(|result| {
-            let (
-                mut blocks,
-                mut txs,
-                mut receipts,
-                mut logs,
-                mut contract_creations,
-                mut contract_interactions,
-                mut token_transfers,
-            ) = result.unwrap();
+            let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
+            let mut db_txs: Vec<DatabaseTx> = Vec::new();
+            let mut db_tx_receipts: Vec<DatabaseTxReceipt> = Vec::new();
+            let mut db_tx_logs: Vec<DatabaseTxLogs> = Vec::new();
+            let mut db_contract_creation: Vec<DatabaseContractCreation> = Vec::new();
+            let mut db_contract_interaction: Vec<DatabaseContractInteraction> = Vec::new();
+            let mut db_token_transfers: Vec<DatabaseTokenTransfers> = Vec::new();
 
-            db_blocks.append(&mut blocks);
-            db_txs.append(&mut txs);
-            db_tx_receipts.append(&mut receipts);
-            db_tx_logs.append(&mut logs);
-            db_contract_creation.append(&mut contract_creations);
-            db_contract_interaction.append(&mut contract_interactions);
-            db_token_transfers.append(&mut token_transfers);
-        });
-
-        let db_txs_count = db_txs.len();
-        let db_tx_receipts_count = db_tx_receipts.len();
-
-        let mut enough_receipts = true;
-
-        if db_blocks.len() > 0 {
-            if db_txs_count != db_tx_receipts_count {
-                info!(
-                    "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
-                    db_txs_count,
-                    db_tx_receipts_count,
-                    db_blocks.first().unwrap().number,
-                    db_blocks.last().unwrap().number,
-                );
-
-                enough_receipts = false;
-            }
-
-            if !enough_receipts {
-                let db_receipts_hash: HashSet<String> = vec_string_to_set(
-                    db_tx_receipts
-                        .clone()
-                        .into_iter()
-                        .map(|receipt| receipt.hash)
-                        .collect(),
-                );
-
-                let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
-
-                for tx in &mut db_txs {
-                    let hash = tx.hash.clone();
-                    let chain = tx.chain.clone();
-                    if !db_receipts_hash.contains(&hash) {
-                        db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
-                            hash,
-                            chain,
-                            block_number: tx.block_number,
-                        });
+            for worker_chunk in worker_chunks {
+                let worker = tokio::spawn({
+                    let chunk = worker_chunk.clone();
+                    let rpc = rpc.clone();
+                    async move {
+                        return rpc.get_blocks(chunk.to_vec()).await.unwrap();
                     }
-                }
-
-                info!(
-                    "Storing {} txs with no receipt for future check",
-                    db_txs_with_no_receipts.len(),
-                );
-
-                db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                });
+                works.push(worker);
             }
 
-            db.store_blocks_and_txs(
-                db_blocks,
-                db_txs,
-                db_tx_receipts,
-                db_tx_logs,
-                db_contract_creation,
-                db_contract_interaction,
-                db_token_transfers,
-            )
-            .await;
+            let results = join_all(works).await;
+
+            results.into_iter().for_each(|result| {
+                let (
+                    mut blocks,
+                    mut txs,
+                    mut receipts,
+                    mut logs,
+                    mut contract_creations,
+                    mut contract_interactions,
+                    mut token_transfers,
+                ) = result.unwrap();
+
+                db_blocks.append(&mut blocks);
+                db_txs.append(&mut txs);
+                db_tx_receipts.append(&mut receipts);
+                db_tx_logs.append(&mut logs);
+                db_contract_creation.append(&mut contract_creations);
+                db_contract_interaction.append(&mut contract_interactions);
+                db_token_transfers.append(&mut token_transfers);
+            });
+
+            let db_txs_count = db_txs.len();
+            let db_tx_receipts_count = db_tx_receipts.len();
+
+            let mut enough_receipts = true;
+
+            if db_blocks.len() > 0 {
+                if db_txs_count != db_tx_receipts_count {
+                    info!(
+                        "Not enough receipts for batch: txs({}) receipts ({}) block_range({})-({})",
+                        db_txs_count,
+                        db_tx_receipts_count,
+                        db_blocks.first().unwrap().number,
+                        db_blocks.last().unwrap().number,
+                    );
+
+                    enough_receipts = false;
+                }
+
+                if !enough_receipts {
+                    let db_receipts_hash: HashSet<String> = vec_string_to_set(
+                        db_tx_receipts
+                            .clone()
+                            .into_iter()
+                            .map(|receipt| receipt.hash)
+                            .collect(),
+                    );
+
+                    let mut db_txs_with_no_receipts: Vec<DatabaseTxNoReceipt> = vec![];
+
+                    for tx in &mut db_txs {
+                        let hash = tx.hash.clone();
+                        let chain = tx.chain.clone();
+                        if !db_receipts_hash.contains(&hash) {
+                            db_txs_with_no_receipts.push(DatabaseTxNoReceipt {
+                                hash,
+                                chain,
+                                block_number: tx.block_number,
+                            });
+                        }
+                    }
+
+                    info!(
+                        "Storing {} txs with no receipt for future check",
+                        db_txs_with_no_receipts.len(),
+                    );
+
+                    db.store_txs_no_receipt(&db_txs_with_no_receipts).await;
+                }
+
+                db.store_blocks_and_txs(
+                    db_blocks,
+                    db_txs,
+                    db_tx_receipts,
+                    db_tx_logs,
+                    db_contract_creation,
+                    db_contract_interaction,
+                    db_token_transfers,
+                )
+                .await;
+            }
         }
     }
 

@@ -168,9 +168,9 @@ impl Rpc {
             None => return,
         };
 
-        let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
-
         info!("Initializing new blocks listener");
+
+        let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
 
         loop {
             let new_block = sub.next().await;
