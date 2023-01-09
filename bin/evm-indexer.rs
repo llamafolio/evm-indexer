@@ -112,7 +112,7 @@ async fn main() {
                 loop {
                     match fetcher::fetch_contract_abis(&config, &db, &abi_source_token).await {
                         Ok(_) => {
-                            sleep(Duration::from_secs(5)).await;
+                            sleep(Duration::from_secs(120)).await;
                         }
                         Err(err) => println!("{}", err),
                     };
