@@ -112,7 +112,7 @@ async fn main() {
                 loop {
                     match fetcher::fetch_contract_abis(&config, &db, &abi_source_token).await {
                         Ok(_) => {
-                            sleep(Duration::from_secs(120)).await;
+                            sleep(Duration::from_secs(30)).await;
                         }
                         Err(err) => println!("{}", err),
                     };
@@ -139,7 +139,7 @@ async fn main() {
 
     loop {
         let rpc = rpc.clone();
-        rpc.subscribe_heads(&config, &db).await;
+        rpc.subscribe_heads(&db).await;
         sleep(Duration::from_secs(5)).await;
     }
 }

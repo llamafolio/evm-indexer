@@ -30,7 +30,7 @@ use crate::{
     },
     utils::{
         format_address, format_block, format_bool, format_bytes, format_hash, format_receipt,
-        format_receipts, ERC20_ABI,
+        ERC20_ABI,
     },
 };
 
@@ -162,45 +162,7 @@ impl Rpc {
         }
     }
 
-    pub async fn get_block_receipts(&self, blocks: &Vec<i64>) -> Result<Vec<TransactionReceipt>> {
-        let mut batch = BatchRequestBuilder::new();
-
-        let mut receipts: Vec<Vec<TransactionReceipt>> = Vec::new();
-
-        if blocks.len() == 0 {
-            return Ok(Vec::new());
-        }
-
-        for block in blocks.iter() {
-            batch
-                .insert("eth_getBlockReceipts", rpc_params![block])
-                .unwrap();
-        }
-
-        let receipts_res = self.http_client.batch_request(batch).await;
-
-        match receipts_res {
-            Ok(result) => {
-                for receipt in result.into_iter() {
-                    match receipt {
-                        Ok(tx_receipt) => match format_receipts(tx_receipt) {
-                            Ok(receipt_formatted) => receipts.push(receipt_formatted),
-                            Err(err) => println!("{}", err),
-                        },
-                        Err(err) => println!("{}", err.message()),
-                    }
-                }
-
-                let flatten_receipts: Vec<TransactionReceipt> =
-                    receipts.into_iter().flatten().collect();
-
-                Ok(flatten_receipts)
-            }
-            Err(_) => Ok(Vec::new()),
-        }
-    }
-
-    pub async fn subscribe_heads(&self, config: &Config, db: &Database) {
+    pub async fn subscribe_heads(&self, db: &Database) {
         let wss = match &self.wss {
             Some(wss) => wss,
             None => return,
@@ -224,7 +186,6 @@ impl Rpc {
 
                         tokio::spawn({
                             let db = db.clone();
-                            let config = config.clone();
                             let rpc = self.clone();
 
                             async move {
@@ -237,7 +198,7 @@ impl Rpc {
                                     db_contract_interactions,
                                     db_token_transfers,
                                 ) = rpc
-                                    .get_blocks(&config, vec![block_number.as_u64() as i64])
+                                    .get_blocks(vec![block_number.as_u64() as i64])
                                     .await
                                     .unwrap();
 
@@ -267,7 +228,6 @@ impl Rpc {
 
     pub async fn get_blocks(
         &self,
-        config: &Config,
         range: Vec<i64>,
     ) -> Result<(
         Vec<DatabaseBlock>,
@@ -296,20 +256,9 @@ impl Rpc {
             db_blocks.push(db_block);
         }
 
-        let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
+        let tx_hashes: Vec<String> = web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
 
-        if config.chain.name.clone() == "mainnet"
-            || config.chain.name.clone() == "polygon"
-            || config.chain.name.clone() == "bsc"
-        {
-            let mut receipts = self.get_block_receipts(&range).await.unwrap();
-            tx_receipts.append(&mut receipts);
-        } else {
-            let tx_hashes: Vec<String> =
-                web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
-            let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-            tx_receipts.append(&mut receipts_chunk);
-        }
+        let tx_receipts = self.get_txs_receipts(&tx_hashes).await.unwrap();
 
         let mut db_txs: Vec<DatabaseTx> = web3_txs
             .into_iter()
@@ -352,7 +301,6 @@ impl Rpc {
 
     pub async fn get_block(
         &self,
-        config: &Config,
         block: i64,
     ) -> Result<(
         Option<DatabaseBlock>,
@@ -371,20 +319,10 @@ impl Rpc {
 
             let mut web3_txs: Vec<Transaction> = web3_block[0].transactions.clone();
 
-            let mut tx_receipts: Vec<TransactionReceipt> = Vec::new();
+            let tx_hashes: Vec<String> =
+                web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
 
-            if config.chain.name.clone() == "mainnet"
-                || config.chain.name.clone() == "polygon"
-                || config.chain.name.clone() == "bsc"
-            {
-                let mut receipts = self.get_block_receipts(&vec![block]).await.unwrap();
-                tx_receipts.append(&mut receipts);
-            } else {
-                let tx_hashes: Vec<String> =
-                    web3_txs.iter_mut().map(|tx| format_hash(tx.hash)).collect();
-                let mut receipts_chunk = self.get_txs_receipts(&tx_hashes).await.unwrap();
-                tx_receipts.append(&mut receipts_chunk);
-            }
+            let tx_receipts = self.get_txs_receipts(&tx_hashes).await.unwrap();
 
             let mut db_txs: Vec<DatabaseTx> = web3_txs
                 .into_iter()

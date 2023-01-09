@@ -76,7 +76,6 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
 
     for worker_chunk in single_fetch_worker_batch {
         let worker = tokio::spawn({
-            let config = config.clone();
             let rpc = rpc.clone();
             let db = db.clone();
             let chunk = worker_chunk.to_vec();
@@ -91,7 +90,7 @@ pub async fn fetch_blocks_singles(db: &Database, config: &Config, rpc: &Rpc) -> 
                         db_contract_creation,
                         db_contract_interaction,
                         db_token_transfers,
-                    ) = rpc.get_block(&config, block).await.unwrap();
+                    ) = rpc.get_block(block).await.unwrap();
 
                     match db_block {
                         Some(db_block) => {
@@ -214,10 +213,9 @@ pub async fn fetch_blocks(db: &Database, config: &Config, rpc: &Rpc) -> Result<(
         for worker_chunk in worker_chunks {
             let worker = tokio::spawn({
                 let chunk = worker_chunk.clone();
-                let config = config.clone();
                 let rpc = rpc.clone();
                 async move {
-                    return rpc.get_blocks(&config, chunk.to_vec()).await.unwrap();
+                    return rpc.get_blocks(chunk.to_vec()).await.unwrap();
                 }
             });
             works.push(worker);
