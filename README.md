@@ -8,7 +8,7 @@ It is ready for developing purposes. If you want more information about it, you 
 
 ## Demo
 
-To see the EVM indexer in action, go to [https://evm-indexer.kindynos.mx](https://evm-indexer.kindynos.mx)
+To see the EVM indexer in action, go to [https://dashboard.kindynos.mx](https://dashboard.kindynos.mx)
 
 The frontend app repository can be found here [https://github.com/eabz/evm-indexer-app](https://github.com/eabz/evm-indexer-app)
 
