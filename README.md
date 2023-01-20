@@ -1,46 +1,36 @@
-# EVM Indexer
+<h1 align="center">
+<strong>EVM Blockchain Indexer</strong>
+</h1>
+<p align="center">
+<strong>A scalable SQL indexer for EVM compatible blockchains</strong>
+</p>
 
-> EVM-compatible blockchain indexer written in rust.
+The indexer is ready and used in production. If you want to use it or contribute and need help you can [send me a DM on my personal twitter.](https://twitter.com/eaberrueta)
 
-This repository contains a program to index helpful information from any EVM-compatible chain into a PostgreSQL database.
+## Requirements
 
-It is ready for developing purposes. If you want more information about it, you can [send me a DM on Twitter](https://twitter.com/eaberrueta)
+- [Rust](https://www.rust-lang.org/tools/install)
+- [CockroachDB](https://www.cockroachlabs.com/) (or any other PostgreSQL db)
+- [Redis](https://redis.io/) (used to store the indexed blocks state)
 
-## Demo
+## Available Chains
 
-To see the EVM indexer in action, go to [https://dashboard.kindynos.mx](https://dashboard.kindynos.mx)
+This indexer is chain agnositc. It should work with any chain that follows the ETH RPC API. But some chains have some minor modifications that could result in not being able to sync.
 
-The frontend app repository can be found here [https://github.com/eabz/evm-indexer-app](https://github.com/eabz/evm-indexer-app)
+The following chains have been tested and indexed successfully:
 
-## Chains
-
-Currently, the indexer has been tested indexing the following chains:
-
-- Ethereum
-- Polygon
-- Avalanche
-- Fantom
-- Gnosis Chain
-- Optimism
-- BNB Chain
-- Dogechain
-- Arbitrum
-
-## Database Information
-
-The indexer creates tables for:
-
-1. Blocks
-2. Transactions
-3. Transaction Receipts
-4. Transaction Logs
-5. Contract Creations
-6. Contract Interactions
-7. Token Transfers
-8. Tokens Details
-9. Contract ABIs (filled only if the abi source token is provided)
-
-The information structure is explained in the [database structure documentation](./doc/DATABASE.md).
+- Arbitrum One.
+- Arbitrum Nova.
+- Avalanche.
+- BitTorrent Chain.
+- BNB Chain.
+- Celo.
+- Ethereum.
+- Fantom.
+- Gnosis Chain.
+- Moonbeam.
+- Optimism.
+- Polygon.
 
 ## Install
 
@@ -48,12 +38,10 @@ You can try the indexer locally or through Docker.
 
 ### Local
 
-To use the program locally, make sure you have [rust](https://www.rust-lang.org/tools/install) installed in your environment.
-
 1. Clone the repository
 
 ```
-git clone https://github.com/eabz/evm-indexer && cd evm-indexer
+git clone https://github.com/eabz/blockchain-indexer && cd blockchain-indexer
 ```
 
 2. Build the program
@@ -66,16 +54,14 @@ cargo build --release
 
 4. Run the program
 
-```
-./target/release/evm-indexer
-```
+`TODO: programs and flags.`
 
 ### Docker
 
 1. Clone the repository
 
 ```
-git clone https://github.com/eabz/evm-indexer && cd evm-indexer
+git clone https://github.com/eabz/blockchain-indexer && cd blockchain-indexer
 ```
 
 2. Build the image and tag it as `indexer`
@@ -84,17 +70,8 @@ git clone https://github.com/eabz/evm-indexer && cd evm-indexer
 docker build . -t indexer
 ```
 
-3. Run the image
+3. Copy the `.env.example` file to `.env` and add your environment variables.
 
-```
-docker run --env-file ./.env indexer -d
-```
+4. Run the image
 
-## Contribute
-
-We appreciate your contributions. PR are accepted and open.
-
-Some ideas for contributions are:
-
-1. Add more chains
-2. Speed up the information deserialization/storing.
+`TODO: programs and flags.`

@@ -24,7 +24,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
 
-RUN cargo build --release --bin evm-indexer
+RUN cargo build --release
 
 FROM debian:stable AS runtime
 

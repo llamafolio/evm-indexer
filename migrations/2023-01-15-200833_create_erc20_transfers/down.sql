@@ -1,0 +1,1 @@
+DROP TABLE evm_erc20_transfers;
