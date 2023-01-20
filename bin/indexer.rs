@@ -50,23 +50,29 @@ async fn main() {
     .await
     .expect("Unable to start DB connection.");
 
-    tokio::spawn({
-        let db = db.clone();
-        let rpc = rpc.clone();
-        let chain = config.chain.clone();
-        let config = config.clone();
-
-        async move {
-            loop {
-                subscribe_heads(chain, &db, &rpc, &config).await;
-                sleep(Duration::from_secs(10))
-            }
-        }
-    });
-
     if !config.reset {
+        let mut finished_initial_sync = false;
+
         loop {
             sync_chain(&rpc, &db, &mut config).await;
+
+            if !finished_initial_sync {
+                tokio::spawn({
+                    let db = db.clone();
+                    let rpc = rpc.clone();
+                    let chain = config.chain.clone();
+                    let config = config.clone();
+
+                    async move {
+                        loop {
+                            subscribe_heads(chain, &db, &rpc, &config).await;
+                            sleep(Duration::from_secs(10))
+                        }
+                    }
+                });
+            }
+            finished_initial_sync = true;
+
             sleep(Duration::from_secs(5))
         }
     } else {
