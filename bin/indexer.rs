@@ -292,7 +292,7 @@ async fn subscribe_heads(chain: Chain, db: &EVMDatabase, rpc: &EVMRpc, config: &
 
                                         db.store_indexed_blocks(&indexed_blocks).await.unwrap();
                                     }
-                                    None => return,
+                                    None => (),
                                 }
                             }
                         });
