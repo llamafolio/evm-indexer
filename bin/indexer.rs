@@ -262,33 +262,40 @@ async fn subscribe_heads(chain: Chain, db: &EVMDatabase, rpc: &EVMRpc, config: &
                             chain.name
                         );
 
-                        let block_data = fetch_block(&rpc, &block_number, &chain).await;
+                        tokio::spawn({
+                            let rpc = rpc.clone();
+                            let db = db.clone();
 
-                        match block_data {
-                            Some((
-                                db_block,
-                                db_transactions,
-                                db_receipts,
-                                db_logs,
-                                db_contracts,
-                            )) => {
-                                db.store_data(
-                                    &vec![db_block],
-                                    &db_transactions,
-                                    &db_receipts,
-                                    &db_logs,
-                                    &db_contracts,
-                                )
-                                .await;
+                            async move {
+                                let block_data = fetch_block(&rpc, &block_number, &chain).await;
+                                match block_data {
+                                    Some((
+                                        db_block,
+                                        db_transactions,
+                                        db_receipts,
+                                        db_logs,
+                                        db_contracts,
+                                    )) => {
+                                        db.store_data(
+                                            &vec![db_block],
+                                            &db_transactions,
+                                            &db_receipts,
+                                            &db_logs,
+                                            &db_contracts,
+                                        )
+                                        .await;
 
-                                let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+                                        let mut indexed_blocks =
+                                            db.get_indexed_blocks().await.unwrap();
 
-                                indexed_blocks.insert(block_number);
+                                        indexed_blocks.insert(block_number);
 
-                                db.store_indexed_blocks(&indexed_blocks).await.unwrap();
+                                        db.store_indexed_blocks(&indexed_blocks).await.unwrap();
+                                    }
+                                    None => return,
+                                }
                             }
-                            None => continue,
-                        }
+                        });
                     }
                     None => continue,
                 }
