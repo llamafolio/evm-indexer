@@ -1,7 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
 use dotenv::dotenv;
-use ethers::providers::{Middleware, Provider, StreamExt, Ws};
 use evm_indexer::{
     chains::evm_chains::Chain,
     configs::indexer_config::EVMIndexerConfig,
@@ -14,9 +13,10 @@ use evm_indexer::{
     },
     rpc::rpc::EVMRpc,
 };
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
 use log::*;
 use simple_logger::SimpleLogger;
+use web3::{transports::WebSocket, Web3};
 
 #[tokio::main()]
 async fn main() {
@@ -238,8 +238,8 @@ async fn fetch_block(
 }
 
 async fn subscribe_heads(chain: Chain, db: &EVMDatabase, rpc: &EVMRpc, config: &EVMIndexerConfig) {
-    let wss = match Ws::connect(config.websocket.clone()).await {
-        Ok(wss) => Some(wss),
+    let wss = match WebSocket::new(&config.websocket.clone()).await {
+        Ok(ws) => Some(Web3::new(ws)),
         Err(_) => None,
     };
 
@@ -247,67 +247,57 @@ async fn subscribe_heads(chain: Chain, db: &EVMDatabase, rpc: &EVMRpc, config: &
 
     match wss {
         Some(wss) => {
-            let provider = Provider::new(wss).interval(Duration::from_millis(500));
-
-            let mut stream = provider.watch_blocks().await.unwrap().take(1);
+            let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
 
             loop {
-                let block_header = stream.next().await;
-                match block_header {
-                    Some(block_header) => {
-                        let block = provider.get_block(block_header).await.unwrap();
+                let new_block = sub.next().await;
+                match new_block {
+                    Some(block_header) => match block_header {
+                        Ok(block_header) => {
+                            let block_number = block_header.number.unwrap().as_u64() as i64;
+                            info!(
+                                "New block with height {:?} for chain {}",
+                                block_number, chain.name
+                            );
 
-                        match block {
-                            Some(block) => {
-                                let block_number = block.number.unwrap().as_u64() as i64;
-                                info!(
-                                    "New block with height {:?} for chain {}",
-                                    block.number.unwrap(),
-                                    chain.name
-                                );
+                            tokio::spawn({
+                                let rpc = rpc.clone();
+                                let db = db.clone();
 
-                                tokio::spawn({
-                                    let rpc = rpc.clone();
-                                    let db = db.clone();
+                                async move {
+                                    let block_data = fetch_block(&rpc, &block_number, &chain).await;
 
-                                    async move {
-                                        let block_data =
-                                            fetch_block(&rpc, &block_number, &chain).await;
+                                    match block_data {
+                                        Some((
+                                            db_block,
+                                            db_transactions,
+                                            db_receipts,
+                                            db_logs,
+                                            db_contracts,
+                                        )) => {
+                                            db.store_data(
+                                                &vec![db_block],
+                                                &db_transactions,
+                                                &db_receipts,
+                                                &db_logs,
+                                                &db_contracts,
+                                            )
+                                            .await;
 
-                                        match block_data {
-                                            Some((
-                                                db_block,
-                                                db_transactions,
-                                                db_receipts,
-                                                db_logs,
-                                                db_contracts,
-                                            )) => {
-                                                db.store_data(
-                                                    &vec![db_block],
-                                                    &db_transactions,
-                                                    &db_receipts,
-                                                    &db_logs,
-                                                    &db_contracts,
-                                                )
-                                                .await;
+                                            let mut indexed_blocks =
+                                                db.get_indexed_blocks().await.unwrap();
 
-                                                let mut indexed_blocks =
-                                                    db.get_indexed_blocks().await.unwrap();
+                                            indexed_blocks.insert(block_number);
 
-                                                indexed_blocks.insert(block_number);
-
-                                                db.store_indexed_blocks(&indexed_blocks)
-                                                    .await
-                                                    .unwrap();
-                                            }
-                                            None => (),
+                                            db.store_indexed_blocks(&indexed_blocks).await.unwrap();
                                         }
+                                        None => (),
                                     }
-                                });
-                            }
-                            None => continue,
+                                }
+                            });
                         }
-                    }
+                        Err(_) => continue,
+                    },
                     None => continue,
                 }
             }
