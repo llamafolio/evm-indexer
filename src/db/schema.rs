@@ -1,55 +1,14 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    blocks (hash) {
-        number -> Int8,
-        hash -> Varchar,
-        difficulty -> Varchar,
-        total_difficulty -> Varchar,
-        miner -> Varchar,
-        gas_limit -> Varchar,
-        gas_used -> Varchar,
-        txs -> Int8,
-        timestamp -> Varchar,
-        size -> Varchar,
-        nonce -> Varchar,
-        base_fee_per_gas -> Varchar,
-        chain -> Varchar,
+    chains_indexed_state (chain) {
+        chain -> Text,
+        indexed_blocks_amount -> Int8,
     }
 }
 
 diesel::table! {
-    contract_abis (address_with_chain) {
-        address_with_chain -> Varchar,
-        chain -> Varchar,
-        address -> Varchar,
-        abi -> Nullable<Varchar>,
-        verified -> Nullable<Bool>,
-    }
-}
-
-diesel::table! {
-    contract_creations (hash) {
-        hash -> Varchar,
-        block -> Int8,
-        contract -> Varchar,
-        chain -> Varchar,
-    }
-}
-
-diesel::table! {
-    contract_interactions (hash) {
-        hash -> Varchar,
-        block -> Int8,
-        address -> Varchar,
-        contract -> Varchar,
-        chain -> Varchar,
-    }
-}
-
-diesel::table! {
-    contracts_adapters (address_with_chain) {
-        address_with_chain -> Varchar,
+    contracts_adapters (address, chain) {
         address -> Varchar,
         chain -> Varchar,
         adapter_id -> Varchar,
@@ -57,115 +16,135 @@ diesel::table! {
 }
 
 diesel::table! {
-    excluded_tokens (address_with_chain) {
-        address_with_chain -> Varchar,
-        address -> Varchar,
-        chain -> Varchar,
+    evm_abis (contract, chain) {
+        chain -> Text,
+        contract -> Text,
+        abi -> Nullable<Text>,
+        verified -> Bool,
     }
 }
 
 diesel::table! {
-    logs (hash_with_index) {
-        hash_with_index -> Varchar,
-        hash -> Nullable<Varchar>,
-        address -> Nullable<Varchar>,
-        topics -> Nullable<Array<Nullable<Text>>>,
-        data -> Nullable<Varchar>,
-        log_index -> Nullable<Int8>,
-        transaction_log_index -> Nullable<Int8>,
-        log_type -> Nullable<Varchar>,
-        chain -> Varchar,
+    evm_blocks (block_hash) {
+        base_fee_per_gas -> Text,
+        chain -> Text,
+        difficulty -> Text,
+        extra_data -> Text,
+        gas_limit -> Text,
+        gas_used -> Text,
+        block_hash -> Text,
+        logs_bloom -> Text,
+        miner -> Text,
+        mix_hash -> Text,
+        nonce -> Text,
+        number -> Int8,
+        parent_hash -> Text,
+        receipts_root -> Text,
+        sha3_uncles -> Text,
+        size -> Int8,
+        state_root -> Text,
+        timestamp -> Text,
+        total_difficulty -> Text,
+        transactions -> Int8,
+        uncles -> Array<Nullable<Text>>,
     }
 }
 
 diesel::table! {
-    method_ids (method_id) {
-        method_id -> Varchar,
-        name -> Varchar,
+    evm_contracts (hash) {
+        block -> Int8,
+        chain -> Text,
+        contract -> Text,
+        creator -> Text,
+        hash -> Text,
+        parsed -> Bool,
+        verified -> Bool,
     }
 }
 
 diesel::table! {
-    state (chain) {
-        chain -> Varchar,
-        blocks -> Int8,
+    evm_contracts_interactions (hash) {
+        hash -> Text,
+        block -> Int8,
+        address -> Text,
+        contract -> Text,
+        chain -> Text,
     }
 }
 
 diesel::table! {
-    token_transfers (hash_with_index) {
-        hash_with_index -> Varchar,
+    evm_erc20_transfers (hash, log_index) {
         hash -> Varchar,
         log_index -> Int8,
-        block -> Int8,
         token -> Varchar,
         from_address -> Varchar,
         to_address -> Varchar,
         value -> Varchar,
-        chain -> Varchar,
     }
 }
 
 diesel::table! {
-    tokens (address_with_chain) {
-        address_with_chain -> Varchar,
-        address -> Varchar,
-        chain -> Varchar,
-        name -> Varchar,
-        decimals -> Int8,
-        symbol -> Varchar,
+    evm_methods (method) {
+        method -> Text,
+        name -> Text,
     }
 }
 
 diesel::table! {
-    txs (hash) {
-        hash -> Varchar,
+    evm_transactions (hash) {
+        block_hash -> Text,
         block_number -> Int8,
-        from_address -> Varchar,
-        to_address -> Varchar,
-        value -> Varchar,
-        gas_used -> Varchar,
-        gas_price -> Varchar,
-        timestamp -> Varchar,
+        chain -> Text,
+        from_address -> Text,
+        gas -> Text,
+        gas_price -> Text,
+        max_priority_fee_per_gas -> Nullable<Text>,
+        max_fee_per_gas -> Nullable<Text>,
+        hash -> Text,
+        input -> Text,
+        method -> Text,
+        nonce -> Text,
+        timestamp -> Text,
+        to_address -> Text,
         transaction_index -> Int8,
         transaction_type -> Nullable<Int8>,
-        max_fee_per_gas -> Nullable<Varchar>,
-        max_priority_fee_per_gas -> Nullable<Varchar>,
-        input -> Varchar,
-        method_id -> Varchar,
-        chain -> Varchar,
+        value -> Text,
     }
 }
 
 diesel::table! {
-    txs_no_receipt (hash) {
-        hash -> Varchar,
-        chain -> Varchar,
-        block_number -> Int8,
+    evm_transactions_logs (hash, log_index) {
+        address -> Text,
+        topics -> Array<Nullable<Text>>,
+        data -> Text,
+        hash -> Text,
+        log_index -> Int8,
+        removed -> Bool,
+        erc20_transfers_parsed -> Nullable<Bool>,
     }
 }
 
 diesel::table! {
-    txs_receipts (hash) {
-        hash -> Varchar,
-        success -> Nullable<Bool>,
-        chain -> Varchar,
+    evm_transactions_receipts (hash) {
+        contract_address -> Nullable<Text>,
+        cumulative_gas_used -> Text,
+        effective_gas_price -> Text,
+        gas_used -> Text,
+        hash -> Text,
+        status -> Text,
     }
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
-    blocks,
-    contract_abis,
-    contract_creations,
-    contract_interactions,
+    chains_indexed_state,
     contracts_adapters,
-    excluded_tokens,
-    logs,
-    method_ids,
-    state,
-    token_transfers,
-    tokens,
-    txs,
-    txs_no_receipt,
-    txs_receipts,
+    evm_abis,
+    evm_blocks,
+    evm_contracts,
+    evm_contracts_interactions,
+    evm_erc20_transfers,
+    evm_methods,
+    evm_transactions,
+    evm_transactions_logs,
+    evm_transactions_receipts,
 );

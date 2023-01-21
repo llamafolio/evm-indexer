@@ -1,0 +1,1 @@
+DROP TABLE chains_indexed_state;

@@ -1,28 +1,30 @@
 [package]
 name = "evm-indexer"
-version = "1.1.0"
+version = "2.0.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1"
+array-bytes = "6.0.0"
 async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
 diesel = { version = "2", features = ["postgres"] }
 diesel_migrations = { version = "2", features = ["postgres"] }
 dotenv = "0.15"
 ethabi = "18"
-field_count = "0.1.1"
-hex = "0.4.3"
+ethers = { version = "1", features = ["ws", "rustls"] }
+field_count = "0.1"
+futures = "0.3"
+hex = "0.4"
 jsonrpsee = { version = "0.16", features = ["macros", "server"] }
 jsonrpsee-http-client = "0.16"
 log = "0.4"
-reqwest = "0.11.13"
-reth-primitives = { git = "https://github.com/paradigmxyz/reth" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth" }
+rand = "0.8"
+redis = "0.22"
+reqwest = "0.11"
 serde = "1"
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
 web3 = "0.18"
 
 [dependencies.simple_logger]
@@ -31,5 +33,13 @@ default-features = false
 features = ["colors"]
 
 [[bin]]
-path = "bin/evm-indexer.rs"
-name = "evm-indexer"
+path = "bin/indexer.rs"
+name = "indexer"
+
+[[bin]]
+path = "bin/abi-fetcher.rs"
+name = "abi-fetcher"
+
+[[bin]]
+path = "bin/parser.rs"
+name = "parser"

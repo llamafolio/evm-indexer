@@ -1,6 +1,6 @@
 pub mod chains;
-pub mod config;
+pub mod configs;
 pub mod db;
-pub mod fetcher;
+pub mod parsers;
 pub mod rpc;
 pub mod utils;
