@@ -22,7 +22,7 @@ pub fn format_bytes(b: &Bytes) -> String {
 }
 
 pub fn format_bytes_slice(b: &[u8]) -> String {
-    return format!("{}", serde_json::to_string(b).unwrap().replace("\"", ""));
+    return format!("{:?}", b);
 }
 
 pub fn format_number(n: U256) -> String {
