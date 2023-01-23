@@ -20,10 +20,10 @@ pub struct EVMParserArgs {
     #[arg(
         short,
         long,
-        help = "Start the erc20 transfers parser",
+        help = "Start the erc20 tokens parser",
         default_value_t = false
     )]
-    pub erc20_transfers_parser: bool,
+    pub erc20_tokens_parser: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ pub struct EVMParserConfig {
     pub redis_url: String,
     pub debug: bool,
     pub llamafolio_adapter: bool,
-    pub erc20_transfers_parser: bool,
+    pub erc20_tokens_parser: bool,
 }
 
 impl EVMParserConfig {
@@ -44,7 +44,7 @@ impl EVMParserConfig {
             redis_url: std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
             debug: args.debug,
             llamafolio_adapter: args.llamafolio_adapters,
-            erc20_transfers_parser: args.erc20_transfers_parser,
+            erc20_tokens_parser: args.erc20_tokens_parser,
         }
     }
 }

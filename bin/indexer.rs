@@ -83,7 +83,7 @@ async fn main() {
 async fn sync_chain(rpc: &EVMRpc, db: &EVMDatabase, config: &EVMIndexerConfig) {
     let last_block = rpc.get_last_block().await.unwrap();
 
-    let full_block_range = 0..last_block;
+    let full_block_range = config.start_block..last_block;
 
     let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
 

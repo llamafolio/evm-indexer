@@ -19,17 +19,22 @@ pub struct DatabaseEVMErc20Transfer {
     pub from_address: String,
     pub to_address: String,
     pub value: String,
+    pub erc20_tokens_parced: Option<bool>,
 }
 
-pub struct ERC20Parser {}
+pub struct ERC20TransfersParser {}
 
-impl ERC20Parser {
+impl ERC20TransfersParser {
     pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseEVMTransactionLog>> {
         let mut connection = db.establish_connection();
 
         let logs: Result<Vec<DatabaseEVMTransactionLog>, Error> = evm_transactions_logs::table
             .select(evm_transactions_logs::all_columns)
-            .filter(evm_transactions_logs::erc20_transfers_parsed.is_null())
+            .filter(
+                evm_transactions_logs::erc20_transfers_parsed
+                    .is_null()
+                    .or(evm_transactions_logs::erc20_transfers_parsed.eq(false)),
+            )
             .limit(50000)
             .load::<DatabaseEVMTransactionLog>(&mut connection);
 
@@ -139,6 +144,7 @@ impl ERC20Parser {
                 from_address,
                 to_address,
                 value,
+                erc20_tokens_parced: Some(false),
             };
 
             db_erc20_transfers.push(db_transfers)

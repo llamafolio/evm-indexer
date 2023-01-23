@@ -1,14 +1,14 @@
-use std::{
-    thread::{self, sleep},
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
 use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
     configs::parser_config::EVMParserConfig,
     db::db::EVMDatabase,
-    parsers::{erc20_transfers_parser::ERC20Parser, llamafolio_adapters::LlamafolioParser},
+    parsers::{
+        erc20_tokens_parser::ERC20TokensParser, erc20_transfers_parser::ERC20TransfersParser,
+        llamafolio_adapters::LlamafolioParser,
+    },
 };
 use log::*;
 use simple_logger::SimpleLogger;
@@ -54,21 +54,38 @@ async fn main() {
         });
     }
 
-    if config.llamafolio_adapter {
-        info!("Starting the ERC20 Transfers parser.");
+    if config.erc20_tokens_parser {
+        info!("Starting the ERC20 Tokens parser.");
 
-        loop {
-            let erc20_transfers_parser = ERC20Parser {};
+        tokio::spawn({
+            let db = db.clone();
+            async move {
+                loop {
+                    let erc20_tokens_parser = ERC20TokensParser {};
 
-            let logs = erc20_transfers_parser.fetch(&db).unwrap();
+                    let transfers = erc20_tokens_parser.fetch(&db).unwrap();
 
-            info!("Fetched {} logs to parse.", logs.len());
+                    info!("Fetched {} transfers to parse.", transfers.len());
 
-            erc20_transfers_parser.parse(&db, &logs).await.unwrap();
-        }
-    } else {
-        ctrlc::set_handler(move || {}).expect("Error setting Ctrl-C handler");
+                    erc20_tokens_parser.parse(&db, &transfers).await.unwrap();
 
-        thread::sleep(Duration::from_secs(5));
+                    sleep(Duration::from_secs(2))
+                }
+            }
+        });
+    }
+
+    info!("Starting the ERC20 Transfers parser.");
+
+    loop {
+        let erc20_transfers_parser = ERC20TransfersParser {};
+
+        let logs = erc20_transfers_parser.fetch(&db).unwrap();
+
+        info!("Fetched {} logs to parse.", logs.len());
+
+        erc20_transfers_parser.parse(&db, &logs).await.unwrap();
+
+        sleep(Duration::from_secs(2))
     }
 }
