@@ -5,5 +5,5 @@ CREATE TABLE evm_erc20_transfers (
   from_address VARCHAR NOT NULL,
   to_address VARCHAR NOT NULL,
   value VARCHAR NOT NULL,
-  CONSTRAINT erc20_transfers_table_pk PRIMARY KEY (hash, log_index);
+  CONSTRAINT erc20_transfers_table_pk PRIMARY KEY (hash, log_index)
 );
