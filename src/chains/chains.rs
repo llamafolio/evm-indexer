@@ -131,7 +131,7 @@ pub const CELO: Chain = Chain {
     supports_blocks_receipts: false,
 };
 
-pub static EVM_CHAINS: [Chain; 12] = [
+pub static CHAINS: [Chain; 12] = [
     ETHEREUM,
     POLYGON,
     FANTOM,
@@ -146,18 +146,18 @@ pub static EVM_CHAINS: [Chain; 12] = [
     CELO,
 ];
 
-pub fn get_evm_chains() -> HashMap<String, Chain> {
+pub fn get_chains() -> HashMap<String, Chain> {
     let mut chains: HashMap<String, Chain> = HashMap::new();
 
-    for chain in EVM_CHAINS.into_iter() {
+    for chain in CHAINS.into_iter() {
         chains.insert(String::from(chain.name), chain);
     }
 
     return chains;
 }
 
-pub fn get_evm_chain(chain: String) -> Chain {
-    let chains = get_evm_chains();
+pub fn get_chain(chain: String) -> Chain {
+    let chains = get_chains();
 
     let selected_chain = chains.get(&chain).expect("Chain not found");
 

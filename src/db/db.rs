@@ -9,7 +9,7 @@ use field_count::FieldCount;
 use log::*;
 use redis::Commands;
 
-use crate::chains::evm_chains::Chain;
+use crate::chains::chains::Chain;
 
 use super::models::models::{
     DatabaseChainIndexedState, DatabaseEVMAbi, DatabaseEVMBlock, DatabaseEVMContract,

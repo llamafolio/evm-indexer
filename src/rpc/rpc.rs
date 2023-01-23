@@ -1,5 +1,5 @@
 use crate::{
-    chains::evm_chains::Chain,
+    chains::chains::Chain,
     configs::indexer_config::EVMIndexerConfig,
     db::models::models::{
         DatabaseEVMBlock, DatabaseEVMContract, DatabaseEVMTransaction, DatabaseEVMTransactionLog,

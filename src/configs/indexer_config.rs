@@ -1,4 +1,4 @@
-use crate::chains::evm_chains::{get_evm_chain, Chain};
+use crate::chains::chains::{get_chain, Chain};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -62,7 +62,7 @@ impl EVMIndexerConfig {
             chainname = "ethereum".to_string();
         }
 
-        let chain = get_evm_chain(chainname.clone());
+        let chain = get_chain(chainname.clone());
 
         let rpcs: Vec<String> = args.rpcs.split(",").map(|rpc| rpc.to_string()).collect();
 

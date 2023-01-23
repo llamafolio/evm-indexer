@@ -2,7 +2,7 @@ use std::{thread::sleep, time::Duration};
 
 use dotenv::dotenv;
 use evm_indexer::{
-    chains::evm_chains::Chain,
+    chains::chains::Chain,
     configs::indexer_config::EVMIndexerConfig,
     db::{
         db::EVMDatabase,

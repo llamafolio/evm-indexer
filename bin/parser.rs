@@ -5,7 +5,7 @@ use std::{
 
 use dotenv::dotenv;
 use evm_indexer::{
-    chains::evm_chains::ETHEREUM,
+    chains::chains::ETHEREUM,
     configs::parser_config::EVMParserConfig,
     db::db::EVMDatabase,
     parsers::{erc20_transfers_parser::ERC20Parser, llamafolio_adapters::LlamafolioParser},

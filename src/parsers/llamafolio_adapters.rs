@@ -1,5 +1,5 @@
 use crate::{
-    chains::evm_chains::get_evm_chains,
+    chains::chains::get_chains,
     db::{
         db::{get_chunks, EVMDatabase},
         schema::contracts_adapters,
@@ -37,7 +37,7 @@ impl LlamafolioParser {
     pub async fn fetch(&self) -> Result<Vec<DatabaseContractAdapter>> {
         let mut adapters = Vec::new();
 
-        for (chainname, _) in get_evm_chains() {
+        for (chainname, _) in get_chains() {
             info!("Fetching adapter IDs for {}", chainname);
 
             let uri = format!(

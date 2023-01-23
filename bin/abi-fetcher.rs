@@ -1,6 +1,6 @@
 use dotenv::dotenv;
 use ethabi::Contract;
-use evm_indexer::chains::evm_chains::{get_evm_chain, ETHEREUM};
+use evm_indexer::chains::chains::{get_chain, ETHEREUM};
 use evm_indexer::configs::abi_fetcher_config::EVMAbiFetcherConfig;
 use evm_indexer::db::db::EVMDatabase;
 use evm_indexer::db::models::models::{DatabaseEVMAbi, DatabaseEVMContract, DatabaseEVMMethod};
@@ -55,7 +55,7 @@ async fn main() {
             for mut contract in contracts {
                 let uri_str: String;
 
-                let chain = get_evm_chain(contract.chain.clone());
+                let chain = get_chain(contract.chain.clone());
 
                 let token = config.api_source_tokens.get(chain.name);
 

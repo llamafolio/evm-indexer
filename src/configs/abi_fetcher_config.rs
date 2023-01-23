@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use clap::Parser;
 
-use crate::chains::evm_chains::get_evm_chains;
+use crate::chains::chains::get_chains;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -28,7 +28,7 @@ impl EVMAbiFetcherConfig {
 
         let mut api_source_tokens: HashMap<String, String> = HashMap::new();
 
-        let chains = get_evm_chains();
+        let chains = get_chains();
 
         for (key, _) in chains {
             match get_abi_token_for_chain(key.clone()) {

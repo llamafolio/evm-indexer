@@ -1,1 +1,1 @@
-pub mod evm_chains;
+pub mod chains;
