@@ -1,4 +1,7 @@
-use std::{thread::sleep, time::Duration};
+use std::{
+    thread::{self, sleep},
+    time::Duration,
+};
 
 use dotenv::dotenv;
 use evm_indexer::{
@@ -30,30 +33,42 @@ async fn main() {
         .await
         .expect("Unable to start DB connection.");
 
-    tokio::spawn({
-        let db = db.clone();
-        async move {
-            loop {
-                let llamafolio_adapters = LlamafolioParser {};
+    if config.llamafolio_adapter {
+        info!("Starting the LlamaFolio adapters fetcher.");
 
-                let adapters = llamafolio_adapters.fetch().await.unwrap();
+        tokio::spawn({
+            let db = db.clone();
+            async move {
+                loop {
+                    let llamafolio_adapters = LlamafolioParser {};
 
-                info!("Fetched {} adapters.", adapters.len());
+                    let adapters = llamafolio_adapters.fetch().await.unwrap();
 
-                llamafolio_adapters.parse(&db, &adapters).await.unwrap();
+                    info!("Fetched {} adapters.", adapters.len());
 
-                sleep(Duration::from_secs(1800))
+                    llamafolio_adapters.parse(&db, &adapters).await.unwrap();
+
+                    sleep(Duration::from_secs(1800))
+                }
             }
+        });
+    }
+
+    if config.llamafolio_adapter {
+        info!("Starting the ERC20 Transfers parser.");
+
+        loop {
+            let erc20_transfers_parser = ERC20Parser {};
+
+            let logs = erc20_transfers_parser.fetch(&db).unwrap();
+
+            info!("Fetched {} logs to parse.", logs.len());
+
+            erc20_transfers_parser.parse(&db, &logs).await.unwrap();
         }
-    });
+    } else {
+        ctrlc::set_handler(move || {}).expect("Error setting Ctrl-C handler");
 
-    loop {
-        let erc20_transfers_parser = ERC20Parser {};
-
-        let logs = erc20_transfers_parser.fetch(&db).unwrap();
-
-        info!("Fetched {} logs to parse.", logs.len());
-
-        erc20_transfers_parser.parse(&db, &logs).await.unwrap();
+        thread::sleep(Duration::from_secs(5));
     }
 }

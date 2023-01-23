@@ -8,6 +8,7 @@ anyhow = "1"
 array-bytes = "6.0.0"
 async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
+ctrlc = "3"
 diesel = { version = "2", features = ["postgres"] }
 diesel_migrations = { version = "2", features = ["postgres"] }
 dotenv = "0.15"

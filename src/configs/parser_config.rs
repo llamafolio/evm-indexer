@@ -8,6 +8,22 @@ use clap::Parser;
 pub struct EVMParserArgs {
     #[arg(short, long, help = "Start log with debug", default_value_t = false)]
     pub debug: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Start the llamafolio adapters fetcher",
+        default_value_t = false
+    )]
+    pub llamafolio_adapters: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Start the erc20 transfers parser",
+        default_value_t = false
+    )]
+    pub erc20_transfers_parser: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -15,6 +31,8 @@ pub struct EVMParserConfig {
     pub db_url: String,
     pub redis_url: String,
     pub debug: bool,
+    pub llamafolio_adapter: bool,
+    pub erc20_transfers_parser: bool,
 }
 
 impl EVMParserConfig {
@@ -25,6 +43,8 @@ impl EVMParserConfig {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
             redis_url: std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
             debug: args.debug,
+            llamafolio_adapter: args.llamafolio_adapters,
+            erc20_transfers_parser: args.erc20_transfers_parser,
         }
     }
 }

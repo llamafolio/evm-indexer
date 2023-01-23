@@ -22,7 +22,7 @@ pub fn format_bytes(b: &Bytes) -> String {
 }
 
 pub fn format_bytes_slice(b: &[u8]) -> String {
-    return format!("{:?}", b);
+    return format!("0x{}", hex::encode(b));
 }
 
 pub fn format_number(n: U256) -> String {

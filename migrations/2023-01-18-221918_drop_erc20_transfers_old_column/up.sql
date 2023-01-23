@@ -1,1 +1,0 @@
-ALTER TABLE evm_erc20_transfers DROP COLUMN hash_with_index;
