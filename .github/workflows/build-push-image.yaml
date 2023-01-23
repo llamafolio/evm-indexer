@@ -1,0 +1,71 @@
+---
+jobs:
+  build:
+    name: build and push image
+    outputs:
+      image: ensoassociation/${{ github.event.repository.name }}:${{ steps.gitversion.outputs.SemVer }}-${{ steps.gitversion.outputs.shortSha }}
+      short-sha: ${{ steps.gitversion.outputs.shortSha }}
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
+          submodules: recursive
+          token: ${{ secrets.GIT_ACCESSTOKEN }}
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.15
+        with:
+          versionSpec: 5.x
+      - id: gitversion
+        name: Determine Version
+        uses: gittools/actions/gitversion/execute@v0.9.15
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Login to Dockerhub
+        uses: docker/login-action@v2
+        with:
+          password: ${{ secrets.DOCKER_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+      - id: build-and-push
+        name: Build and push image
+        uses: docker/build-push-action@v3.3.0
+        with:
+          context: .
+          push: true
+          tags: ensoassociation/${{ github.event.repository.name }}:${{ steps.gitversion.outputs.SemVer }}-${{ steps.gitversion.outputs.shortSha }}
+      - name: PR comment with newTag
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            A new image build is available.
+
+            ```
+            newTag: '${{ steps.gitversion.outputs.SemVer }}-${{ steps.gitversion.outputs.shortSha }}'
+            ```
+
+            Update the `newTag` in the prod/kustomization.yaml file to use this new image.
+name: Continuous Integration
+'on':
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - CODEOWNERS
+      - base/**
+      - catalog-info.yaml
+      - docs
+      - prod/**
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - CODEOWNERS
+      - base/**
+      - catalog-info.yaml
+      - docs
+      - prod/**
