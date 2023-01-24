@@ -35,7 +35,7 @@ pub struct DatabaseBlock {
     pub timestamp: String,
     pub total_difficulty: String,
     pub transactions: i64,
-    pub uncles: Vec<String>,
+    pub uncles: Vec<Option<String>>,
 }
 
 impl DatabaseBlock {
@@ -54,7 +54,7 @@ impl DatabaseBlock {
             .uncles
             .clone()
             .into_iter()
-            .map(|uncle| format_hash(uncle))
+            .map(|uncle| Some(format_hash(uncle)))
             .collect();
 
         let mix_hash: String = match block.mix_hash {
