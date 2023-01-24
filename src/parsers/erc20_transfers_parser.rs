@@ -1,7 +1,7 @@
 use crate::db::{
     db::{get_chunks, EVMDatabase},
-    models::models::DatabaseEVMTransactionLog,
-    schema::{evm_erc20_transfers, evm_transactions_logs},
+    models::models::DatabaseLog,
+    schema::{erc20_transfers, logs},
 };
 use anyhow::Result;
 use diesel::{prelude::*, result::Error};
@@ -11,33 +11,34 @@ use field_count::FieldCount;
 use log::info;
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_erc20_transfers)]
-pub struct DatabaseEVMErc20Transfer {
+#[diesel(table_name = erc20_transfers)]
+pub struct DatabaseErc20Transfer {
+    pub chain: String,
     pub hash: String,
     pub log_index: i64,
     pub token: String,
     pub from_address: String,
     pub to_address: String,
     pub value: String,
-    pub erc20_tokens_parsed: Option<bool>,
-    pub erc20_balances_parsed: Option<bool>,
+    pub erc20_tokens_parsed: bool,
+    pub erc20_balances_parsed: bool,
 }
 
 pub struct ERC20TransfersParser {}
 
 impl ERC20TransfersParser {
-    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseEVMTransactionLog>> {
+    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseLog>> {
         let mut connection = db.establish_connection();
 
-        let logs: Result<Vec<DatabaseEVMTransactionLog>, Error> = evm_transactions_logs::table
-            .select(evm_transactions_logs::all_columns)
+        let logs: Result<Vec<DatabaseLog>, Error> = logs::table
+            .select(logs::all_columns)
             .filter(
-                evm_transactions_logs::erc20_transfers_parsed
+                logs::erc20_transfers_parsed
                     .is_null()
-                    .or(evm_transactions_logs::erc20_transfers_parsed.eq(false)),
+                    .or(logs::erc20_transfers_parsed.eq(false)),
             )
             .limit(50000)
-            .load::<DatabaseEVMTransactionLog>(&mut connection);
+            .load::<DatabaseLog>(&mut connection);
 
         match logs {
             Ok(logs) => Ok(logs),
@@ -45,11 +46,7 @@ impl ERC20TransfersParser {
         }
     }
 
-    pub async fn parse(
-        &self,
-        db: &EVMDatabase,
-        logs: &Vec<DatabaseEVMTransactionLog>,
-    ) -> Result<()> {
+    pub async fn parse(&self, db: &EVMDatabase, logs: &Vec<DatabaseLog>) -> Result<()> {
         let mut db_erc20_transfers = Vec::new();
 
         let mut db_parsed_logs = Vec::new();
@@ -57,7 +54,7 @@ impl ERC20TransfersParser {
         for log in logs {
             let mut parsed_log = log.to_owned();
 
-            parsed_log.erc20_transfers_parsed = Some(true);
+            parsed_log.erc20_transfers_parsed = true;
 
             db_parsed_logs.push(parsed_log);
 
@@ -138,15 +135,16 @@ impl ERC20TransfersParser {
                 Err(_) => continue,
             };
 
-            let db_transfers = DatabaseEVMErc20Transfer {
+            let db_transfers = DatabaseErc20Transfer {
                 hash: log.hash.clone(),
+                chain: log.chain.to_owned(),
                 log_index: log.log_index,
                 token: log.address.clone(),
                 from_address,
                 to_address,
                 value,
-                erc20_tokens_parsed: Some(false),
-                erc20_balances_parsed: Some(false),
+                erc20_tokens_parsed: false,
+                erc20_balances_parsed: false,
             };
 
             db_erc20_transfers.push(db_transfers)
@@ -156,11 +154,11 @@ impl ERC20TransfersParser {
 
         let chunks = get_chunks(
             db_erc20_transfers.len(),
-            DatabaseEVMErc20Transfer::field_count(),
+            DatabaseErc20Transfer::field_count(),
         );
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_erc20_transfers::dsl::evm_erc20_transfers)
+            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
                 .values(&db_erc20_transfers[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -172,20 +170,14 @@ impl ERC20TransfersParser {
             db_erc20_transfers.len()
         );
 
-        let log_chunks = get_chunks(
-            db_parsed_logs.len(),
-            DatabaseEVMTransactionLog::field_count(),
-        );
+        let log_chunks = get_chunks(db_parsed_logs.len(), DatabaseLog::field_count());
 
         for (start, end) in log_chunks {
-            diesel::insert_into(evm_transactions_logs::dsl::evm_transactions_logs)
+            diesel::insert_into(logs::dsl::logs)
                 .values(&db_parsed_logs[start..end])
-                .on_conflict((
-                    evm_transactions_logs::hash,
-                    evm_transactions_logs::log_index,
-                ))
+                .on_conflict((logs::hash, logs::log_index))
                 .do_update()
-                .set(evm_transactions_logs::erc20_transfers_parsed.eq(true))
+                .set(logs::erc20_transfers_parsed.eq(true))
                 .execute(&mut connection)
                 .expect("Unable to update parsed logs into database");
         }

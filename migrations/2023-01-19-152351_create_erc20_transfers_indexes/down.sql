@@ -1,3 +1,0 @@
-DROP INDEX evm_erc20_transfers_by_hash;
-DROP INDEX evm_erc20_transfers_by_sender;
-DROP INDEX evm_erc20_transfers_by_receiver;

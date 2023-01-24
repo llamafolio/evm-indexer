@@ -1,22 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    chains_indexed_state (chain) {
-        chain -> Text,
-        indexed_blocks_amount -> Int8,
-    }
-}
-
-diesel::table! {
-    contracts_adapters (address, chain) {
-        address -> Varchar,
-        chain -> Varchar,
-        adapter_id -> Varchar,
-    }
-}
-
-diesel::table! {
-    evm_abis (contract, chain) {
+    abis (contract, chain) {
         chain -> Text,
         contract -> Text,
         abi -> Nullable<Text>,
@@ -25,7 +10,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_blocks (block_hash) {
+    blocks (block_hash) {
         base_fee_per_gas -> Text,
         chain -> Text,
         difficulty -> Text,
@@ -51,7 +36,14 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_contracts (hash) {
+    chains_indexed_state (chain) {
+        chain -> Text,
+        indexed_blocks_amount -> Int8,
+    }
+}
+
+diesel::table! {
+    contracts (hash) {
         block -> Int8,
         chain -> Text,
         contract -> Text,
@@ -63,7 +55,15 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_contracts_interactions (hash) {
+    contracts_adapters (address, chain) {
+        address -> Varchar,
+        chain -> Varchar,
+        adapter_id -> Varchar,
+    }
+}
+
+diesel::table! {
+    contracts_interactions (hash) {
         hash -> Text,
         block -> Int8,
         address -> Text,
@@ -73,7 +73,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_erc20_balances (address, token, chain) {
+    erc20_balances (address, token, chain) {
         address -> Text,
         chain -> Text,
         token -> Text,
@@ -82,7 +82,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_erc20_tokens (address, chain) {
+    erc20_tokens (address, chain) {
         address -> Text,
         chain -> Text,
         name -> Nullable<Text>,
@@ -92,27 +92,52 @@ diesel::table! {
 }
 
 diesel::table! {
-    evm_erc20_transfers (hash, log_index) {
+    erc20_transfers (hash, log_index) {
+        chain -> Text,
         hash -> Text,
         log_index -> Int8,
         token -> Text,
         from_address -> Text,
         to_address -> Text,
         value -> Text,
-        erc20_tokens_parsed -> Nullable<Bool>,
-        erc20_balances_parsed -> Nullable<Bool>,
+        erc20_tokens_parsed -> Bool,
+        erc20_balances_parsed -> Bool,
     }
 }
 
 diesel::table! {
-    evm_methods (method) {
+    logs (hash, log_index) {
+        address -> Text,
+        chain -> Text,
+        data -> Text,
+        erc20_transfers_parsed -> Bool,
+        hash -> Text,
+        log_index -> Int8,
+        removed -> Bool,
+        topics -> Array<Nullable<Text>>,
+    }
+}
+
+diesel::table! {
+    methods (method) {
         method -> Text,
         name -> Text,
     }
 }
 
 diesel::table! {
-    evm_transactions (hash) {
+    receipts (hash) {
+        contract_address -> Nullable<Text>,
+        cumulative_gas_used -> Text,
+        effective_gas_price -> Text,
+        gas_used -> Text,
+        hash -> Text,
+        status -> Text,
+    }
+}
+
+diesel::table! {
+    transactions (hash) {
         block_hash -> Text,
         block_number -> Int8,
         chain -> Text,
@@ -133,41 +158,18 @@ diesel::table! {
     }
 }
 
-diesel::table! {
-    evm_transactions_logs (hash, log_index) {
-        address -> Text,
-        topics -> Array<Nullable<Text>>,
-        data -> Text,
-        hash -> Text,
-        log_index -> Int8,
-        removed -> Bool,
-        erc20_transfers_parsed -> Nullable<Bool>,
-    }
-}
-
-diesel::table! {
-    evm_transactions_receipts (hash) {
-        contract_address -> Nullable<Text>,
-        cumulative_gas_used -> Text,
-        effective_gas_price -> Text,
-        gas_used -> Text,
-        hash -> Text,
-        status -> Text,
-    }
-}
-
 diesel::allow_tables_to_appear_in_same_query!(
+    abis,
+    blocks,
     chains_indexed_state,
+    contracts,
     contracts_adapters,
-    evm_abis,
-    evm_blocks,
-    evm_contracts,
-    evm_contracts_interactions,
-    evm_erc20_balances,
-    evm_erc20_tokens,
-    evm_erc20_transfers,
-    evm_methods,
-    evm_transactions,
-    evm_transactions_logs,
-    evm_transactions_receipts,
+    contracts_interactions,
+    erc20_balances,
+    erc20_tokens,
+    erc20_transfers,
+    logs,
+    methods,
+    receipts,
+    transactions,
 );

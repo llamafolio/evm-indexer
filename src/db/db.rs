@@ -12,9 +12,8 @@ use redis::Commands;
 use crate::chains::chains::Chain;
 
 use super::models::models::{
-    DatabaseChainIndexedState, DatabaseEVMAbi, DatabaseEVMBlock, DatabaseEVMContract,
-    DatabaseEVMMethod, DatabaseEVMTransaction, DatabaseEVMTransactionLog,
-    DatabaseEVMTransactionReceipt,
+    DatabaseAbi, DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseLog,
+    DatabaseMethod, DatabaseReceipt, DatabaseTransaction,
 };
 use super::schema::*;
 
@@ -54,14 +53,14 @@ impl EVMDatabase {
         return connection;
     }
 
-    pub async fn get_contracts(&self) -> Result<Vec<DatabaseEVMContract>> {
+    pub async fn get_contracts(&self) -> Result<Vec<DatabaseContract>> {
         let mut connection = self.establish_connection();
 
-        let contracts = evm_contracts::dsl::evm_contracts
-            .select(evm_contracts::all_columns)
-            .filter(evm_contracts::parsed.eq(false))
+        let contracts = contracts::dsl::contracts
+            .select(contracts::all_columns)
+            .filter(contracts::parsed.eq(false))
             .limit(500)
-            .load::<DatabaseEVMContract>(&mut connection);
+            .load::<DatabaseContract>(&mut connection);
 
         match contracts {
             Ok(contracts) => Ok(contracts),
@@ -86,11 +85,11 @@ impl EVMDatabase {
 
     pub async fn store_data(
         &self,
-        blocks: &Vec<DatabaseEVMBlock>,
-        transactions: &Vec<DatabaseEVMTransaction>,
-        receipts: &Vec<DatabaseEVMTransactionReceipt>,
-        logs: &Vec<DatabaseEVMTransactionLog>,
-        contracts: &Vec<DatabaseEVMContract>,
+        blocks: &Vec<DatabaseBlock>,
+        transactions: &Vec<DatabaseTransaction>,
+        receipts: &Vec<DatabaseReceipt>,
+        logs: &Vec<DatabaseLog>,
+        contracts: &Vec<DatabaseContract>,
     ) {
         if contracts.len() > 0 {
             self.store_contracts(&contracts).await.unwrap();
@@ -123,10 +122,10 @@ impl EVMDatabase {
         );
     }
 
-    async fn store_blocks(&self, blocks: &Vec<DatabaseEVMBlock>) -> Result<()> {
+    async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        diesel::insert_into(evm_blocks::dsl::evm_blocks)
+        diesel::insert_into(blocks::dsl::blocks)
             .values(blocks)
             .on_conflict_do_nothing()
             .execute(&mut connection)
@@ -135,13 +134,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    async fn store_transactions(&self, transactions: &Vec<DatabaseEVMTransaction>) -> Result<()> {
+    async fn store_transactions(&self, transactions: &Vec<DatabaseTransaction>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(transactions.len(), DatabaseEVMTransaction::field_count());
+        let chunks = get_chunks(transactions.len(), DatabaseTransaction::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_transactions::dsl::evm_transactions)
+            diesel::insert_into(transactions::dsl::transactions)
                 .values(&transactions[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -151,16 +150,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    async fn store_transactions_receipts(
-        &self,
-        receipts: &Vec<DatabaseEVMTransactionReceipt>,
-    ) -> Result<()> {
+    async fn store_transactions_receipts(&self, receipts: &Vec<DatabaseReceipt>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(receipts.len(), DatabaseEVMTransactionReceipt::field_count());
+        let chunks = get_chunks(receipts.len(), DatabaseReceipt::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_transactions_receipts::dsl::evm_transactions_receipts)
+            diesel::insert_into(receipts::dsl::receipts)
                 .values(&receipts[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -170,13 +166,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    async fn store_transactions_logs(&self, logs: &Vec<DatabaseEVMTransactionLog>) -> Result<()> {
+    async fn store_transactions_logs(&self, logs: &Vec<DatabaseLog>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(logs.len(), DatabaseEVMTransactionLog::field_count());
+        let chunks = get_chunks(logs.len(), DatabaseLog::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_transactions_logs::dsl::evm_transactions_logs)
+            diesel::insert_into(logs::dsl::logs)
                 .values(&logs[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -186,13 +182,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    async fn store_contracts(&self, contracts: &Vec<DatabaseEVMContract>) -> Result<()> {
+    async fn store_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(contracts.len(), DatabaseEVMContract::field_count());
+        let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_contracts::dsl::evm_contracts)
+            diesel::insert_into(contracts::dsl::contracts)
                 .values(&contracts[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -202,13 +198,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    pub async fn store_abis(&self, abis: &Vec<DatabaseEVMAbi>) -> Result<()> {
+    pub async fn store_abis(&self, abis: &Vec<DatabaseAbi>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(abis.len(), DatabaseEVMAbi::field_count());
+        let chunks = get_chunks(abis.len(), DatabaseAbi::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_abis::dsl::evm_abis)
+            diesel::insert_into(abis::dsl::abis)
                 .values(&abis[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -218,13 +214,13 @@ impl EVMDatabase {
         Ok(())
     }
 
-    pub async fn store_methods(&self, methods: &Vec<DatabaseEVMMethod>) -> Result<()> {
+    pub async fn store_methods(&self, methods: &Vec<DatabaseMethod>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(methods.len(), DatabaseEVMAbi::field_count());
+        let chunks = get_chunks(methods.len(), DatabaseAbi::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_methods::dsl::evm_methods)
+            diesel::insert_into(methods::dsl::methods)
                 .values(&methods[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
@@ -270,17 +266,17 @@ impl EVMDatabase {
         Ok(())
     }
 
-    pub async fn update_contracts(&self, contracts: &Vec<DatabaseEVMContract>) -> Result<()> {
+    pub async fn update_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(contracts.len(), DatabaseEVMContract::field_count());
+        let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(evm_contracts::dsl::evm_contracts)
+            diesel::insert_into(contracts::dsl::contracts)
                 .values(&contracts[start..end])
-                .on_conflict(evm_contracts::hash)
+                .on_conflict(contracts::hash)
                 .do_update()
-                .set(evm_contracts::parsed.eq(true))
+                .set(contracts::parsed.eq(true))
                 .execute(&mut connection)
                 .expect("Unable to update contracts into database");
         }

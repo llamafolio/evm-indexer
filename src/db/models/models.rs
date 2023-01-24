@@ -4,8 +4,7 @@ use field_count::FieldCount;
 
 use crate::{
     db::schema::{
-        chains_indexed_state, evm_abis, evm_blocks, evm_contracts, evm_methods, evm_transactions,
-        evm_transactions_logs, evm_transactions_receipts,
+        abis, blocks, chains_indexed_state, contracts, logs, methods, receipts, transactions,
     },
     utils::{
         format_address, format_bytes, format_bytes_slice, format_hash, format_nonce, format_number,
@@ -14,8 +13,8 @@ use crate::{
 };
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_blocks)]
-pub struct DatabaseEVMBlock {
+#[diesel(table_name = blocks)]
+pub struct DatabaseBlock {
     pub base_fee_per_gas: String,
     pub chain: String,
     pub difficulty: String,
@@ -39,7 +38,7 @@ pub struct DatabaseEVMBlock {
     pub uncles: Vec<String>,
 }
 
-impl DatabaseEVMBlock {
+impl DatabaseBlock {
     pub fn from_rpc(block: &Block<Transaction>, chain: &'static str) -> Self {
         let base_fee_per_gas: String = match block.base_fee_per_gas {
             None => String::from("0"),
@@ -138,8 +137,8 @@ pub fn byte4_from_input(input: &String) -> [u8; 4] {
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_transactions)]
-pub struct DatabaseEVMTransaction {
+#[diesel(table_name = transactions)]
+pub struct DatabaseTransaction {
     pub block_hash: String,
     pub block_number: i64,
     pub chain: String,
@@ -159,7 +158,7 @@ pub struct DatabaseEVMTransaction {
     pub value: String,
 }
 
-impl DatabaseEVMTransaction {
+impl DatabaseTransaction {
     pub fn from_rpc(transaction: Transaction, chain: &'static str, timestamp: String) -> Self {
         let max_fee_per_gas: String = match transaction.max_fee_per_gas {
             None => String::from("0"),
@@ -226,8 +225,8 @@ impl DatabaseEVMTransaction {
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_transactions_receipts)]
-pub struct DatabaseEVMTransactionReceipt {
+#[diesel(table_name = receipts)]
+pub struct DatabaseReceipt {
     pub contract_address: Option<String>,
     pub cumulative_gas_used: String,
     pub effective_gas_price: String,
@@ -236,7 +235,7 @@ pub struct DatabaseEVMTransactionReceipt {
     pub status: String,
 }
 
-impl DatabaseEVMTransactionReceipt {
+impl DatabaseReceipt {
     pub fn from_rpc(receipt: &TransactionReceipt) -> Self {
         let contract_address: Option<String> = match receipt.contract_address {
             None => None,
@@ -270,19 +269,20 @@ impl DatabaseEVMTransactionReceipt {
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_transactions_logs)]
-pub struct DatabaseEVMTransactionLog {
+#[diesel(table_name = logs)]
+pub struct DatabaseLog {
     pub address: String,
-    pub topics: Vec<Option<String>>,
+    pub chain: String,
     pub data: String,
+    pub erc20_transfers_parsed: bool,
     pub hash: String,
     pub log_index: i64,
     pub removed: bool,
-    pub erc20_transfers_parsed: Option<bool>,
+    pub topics: Vec<Option<String>>,
 }
 
-impl DatabaseEVMTransactionLog {
-    pub fn from_rpc(log: Log) -> Self {
+impl DatabaseLog {
+    pub fn from_rpc(log: Log, chain: String) -> Self {
         let hash: String = match log.transaction_hash {
             None => String::from("0"),
             Some(hash) => format_hash(hash),
@@ -300,6 +300,7 @@ impl DatabaseEVMTransactionLog {
 
         Self {
             address: format_address(log.address),
+            chain,
             topics: log
                 .topics
                 .clone()
@@ -310,21 +311,21 @@ impl DatabaseEVMTransactionLog {
             hash,
             log_index,
             removed,
-            erc20_transfers_parsed: Some(false),
+            erc20_transfers_parsed: false,
         }
     }
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_methods)]
-pub struct DatabaseEVMMethod {
+#[diesel(table_name = methods)]
+pub struct DatabaseMethod {
     pub method: String,
     pub name: String,
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_abis)]
-pub struct DatabaseEVMAbi {
+#[diesel(table_name = abis)]
+pub struct DatabaseAbi {
     pub chain: String,
     pub contract: String,
     pub abi: Option<String>,
@@ -332,8 +333,8 @@ pub struct DatabaseEVMAbi {
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_contracts)]
-pub struct DatabaseEVMContract {
+#[diesel(table_name = contracts)]
+pub struct DatabaseContract {
     pub block: i64,
     pub chain: String,
     pub contract: String,
@@ -343,7 +344,7 @@ pub struct DatabaseEVMContract {
     pub verified: bool,
 }
 
-impl DatabaseEVMContract {
+impl DatabaseContract {
     pub fn from_rpc(receipt: TransactionReceipt, chain: &'static str) -> Self {
         let block_number: i64 = match receipt.block_number {
             None => 0,

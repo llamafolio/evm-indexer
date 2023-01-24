@@ -7,8 +7,8 @@ use evm_indexer::{
     db::{
         db::EVMDatabase,
         models::models::{
-            DatabaseChainIndexedState, DatabaseEVMBlock, DatabaseEVMContract,
-            DatabaseEVMTransaction, DatabaseEVMTransactionLog, DatabaseEVMTransactionReceipt,
+            DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseLog,
+            DatabaseReceipt, DatabaseTransaction,
         },
     },
     rpc::rpc::EVMRpc,
@@ -114,11 +114,11 @@ async fn sync_chain(rpc: &EVMRpc, db: &EVMDatabase, config: &EVMIndexerConfig) {
 
         let results = join_all(work).await;
 
-        let mut db_blocks: Vec<DatabaseEVMBlock> = Vec::new();
-        let mut db_transactions: Vec<DatabaseEVMTransaction> = Vec::new();
-        let mut db_receipts: Vec<DatabaseEVMTransactionReceipt> = Vec::new();
-        let mut db_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
-        let mut db_contracts: Vec<DatabaseEVMContract> = Vec::new();
+        let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
+        let mut db_transactions: Vec<DatabaseTransaction> = Vec::new();
+        let mut db_receipts: Vec<DatabaseReceipt> = Vec::new();
+        let mut db_logs: Vec<DatabaseLog> = Vec::new();
+        let mut db_contracts: Vec<DatabaseContract> = Vec::new();
 
         for result in results {
             match result {
@@ -155,11 +155,11 @@ async fn fetch_block(
     block_number: &i64,
     chain: &Chain,
 ) -> Option<(
-    DatabaseEVMBlock,
-    Vec<DatabaseEVMTransaction>,
-    Vec<DatabaseEVMTransactionReceipt>,
-    Vec<DatabaseEVMTransactionLog>,
-    Vec<DatabaseEVMContract>,
+    DatabaseBlock,
+    Vec<DatabaseTransaction>,
+    Vec<DatabaseReceipt>,
+    Vec<DatabaseLog>,
+    Vec<DatabaseContract>,
 )> {
     let block_data = rpc.get_block(block_number).await.unwrap();
 
@@ -177,9 +177,9 @@ async fn fetch_block(
                 return None;
             }
 
-            let mut db_receipts: Vec<DatabaseEVMTransactionReceipt> = Vec::new();
-            let mut db_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
-            let mut db_contracts: Vec<DatabaseEVMContract> = Vec::new();
+            let mut db_receipts: Vec<DatabaseReceipt> = Vec::new();
+            let mut db_logs: Vec<DatabaseLog> = Vec::new();
+            let mut db_contracts: Vec<DatabaseContract> = Vec::new();
 
             if chain.supports_blocks_receipts {
                 let receipts_data = rpc.get_block_receipts(block_number).await.unwrap();

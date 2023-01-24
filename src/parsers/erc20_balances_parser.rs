@@ -1,7 +1,7 @@
 use crate::{
     db::{
         db::EVMDatabase,
-        schema::{evm_erc20_balances, evm_erc20_tokens, evm_erc20_transfers, evm_transactions},
+        schema::{erc20_balances, erc20_tokens, erc20_transfers},
     },
     utils::format_address,
 };
@@ -13,11 +13,11 @@ use ethers::{
 };
 use field_count::FieldCount;
 
-use super::erc20_transfers_parser::DatabaseEVMErc20Transfer;
+use super::erc20_transfers_parser::DatabaseErc20Transfer;
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = evm_erc20_balances)]
-pub struct DatabaseEVMErc20Balance {
+#[diesel(table_name = erc20_balances)]
+pub struct DatabaseErc20Balance {
     pub address: String,
     pub chain: String,
     pub token: String,
@@ -27,18 +27,18 @@ pub struct DatabaseEVMErc20Balance {
 pub struct ERC20BalancesParser {}
 
 impl ERC20BalancesParser {
-    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseEVMErc20Transfer>> {
+    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseErc20Transfer>> {
         let mut connection = db.establish_connection();
 
-        let transfers: Result<Vec<DatabaseEVMErc20Transfer>, Error> = evm_erc20_transfers::table
-            .select(evm_erc20_transfers::all_columns)
+        let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
+            .select(erc20_transfers::all_columns)
             .filter(
-                evm_erc20_transfers::erc20_balances_parsed
+                erc20_transfers::erc20_balances_parsed
                     .is_null()
-                    .or(evm_erc20_transfers::erc20_balances_parsed.eq(false)),
+                    .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
             .limit(5000)
-            .load::<DatabaseEVMErc20Transfer>(&mut connection);
+            .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
             Ok(transfers) => Ok(transfers),
@@ -49,24 +49,18 @@ impl ERC20BalancesParser {
     pub async fn parse(
         &self,
         db: &EVMDatabase,
-        transfers: &Vec<DatabaseEVMErc20Transfer>,
+        transfers: &Vec<DatabaseErc20Transfer>,
     ) -> Result<()> {
         let mut connection = db.establish_connection();
 
         for transfer in transfers {
-            let chain: String = evm_transactions::table
-                .select(evm_transactions::chain)
-                .filter(evm_transactions::hash.eq(transfer.hash.clone()))
-                .first::<String>(&mut connection)
-                .unwrap();
-
             let token = transfer.token.clone();
 
             let sender = transfer.from_address.clone();
 
-            let token_decimals: i64 = match evm_erc20_tokens::table
-                .select(evm_erc20_tokens::decimals)
-                .filter(evm_erc20_tokens::address.eq(token.clone()))
+            let token_decimals: i64 = match erc20_tokens::table
+                .select(erc20_tokens::decimals)
+                .filter(erc20_tokens::address.eq(token.clone()))
                 .first::<Option<i64>>(&mut connection)
             {
                 Ok(decimals) => match decimals {
@@ -88,13 +82,13 @@ impl ERC20BalancesParser {
                 let mut sender_balance = match self.get_current_balance(
                     token.clone(),
                     sender.clone(),
-                    chain.clone(),
+                    transfer.chain.clone(),
                     db,
                 ) {
                     Some(db_balance) => db_balance,
-                    None => DatabaseEVMErc20Balance {
+                    None => DatabaseErc20Balance {
                         address: sender,
-                        chain: chain.clone(),
+                        chain: transfer.chain.clone(),
                         token: token.clone(),
                         balance: "0".to_string(),
                     },
@@ -116,13 +110,13 @@ impl ERC20BalancesParser {
                 let mut receiver_balance = match self.get_current_balance(
                     token.clone(),
                     receiver.clone(),
-                    chain.clone(),
+                    transfer.chain.clone(),
                     db,
                 ) {
                     Some(db_balance) => db_balance,
-                    None => DatabaseEVMErc20Balance {
+                    None => DatabaseErc20Balance {
                         address: receiver,
-                        chain: chain.clone(),
+                        chain: transfer.chain.clone(),
                         token: token.clone(),
                         balance: "0".to_string(),
                     },
@@ -137,11 +131,11 @@ impl ERC20BalancesParser {
                 self.store_balance(&receiver_balance, db).unwrap()
             }
 
-            diesel::insert_into(evm_erc20_transfers::dsl::evm_erc20_transfers)
+            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
                 .values(transfer)
-                .on_conflict((evm_erc20_transfers::hash, evm_erc20_transfers::log_index))
+                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
                 .do_update()
-                .set(evm_erc20_transfers::erc20_balances_parsed.eq(true))
+                .set(erc20_transfers::erc20_balances_parsed.eq(true))
                 .execute(&mut connection)
                 .expect("Unable to update parsed erc20 balances into database");
         }
@@ -155,18 +149,18 @@ impl ERC20BalancesParser {
         address: String,
         chain: String,
         db: &EVMDatabase,
-    ) -> Option<DatabaseEVMErc20Balance> {
+    ) -> Option<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
-        let db_balance: Result<DatabaseEVMErc20Balance, Error> = evm_erc20_balances::table
-            .select(evm_erc20_balances::all_columns)
+        let db_balance: Result<DatabaseErc20Balance, Error> = erc20_balances::table
+            .select(erc20_balances::all_columns)
             .filter(
-                evm_erc20_balances::token
+                erc20_balances::token
                     .eq(token)
-                    .and(evm_erc20_balances::chain.eq(chain))
-                    .and(evm_erc20_balances::address.eq(address)),
+                    .and(erc20_balances::chain.eq(chain))
+                    .and(erc20_balances::address.eq(address)),
             )
-            .first::<DatabaseEVMErc20Balance>(&mut connection);
+            .first::<DatabaseErc20Balance>(&mut connection);
 
         match db_balance {
             Ok(db_balance) => Some(db_balance),
@@ -174,18 +168,18 @@ impl ERC20BalancesParser {
         }
     }
 
-    pub fn store_balance(&self, balance: &DatabaseEVMErc20Balance, db: &EVMDatabase) -> Result<()> {
+    pub fn store_balance(&self, balance: &DatabaseErc20Balance, db: &EVMDatabase) -> Result<()> {
         let mut connection = db.establish_connection();
 
-        diesel::insert_into(evm_erc20_balances::dsl::evm_erc20_balances)
+        diesel::insert_into(erc20_balances::dsl::erc20_balances)
             .values(balance)
             .on_conflict((
-                evm_erc20_balances::address,
-                evm_erc20_balances::token,
-                evm_erc20_balances::chain,
+                erc20_balances::address,
+                erc20_balances::token,
+                erc20_balances::chain,
             ))
             .do_update()
-            .set(evm_erc20_balances::balance.eq(balance.balance.clone()))
+            .set(erc20_balances::balance.eq(balance.balance.clone()))
             .execute(&mut connection)
             .expect("Unable to store erc20 balance");
 

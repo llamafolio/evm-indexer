@@ -3,7 +3,7 @@ use ethabi::Contract;
 use evm_indexer::chains::chains::{get_chain, ETHEREUM};
 use evm_indexer::configs::abi_fetcher_config::EVMAbiFetcherConfig;
 use evm_indexer::db::db::EVMDatabase;
-use evm_indexer::db::models::models::{DatabaseEVMAbi, DatabaseEVMContract, DatabaseEVMMethod};
+use evm_indexer::db::models::models::{DatabaseAbi, DatabaseContract, DatabaseMethod};
 use log::LevelFilter;
 use log::*;
 use reqwest::Client;
@@ -48,9 +48,9 @@ async fn main() {
 
             let client = Client::new();
 
-            let mut contracts_fetched: Vec<DatabaseEVMContract> = Vec::new();
+            let mut contracts_fetched: Vec<DatabaseContract> = Vec::new();
 
-            let mut abis_fetched: Vec<DatabaseEVMAbi> = Vec::new();
+            let mut abis_fetched: Vec<DatabaseAbi> = Vec::new();
 
             for mut contract in contracts {
                 let uri_str: String;
@@ -84,7 +84,7 @@ async fn main() {
                             let abi_response: Result<AbiResponse, Error> =
                                 serde_json::from_str(&response);
 
-                            let mut db_contract_abi = DatabaseEVMAbi {
+                            let mut db_contract_abi = DatabaseAbi {
                                 chain: chain.name.to_owned(),
                                 contract: contract.contract.clone(),
                                 abi: None,
@@ -123,7 +123,7 @@ async fn main() {
                 }
             }
 
-            let mut methods: Vec<DatabaseEVMMethod> = Vec::new();
+            let mut methods: Vec<DatabaseMethod> = Vec::new();
 
             for abi in &abis_fetched {
                 let contract: Contract = match &abi.abi {
@@ -139,7 +139,7 @@ async fn main() {
                 for function in functions {
                     let signature = format!("0x{}", hex::encode(function.short_signature()));
 
-                    let db_method = DatabaseEVMMethod {
+                    let db_method = DatabaseMethod {
                         name: function.name.clone(),
                         method: signature,
                     };
