@@ -4,6 +4,7 @@ use crate::{
     db::models::models::{
         DatabaseBlock, DatabaseContract, DatabaseLog, DatabaseReceipt, DatabaseTransaction,
     },
+    utils::format_small_number,
 };
 use ethers::types::{Block, Transaction, TransactionReceipt, U256};
 
@@ -144,12 +145,22 @@ impl EVMRpc {
 
                         let mut db_transaction_logs: Vec<DatabaseLog> = Vec::new();
 
-                        let db_contract = match receipt.contract_address {
-                            Some(_) => {
-                                Some(DatabaseContract::from_rpc(receipt.clone(), self.chain.name))
-                            }
-                            None => None,
+                        let status: String = match receipt.status {
+                            None => String::from("-1"),
+                            Some(status) => format_small_number(status),
                         };
+
+                        let mut db_contract: Option<DatabaseContract> = None;
+
+                        if status == "1" {
+                            db_contract = match receipt.contract_address {
+                                Some(_) => Some(DatabaseContract::from_rpc(
+                                    receipt.clone(),
+                                    self.chain.name,
+                                )),
+                                None => None,
+                            };
+                        }
 
                         for log in receipt.logs {
                             let db_log = DatabaseLog::from_rpc(log, self.chain.name.to_owned());

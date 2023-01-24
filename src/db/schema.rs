@@ -2,9 +2,9 @@
 
 diesel::table! {
     abis (contract, chain) {
+        abi -> Nullable<Text>,
         chain -> Text,
         contract -> Text,
-        abi -> Nullable<Text>,
         verified -> Bool,
     }
 }
@@ -12,12 +12,12 @@ diesel::table! {
 diesel::table! {
     blocks (block_hash) {
         base_fee_per_gas -> Text,
+        block_hash -> Text,
         chain -> Text,
         difficulty -> Text,
         extra_data -> Text,
         gas_limit -> Text,
         gas_used -> Text,
-        block_hash -> Text,
         logs_bloom -> Text,
         miner -> Text,
         mix_hash -> Text,
@@ -43,7 +43,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    contracts (hash) {
+    contracts (contract, chain) {
         block -> Int8,
         chain -> Text,
         contract -> Text,
@@ -56,28 +56,18 @@ diesel::table! {
 
 diesel::table! {
     contracts_adapters (address, chain) {
+        adapter_id -> Varchar,
         address -> Varchar,
         chain -> Varchar,
-        adapter_id -> Varchar,
-    }
-}
-
-diesel::table! {
-    contracts_interactions (hash) {
-        hash -> Text,
-        block -> Int8,
-        address -> Text,
-        contract -> Text,
-        chain -> Text,
     }
 }
 
 diesel::table! {
     erc20_balances (address, token, chain) {
         address -> Text,
+        balance -> Text,
         chain -> Text,
         token -> Text,
-        balance -> Text,
     }
 }
 
@@ -85,8 +75,8 @@ diesel::table! {
     erc20_tokens (address, chain) {
         address -> Text,
         chain -> Text,
-        name -> Nullable<Text>,
         decimals -> Nullable<Int8>,
+        name -> Nullable<Text>,
         symbol -> Nullable<Text>,
     }
 }
@@ -94,14 +84,14 @@ diesel::table! {
 diesel::table! {
     erc20_transfers (hash, log_index) {
         chain -> Text,
+        erc20_balances_parsed -> Bool,
+        erc20_tokens_parsed -> Bool,
+        from_address -> Text,
         hash -> Text,
         log_index -> Int8,
-        token -> Text,
-        from_address -> Text,
         to_address -> Text,
+        token -> Text,
         value -> Text,
-        erc20_tokens_parsed -> Bool,
-        erc20_balances_parsed -> Bool,
     }
 }
 
@@ -144,10 +134,10 @@ diesel::table! {
         from_address -> Text,
         gas -> Text,
         gas_price -> Text,
-        max_priority_fee_per_gas -> Nullable<Text>,
-        max_fee_per_gas -> Nullable<Text>,
         hash -> Text,
         input -> Text,
+        max_fee_per_gas -> Nullable<Text>,
+        max_priority_fee_per_gas -> Nullable<Text>,
         method -> Text,
         nonce -> Text,
         timestamp -> Text,
@@ -164,7 +154,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     chains_indexed_state,
     contracts,
     contracts_adapters,
-    contracts_interactions,
     erc20_balances,
     erc20_tokens,
     erc20_transfers,

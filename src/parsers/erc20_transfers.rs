@@ -14,14 +14,14 @@ use log::info;
 #[diesel(table_name = erc20_transfers)]
 pub struct DatabaseErc20Transfer {
     pub chain: String,
+    pub erc20_balances_parsed: bool,
+    pub erc20_tokens_parsed: bool,
+    pub from_address: String,
     pub hash: String,
     pub log_index: i64,
-    pub token: String,
-    pub from_address: String,
     pub to_address: String,
+    pub token: String,
     pub value: String,
-    pub erc20_tokens_parsed: bool,
-    pub erc20_balances_parsed: bool,
 }
 
 pub struct ERC20Transfers {}
