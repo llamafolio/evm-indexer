@@ -23,23 +23,33 @@ async fn main() {
 
     let mut connection = db.establish_connection();
 
-    let blocks: Vec<(String, String)> = blocks::dsl::blocks
-        .select((blocks::block_hash, blocks::logs_bloom))
-        .load::<(String, String)>(&mut connection)
-        .unwrap();
-
-    for (block_hash, logs_bloom) in blocks {
-        let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
-            Ok(data) => data,
-            Err(_) => continue,
-        };
-
-        let formatted = format_bytes_slice(&bloom_vec[..]);
-
-        diesel::update(blocks::dsl::blocks)
-            .filter(blocks::block_hash.eq(block_hash))
-            .set(blocks::logs_bloom.eq(formatted))
-            .execute(&mut connection)
+    loop {
+        let blocks: Vec<(String, String)> = blocks::dsl::blocks
+            .select((blocks::block_hash, blocks::logs_bloom))
+            .filter(blocks::parsed.eq(false))
+            .limit(1000)
+            .load::<(String, String)>(&mut connection)
             .unwrap();
+
+        info!("Fetched {} blocks to fix", blocks.len());
+
+        let mut count = 0;
+        for (block_hash, logs_bloom) in blocks {
+            let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
+                Ok(data) => data,
+                Err(_) => continue,
+            };
+
+            let formatted = format_bytes_slice(&bloom_vec[..]);
+
+            diesel::update(blocks::dsl::blocks)
+                .filter(blocks::block_hash.eq(block_hash))
+                .set((blocks::logs_bloom.eq(formatted), blocks::parsed.eq(true)))
+                .execute(&mut connection)
+                .unwrap();
+            count += 1;
+        }
+
+        info!("Fixed {} blocks", count);
     }
 }

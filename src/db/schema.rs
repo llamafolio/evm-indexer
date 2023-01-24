@@ -31,6 +31,7 @@ diesel::table! {
         timestamp -> Text,
         total_difficulty -> Text,
         transactions -> Int8,
+        parsed -> Bool,
         uncles -> Array<Nullable<Text>>,
     }
 }

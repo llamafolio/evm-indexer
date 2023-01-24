@@ -35,6 +35,7 @@ pub struct DatabaseBlock {
     pub timestamp: String,
     pub total_difficulty: String,
     pub transactions: i64,
+    pub parsed: bool,
     pub uncles: Vec<Option<String>>,
 }
 
@@ -108,6 +109,7 @@ impl DatabaseBlock {
             timestamp: format_number(block.timestamp),
             total_difficulty,
             transactions: block.transactions.len() as i64,
+            parsed: false,
             uncles,
         }
     }
