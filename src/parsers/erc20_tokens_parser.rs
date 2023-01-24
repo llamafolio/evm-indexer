@@ -48,9 +48,9 @@ impl ERC20TokensParser {
         let transfers: Result<Vec<DatabaseEVMErc20Transfer>, Error> = evm_erc20_transfers::table
             .select(evm_erc20_transfers::all_columns)
             .filter(
-                evm_erc20_transfers::erc20_tokens_parced
+                evm_erc20_transfers::erc20_tokens_parsed
                     .is_null()
-                    .or(evm_erc20_transfers::erc20_tokens_parced.eq(false)),
+                    .or(evm_erc20_transfers::erc20_tokens_parsed.eq(false)),
             )
             .limit(5000)
             .load::<DatabaseEVMErc20Transfer>(&mut connection);
@@ -115,7 +115,7 @@ impl ERC20TokensParser {
                 .values(&transfers[start..end])
                 .on_conflict((evm_erc20_transfers::hash, evm_erc20_transfers::log_index))
                 .do_update()
-                .set(evm_erc20_transfers::erc20_tokens_parced.eq(true))
+                .set(evm_erc20_transfers::erc20_tokens_parsed.eq(true))
                 .execute(&mut connection)
                 .expect("Unable to update parsed erc20 transfers into database");
         }

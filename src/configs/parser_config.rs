@@ -24,6 +24,14 @@ pub struct EVMParserArgs {
         default_value_t = false
     )]
     pub erc20_tokens_parser: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Start the erc20 balances parser",
+        default_value_t = false
+    )]
+    pub erc20_balances_parser: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +41,7 @@ pub struct EVMParserConfig {
     pub debug: bool,
     pub llamafolio_adapter: bool,
     pub erc20_tokens_parser: bool,
+    pub erc20_balances_parser: bool,
 }
 
 impl EVMParserConfig {
@@ -45,6 +54,7 @@ impl EVMParserConfig {
             debug: args.debug,
             llamafolio_adapter: args.llamafolio_adapters,
             erc20_tokens_parser: args.erc20_tokens_parser,
+            erc20_balances_parser: args.erc20_balances_parser,
         }
     }
 }

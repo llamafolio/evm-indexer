@@ -19,7 +19,8 @@ pub struct DatabaseEVMErc20Transfer {
     pub from_address: String,
     pub to_address: String,
     pub value: String,
-    pub erc20_tokens_parced: Option<bool>,
+    pub erc20_tokens_parsed: Option<bool>,
+    pub erc20_balances_parsed: Option<bool>,
 }
 
 pub struct ERC20TransfersParser {}
@@ -144,7 +145,8 @@ impl ERC20TransfersParser {
                 from_address,
                 to_address,
                 value,
-                erc20_tokens_parced: Some(false),
+                erc20_tokens_parsed: Some(false),
+                erc20_balances_parsed: Some(false),
             };
 
             db_erc20_transfers.push(db_transfers)

@@ -73,6 +73,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    evm_erc20_balances (address, token, chain) {
+        address -> Text,
+        chain -> Text,
+        token -> Text,
+        balance -> Text,
+    }
+}
+
+diesel::table! {
     evm_erc20_tokens (address, chain) {
         address -> Text,
         chain -> Text,
@@ -90,7 +99,8 @@ diesel::table! {
         from_address -> Text,
         to_address -> Text,
         value -> Text,
-        erc20_tokens_parced -> Nullable<Bool>,
+        erc20_tokens_parsed -> Nullable<Bool>,
+        erc20_balances_parsed -> Nullable<Bool>,
     }
 }
 
@@ -153,6 +163,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     evm_blocks,
     evm_contracts,
     evm_contracts_interactions,
+    evm_erc20_balances,
     evm_erc20_tokens,
     evm_erc20_transfers,
     evm_methods,

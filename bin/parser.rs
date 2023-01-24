@@ -6,8 +6,8 @@ use evm_indexer::{
     configs::parser_config::EVMParserConfig,
     db::db::EVMDatabase,
     parsers::{
-        erc20_tokens_parser::ERC20TokensParser, erc20_transfers_parser::ERC20TransfersParser,
-        llamafolio_adapters::LlamafolioParser,
+        erc20_balances_parser::ERC20BalancesParser, erc20_tokens_parser::ERC20TokensParser,
+        erc20_transfers_parser::ERC20TransfersParser, llamafolio_adapters::LlamafolioParser,
     },
 };
 use log::*;
@@ -61,13 +61,34 @@ async fn main() {
             let db = db.clone();
             async move {
                 loop {
-                    let erc20_tokens_parser = ERC20TokensParser {};
+                    let parser = ERC20TokensParser {};
 
-                    let transfers = erc20_tokens_parser.fetch(&db).unwrap();
+                    let data = parser.fetch(&db).unwrap();
 
-                    info!("Fetched {} transfers to parse.", transfers.len());
+                    info!("Fetched {} transfers to parse.", data.len());
 
-                    erc20_tokens_parser.parse(&db, &transfers).await.unwrap();
+                    parser.parse(&db, &data).await.unwrap();
+
+                    sleep(Duration::from_secs(2))
+                }
+            }
+        });
+    }
+
+    if config.erc20_balances_parser {
+        info!("Starting the ERC20 Balances parser.");
+
+        tokio::spawn({
+            let db = db.clone();
+            async move {
+                loop {
+                    let parser = ERC20BalancesParser {};
+
+                    let data = parser.fetch(&db).unwrap();
+
+                    info!("Fetched {} transfers to parse.", data.len());
+
+                    parser.parse(&db, &data).await.unwrap();
 
                     sleep(Duration::from_secs(2))
                 }
