@@ -5,7 +5,6 @@ use evm_indexer::{
     db::{db::EVMDatabase, schema::blocks},
     utils::format_bytes_slice,
 };
-use log::*;
 
 #[tokio::main()]
 async fn main() {
@@ -19,7 +18,7 @@ async fn main() {
     .await
     .unwrap();
 
-    info!("Fixing blocks log_blooms");
+    println!("Fixing blocks log_blooms");
 
     let mut connection = db.establish_connection();
 
@@ -31,7 +30,7 @@ async fn main() {
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
-        info!("Fetched {} blocks to fix", blocks.len());
+        println!("Fetched {} blocks to fix", blocks.len());
 
         let mut count = 0;
         for (block_hash, logs_bloom) in blocks {
@@ -50,6 +49,6 @@ async fn main() {
             count += 1;
         }
 
-        info!("Fixed {} blocks", count);
+        println!("Fixed {} blocks", count);
     }
 }
