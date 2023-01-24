@@ -77,8 +77,7 @@ diesel::table! {
         address -> Text,
         chain -> Text,
         token -> Text,
-        sent -> Text,
-        received -> Text,
+        balance -> Text,
     }
 }
 

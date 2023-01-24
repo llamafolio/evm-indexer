@@ -1,15 +1,16 @@
-use std::ops::Add;
-
 use crate::{
     db::{
         db::EVMDatabase,
-        schema::{evm_erc20_balances, evm_erc20_transfers, evm_transactions},
+        schema::{evm_erc20_balances, evm_erc20_tokens, evm_erc20_transfers, evm_transactions},
     },
-    utils::{format_address, format_number},
+    utils::format_address,
 };
 use anyhow::Result;
 use diesel::{prelude::*, result::Error};
-use ethers::types::{H160, U256};
+use ethers::{
+    types::{H160, U256},
+    utils::format_units,
+};
 use field_count::FieldCount;
 
 use super::erc20_transfers_parser::DatabaseEVMErc20Transfer;
@@ -20,8 +21,7 @@ pub struct DatabaseEVMErc20Balance {
     pub address: String,
     pub chain: String,
     pub token: String,
-    pub sent: String,
-    pub received: String,
+    pub balance: String,
 }
 
 pub struct ERC20BalancesParser {}
@@ -64,7 +64,25 @@ impl ERC20BalancesParser {
 
             let sender = transfer.from_address.clone();
 
-            let amount = U256::from_str_radix(&transfer.value, 10).unwrap();
+            let token_decimals: i64 = match evm_erc20_tokens::table
+                .select(evm_erc20_tokens::decimals)
+                .filter(evm_erc20_tokens::address.eq(token.clone()))
+                .first::<Option<i64>>(&mut connection)
+            {
+                Ok(decimals) => match decimals {
+                    Some(decimals) => decimals,
+                    None => continue,
+                },
+                Err(_) => continue,
+            };
+
+            let amount = format_units(
+                U256::from_str_radix(&transfer.value, 10).unwrap(),
+                token_decimals as usize,
+            )
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
             if sender != format_address(H160::zero()) {
                 let mut sender_balance = match self.get_current_balance(
@@ -78,16 +96,15 @@ impl ERC20BalancesParser {
                         address: sender,
                         chain: chain.clone(),
                         token: token.clone(),
-                        sent: "0".to_string(),
-                        received: "0".to_string(),
+                        balance: "0".to_string(),
                     },
                 };
 
-                let current_value = U256::from_str_radix(&sender_balance.sent, 10).unwrap();
+                let balance: f64 = sender_balance.balance.parse::<f64>().unwrap();
 
-                let final_balance = current_value.add(amount);
+                let final_balance = balance - amount;
 
-                sender_balance.sent = format_number(final_balance);
+                sender_balance.balance = final_balance.to_string();
 
                 self.store_balance(&sender_balance, db).unwrap()
             }
@@ -107,16 +124,15 @@ impl ERC20BalancesParser {
                         address: receiver,
                         chain: chain.clone(),
                         token: token.clone(),
-                        sent: "0".to_string(),
-                        received: "0".to_string(),
+                        balance: "0".to_string(),
                     },
                 };
 
-                let current_value = U256::from_str_radix(&receiver_balance.received, 10).unwrap();
+                let balance: f64 = receiver_balance.balance.parse::<f64>().unwrap();
 
-                let final_balance = current_value.add(amount);
+                let final_balance = balance + amount;
 
-                receiver_balance.received = format_number(final_balance);
+                receiver_balance.balance = final_balance.to_string();
 
                 self.store_balance(&receiver_balance, db).unwrap()
             }
@@ -169,10 +185,7 @@ impl ERC20BalancesParser {
                 evm_erc20_balances::chain,
             ))
             .do_update()
-            .set((
-                evm_erc20_balances::sent.eq(balance.sent.clone()),
-                evm_erc20_balances::received.eq(balance.received.clone()),
-            ))
+            .set(evm_erc20_balances::balance.eq(balance.balance.clone()))
             .execute(&mut connection)
             .expect("Unable to store erc20 balance");
 

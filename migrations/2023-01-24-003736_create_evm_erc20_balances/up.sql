@@ -2,8 +2,7 @@ CREATE TABLE evm_erc20_balances (
   address TEXT NOT NULL,
   chain TEXT NOT NULL, 
   token TEXT NOT NULL, 
-  sent TEXT NOT NULL, 
-  received TEXT NOT NULL, 
+  balance TEXT NOT NULL, 
   PRIMARY KEY (address, token, chain)
 );
 
