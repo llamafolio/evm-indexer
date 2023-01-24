@@ -17,7 +17,7 @@ If you want to see it in action, we have a small API to showcase at https://inde
 
 ## Available Chains
 
-This indexer is chain agnositc. It should work with any chain that follows the ETH RPC API. But some chains have some minor modifications that could result in not being able to sync.
+This indexer is chain agnostic. It should work with any chain that follows the ETH RPC API. But some chains have some minor modifications that could result in them not being able to sync.
 
 The following chains have been tested and indexed successfully:
 
