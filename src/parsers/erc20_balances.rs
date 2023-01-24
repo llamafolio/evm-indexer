@@ -1,19 +1,19 @@
+use std::ops::{Add, Sub};
+
 use crate::{
     db::{
         db::EVMDatabase,
-        schema::{erc20_balances, erc20_tokens, erc20_transfers},
+        schema::{erc20_balances, erc20_transfers},
     },
-    utils::format_address,
+    utils::{format_address, format_singed_number},
 };
 use anyhow::Result;
 use diesel::{prelude::*, result::Error};
-use ethers::{
-    types::{H160, U256},
-    utils::format_units,
-};
+use ethers::types::{H160, I256};
 use field_count::FieldCount;
+use jsonrpsee::tracing::info;
 
-use super::erc20_transfers_parser::DatabaseErc20Transfer;
+use super::erc20_transfers::DatabaseErc20Transfer;
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = erc20_balances)]
@@ -24,9 +24,9 @@ pub struct DatabaseErc20Balance {
     pub balance: String,
 }
 
-pub struct ERC20BalancesParser {}
+pub struct ERC20Balances {}
 
-impl ERC20BalancesParser {
+impl ERC20Balances {
     pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseErc20Transfer>> {
         let mut connection = db.establish_connection();
 
@@ -53,30 +53,14 @@ impl ERC20BalancesParser {
     ) -> Result<()> {
         let mut connection = db.establish_connection();
 
+        let mut count_received = 0;
+        let mut count_sent = 0;
         for transfer in transfers {
             let token = transfer.token.clone();
 
             let sender = transfer.from_address.clone();
 
-            let token_decimals: i64 = match erc20_tokens::table
-                .select(erc20_tokens::decimals)
-                .filter(erc20_tokens::address.eq(token.clone()))
-                .first::<Option<i64>>(&mut connection)
-            {
-                Ok(decimals) => match decimals {
-                    Some(decimals) => decimals,
-                    None => continue,
-                },
-                Err(_) => continue,
-            };
-
-            let amount = format_units(
-                U256::from_str_radix(&transfer.value, 10).unwrap(),
-                token_decimals as usize,
-            )
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
+            let amount = I256::from_dec_str(&transfer.value).unwrap();
 
             if sender != format_address(H160::zero()) {
                 let mut sender_balance = match self.get_current_balance(
@@ -94,13 +78,15 @@ impl ERC20BalancesParser {
                     },
                 };
 
-                let balance: f64 = sender_balance.balance.parse::<f64>().unwrap();
+                let balance: I256 = I256::from_dec_str(&sender_balance.balance).unwrap();
 
-                let final_balance = balance - amount;
+                let final_balance = balance.sub(amount);
 
-                sender_balance.balance = final_balance.to_string();
+                sender_balance.balance = format_singed_number(final_balance);
 
-                self.store_balance(&sender_balance, db).unwrap()
+                self.store_balance(&sender_balance, db).unwrap();
+
+                count_sent += 1;
             }
 
             let receiver = transfer.to_address.clone();
@@ -122,13 +108,15 @@ impl ERC20BalancesParser {
                     },
                 };
 
-                let balance: f64 = receiver_balance.balance.parse::<f64>().unwrap();
+                let balance: I256 = I256::from_dec_str(&receiver_balance.balance).unwrap();
 
-                let final_balance = balance + amount;
+                let final_balance = balance.add(amount);
 
-                receiver_balance.balance = final_balance.to_string();
+                receiver_balance.balance = format_singed_number(final_balance);
 
-                self.store_balance(&receiver_balance, db).unwrap()
+                self.store_balance(&receiver_balance, db).unwrap();
+
+                count_received += 1;
             }
 
             diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
@@ -139,6 +127,11 @@ impl ERC20BalancesParser {
                 .execute(&mut connection)
                 .expect("Unable to update parsed erc20 balances into database");
         }
+
+        info!(
+            "Inserted {} sent balances and {} received balances.",
+            count_sent, count_received
+        );
 
         Ok(())
     }

@@ -1,10 +1,10 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     chains::chains::get_chain,
     db::{
         db::{get_chunks, EVMDatabase},
-        schema::{erc20_tokens, erc20_transfers, transactions},
+        schema::{erc20_tokens, erc20_transfers},
     },
 };
 use anyhow::Result;
@@ -16,9 +16,10 @@ use ethers::{
 };
 use field_count::FieldCount;
 use futures::future::join_all;
+use itertools::Itertools;
 use log::info;
 
-use super::erc20_transfers_parser::DatabaseErc20Transfer;
+use super::erc20_transfers::DatabaseErc20Transfer;
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
 #[diesel(table_name = erc20_tokens)]
@@ -30,7 +31,7 @@ pub struct DatabaseErc20Token {
     pub symbol: Option<String>,
 }
 
-pub struct ERC20TokensParser {}
+pub struct ERC20Tokens {}
 
 abigen!(
     ERC20,
@@ -41,7 +42,7 @@ abigen!(
     ]"#,
 );
 
-impl ERC20TokensParser {
+impl ERC20Tokens {
     pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseErc20Transfer>> {
         let mut connection = db.establish_connection();
 
@@ -52,7 +53,7 @@ impl ERC20TokensParser {
                     .is_null()
                     .or(erc20_transfers::erc20_tokens_parsed.eq(false)),
             )
-            .limit(5000)
+            .limit(500)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -70,18 +71,11 @@ impl ERC20TokensParser {
 
         let unique_tokens: Vec<String> = transfers
             .into_iter()
-            .map(|transfer| {
-                let chain: String = transactions::table
-                    .select(transactions::chain)
-                    .filter(transactions::hash.eq(transfer.hash.clone()))
-                    .first::<String>(&mut connection)
-                    .unwrap();
-
-                return format!("{}-{}", transfer.token, chain);
-            })
-            .collect::<HashSet<_>>()
-            .into_iter()
+            .map(|token| format!("{}-{}", token.token, token.chain))
+            .unique()
             .collect();
+
+        println!("{}", unique_tokens.len());
 
         let mut tokens_data = vec![];
 
@@ -95,6 +89,8 @@ impl ERC20TokensParser {
             .filter(|token| token.is_some())
             .map(|token| token.unwrap())
             .collect();
+
+        println!("{}", db_tokens.len());
 
         let chunks = get_chunks(db_tokens.len(), DatabaseErc20Token::field_count());
 
@@ -146,7 +142,7 @@ impl ERC20TokensParser {
         };
 
         let decimals: Option<i64> = match token.decimals().call().await {
-            Ok(decimals) => Some(decimals.into()),
+            Ok(decimals) => Some(decimals as i64),
             Err(_) => None,
         };
 

@@ -6,8 +6,8 @@ use evm_indexer::{
     configs::parser_config::EVMParserConfig,
     db::db::EVMDatabase,
     parsers::{
-        erc20_balances_parser::ERC20BalancesParser, erc20_tokens_parser::ERC20TokensParser,
-        erc20_transfers_parser::ERC20TransfersParser, llamafolio_adapters::LlamafolioParser,
+        erc20_balances::ERC20Balances, erc20_tokens::ERC20Tokens, erc20_transfers::ERC20Transfers,
+        llamafolio_adapters::LlamafolioParser,
     },
 };
 use log::*;
@@ -54,18 +54,18 @@ async fn main() {
         });
     }
 
-    if config.erc20_tokens_parser {
+    if config.erc20_tokens {
         info!("Starting the ERC20 Tokens parser.");
 
         tokio::spawn({
             let db = db.clone();
             async move {
                 loop {
-                    let parser = ERC20TokensParser {};
+                    let parser = ERC20Tokens {};
 
                     let data = parser.fetch(&db).unwrap();
 
-                    info!("Fetched {} transfers to parse.", data.len());
+                    info!("ERC20Tokens: Fetched {} transfers to parse.", data.len());
 
                     parser.parse(&db, &data).await.unwrap();
 
@@ -75,18 +75,18 @@ async fn main() {
         });
     }
 
-    if config.erc20_balances_parser {
+    if config.erc20_balances {
         info!("Starting the ERC20 Balances parser.");
 
         tokio::spawn({
             let db = db.clone();
             async move {
                 loop {
-                    let parser = ERC20BalancesParser {};
+                    let parser = ERC20Balances {};
 
                     let data = parser.fetch(&db).unwrap();
 
-                    info!("Fetched {} transfers to parse.", data.len());
+                    info!("ERC20Balances: Fetched {} transfers to parse.", data.len());
 
                     parser.parse(&db, &data).await.unwrap();
 
@@ -99,11 +99,11 @@ async fn main() {
     info!("Starting the ERC20 Transfers parser.");
 
     loop {
-        let erc20_transfers_parser = ERC20TransfersParser {};
+        let erc20_transfers_parser = ERC20Transfers {};
 
         let logs = erc20_transfers_parser.fetch(&db).unwrap();
 
-        info!("Fetched {} logs to parse.", logs.len());
+        info!("ERC20Transfers: Fetched {} logs to parse.", logs.len());
 
         erc20_transfers_parser.parse(&db, &logs).await.unwrap();
 

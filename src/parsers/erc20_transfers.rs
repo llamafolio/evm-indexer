@@ -24,9 +24,9 @@ pub struct DatabaseErc20Transfer {
     pub erc20_balances_parsed: bool,
 }
 
-pub struct ERC20TransfersParser {}
+pub struct ERC20Transfers {}
 
-impl ERC20TransfersParser {
+impl ERC20Transfers {
     pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseLog>> {
         let mut connection = db.establish_connection();
 
