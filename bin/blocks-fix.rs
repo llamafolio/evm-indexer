@@ -45,7 +45,7 @@ async fn main() {
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(200)
+            .limit(50)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
@@ -56,6 +56,7 @@ async fn main() {
         for (block_hash, logs_bloom) in blocks {
             works.push(fix_block(&db, block_hash, logs_bloom));
         }
+        println!("Fixing {} blocks", blocks_count);
 
         join_all(works).await;
 
