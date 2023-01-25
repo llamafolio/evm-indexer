@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
-    db::{db::Database, schema::blocks},
+    db::{ db::Database, schema::blocks },
     utils::format_bytes_slice,
 };
 use futures::future::join_all;
@@ -19,7 +19,8 @@ async fn fix_block(db: &Database, hash: String, bloom: String) {
 
     let mut connection = db.establish_connection();
 
-    diesel::update(blocks::dsl::blocks)
+    diesel
+        ::update(blocks::dsl::blocks)
         .filter(blocks::block_hash.eq(hash))
         .set((blocks::logs_bloom.eq(formatted), blocks::parsed.eq(true)))
         .execute(&mut connection)
@@ -33,10 +34,8 @@ async fn main() {
     let db = Database::new(
         std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
         std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
-        ETHEREUM,
-    )
-    .await
-    .unwrap();
+        ETHEREUM
+    ).await.unwrap();
 
     println!("Fixing blocks log_blooms");
 
@@ -52,16 +51,12 @@ async fn main() {
 
         println!("Fetched {} blocks to fix", blocks.len());
 
-        let mut count = 0;
         let mut works = vec![];
 
         for (block_hash, logs_bloom) in blocks {
             works.push(fix_block(&db, block_hash, logs_bloom));
-            count += 1;
         }
 
         join_all(works).await;
-
-        println!("Fixed {} blocks", count);
     }
 }
