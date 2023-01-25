@@ -49,7 +49,7 @@ async fn main() {
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
-        println!("Fetched {} blocks to fix", blocks.len());
+        let blocks_count = blocks.len();
 
         let mut works = vec![];
 
@@ -58,5 +58,7 @@ async fn main() {
         }
 
         join_all(works).await;
+
+        println!("Fixed {} blocks to fix", blocks_count);
     }
 }
