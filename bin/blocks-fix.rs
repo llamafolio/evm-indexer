@@ -37,7 +37,7 @@ async fn main() {
         ETHEREUM
     ).await.unwrap();
 
-    println!("Fixing blocks log_blooms");
+    println!("Fixing blocks log blooms");
 
     let mut connection = db.establish_connection();
 
@@ -45,7 +45,7 @@ async fn main() {
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(1000)
+            .limit(200)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
@@ -59,6 +59,6 @@ async fn main() {
 
         join_all(works).await;
 
-        println!("Fixed {} blocks to fix", blocks_count);
+        println!("Fixed {} blocks", blocks_count);
     }
 }
