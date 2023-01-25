@@ -1,10 +1,11 @@
-use diesel::{ prelude::*, connection::SimpleConnection };
+use diesel::{ connection::SimpleConnection, prelude::* };
 use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
     db::{ db::Database, schema::blocks },
     utils::format_bytes_slice,
 };
+use futures::future::join_all;
 
 #[tokio::main()]
 async fn main() {
@@ -18,54 +19,64 @@ async fn main() {
 
     println!("Fixing blocks log_blooms");
 
-    let mut connection = db.establish_connection();
-
     loop {
+        let mut connection = db.establish_connection();
+
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(1000)
+            .limit(100000)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
         println!("Fetched {} blocks to fix", blocks.len());
 
-        let mut count = 0;
+        let chunks = blocks.chunks(1000);
 
-        let mut query = String::new();
+        let mut works = vec![];
 
-        for (block_hash, logs_bloom) in blocks {
-            let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
-                Ok(data) => data,
-                Err(_) => {
-                    diesel
-                        ::update(blocks::dsl::blocks)
-                        .filter(blocks::block_hash.eq(block_hash))
-                        .set(blocks::parsed.eq(true))
-                        .execute(&mut connection)
-                        .unwrap();
+        for chunk in chunks {
+            let work = tokio::spawn({
+                let blocks = chunk.to_vec();
+                let db = db.clone();
+                let mut connection = db.establish_connection();
 
-                    continue;
+                async move {
+                    let mut query = String::from("");
+
+                    for (block_hash, logs_bloom) in blocks {
+                        let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
+                            Ok(data) => data,
+                            Err(_) => {
+                                diesel
+                                    ::update(blocks::dsl::blocks)
+                                    .filter(blocks::block_hash.eq(block_hash))
+                                    .set(blocks::parsed.eq(true))
+                                    .execute(&mut connection)
+                                    .unwrap();
+
+                                continue;
+                            }
+                        };
+
+                        let formatted = format_bytes_slice(&bloom_vec[..]);
+
+                        let sql = format!(
+                            "UPDATE blocks SET logs_bloom = '{}',parsed = true WHERE block_hash = '{}';",
+                            formatted,
+                            block_hash
+                        );
+
+                        query.push_str(&sql);
+                    }
+                    if query != String::from("") {
+                        connection.batch_execute(&query).unwrap();
+                    }
                 }
-            };
-
-            let formatted = format_bytes_slice(&bloom_vec[..]);
-
-            let sql = format!(
-                "UPDATE blocks SET logs_bloom = '{}',parsed = true WHERE block_hash = '{}';",
-                formatted,
-                block_hash
-            );
-
-            query.push_str(&sql);
-
-            count += 1;
+            });
+            works.push(work);
         }
 
-        if query != String::from("") {
-            connection.batch_execute(&query).unwrap();
-        }
-
-        println!("Fixed {} blocks", count);
+        join_all(works).await;
     }
 }
