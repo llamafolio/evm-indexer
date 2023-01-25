@@ -31,7 +31,7 @@ async fn main() {
 
         println!("Fetched {} blocks to fix", blocks.len());
 
-        let chunks = blocks.chunks(1000);
+        let chunks = blocks.chunks(10000);
 
         let mut works = vec![];
 
