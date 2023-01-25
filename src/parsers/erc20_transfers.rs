@@ -1,5 +1,5 @@
 use crate::db::{
-    db::{get_chunks, EVMDatabase},
+    db::{get_chunks, Database},
     models::models::DatabaseLog,
     schema::{erc20_transfers, logs},
 };
@@ -27,7 +27,7 @@ pub struct DatabaseErc20Transfer {
 pub struct ERC20Transfers {}
 
 impl ERC20Transfers {
-    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseLog>> {
+    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseLog>> {
         let mut connection = db.establish_connection();
 
         let logs: Result<Vec<DatabaseLog>, Error> = logs::table
@@ -46,7 +46,7 @@ impl ERC20Transfers {
         }
     }
 
-    pub async fn parse(&self, db: &EVMDatabase, logs: &Vec<DatabaseLog>) -> Result<()> {
+    pub async fn parse(&self, db: &Database, logs: &Vec<DatabaseLog>) -> Result<()> {
         let mut db_erc20_transfers = Vec::new();
 
         let mut db_parsed_logs = Vec::new();

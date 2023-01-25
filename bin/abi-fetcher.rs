@@ -2,7 +2,7 @@ use dotenv::dotenv;
 use ethabi::Contract;
 use evm_indexer::chains::chains::{get_chain, ETHEREUM};
 use evm_indexer::configs::abi_fetcher_config::EVMAbiFetcherConfig;
-use evm_indexer::db::db::EVMDatabase;
+use evm_indexer::db::db::Database;
 use evm_indexer::db::models::models::{DatabaseAbi, DatabaseContract, DatabaseMethod};
 use log::LevelFilter;
 use log::*;
@@ -36,7 +36,7 @@ async fn main() {
 
     info!("Starting EVM ABI fetcher");
 
-    let db = EVMDatabase::new(config.db_url, config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 
@@ -73,8 +73,10 @@ async fn main() {
                             );
                         }
                     }
-                    None => continue,
-                };
+                    None => {
+                        continue;
+                    }
+                }
 
                 let response = client.get(uri_str).send().await;
 
@@ -114,12 +116,18 @@ async fn main() {
                                         }
                                     }
                                 }
-                                Err(_) => continue,
+                                Err(_) => {
+                                    continue;
+                                }
                             }
                         }
-                        Err(_) => continue,
+                        Err(_) => {
+                            continue;
+                        }
                     },
-                    Err(_) => continue,
+                    Err(_) => {
+                        continue;
+                    }
                 }
             }
 
@@ -129,9 +137,13 @@ async fn main() {
                 let contract: Contract = match &abi.abi {
                     Some(abi) => match serde_json::from_str(abi) {
                         Ok(contract) => contract,
-                        Err(_) => continue,
+                        Err(_) => {
+                            continue;
+                        }
                     },
-                    None => continue,
+                    None => {
+                        continue;
+                    }
                 };
 
                 let functions = contract.functions();
@@ -156,7 +168,7 @@ async fn main() {
                 "Stored {} ABIs from {} contracts with {} methods.",
                 abis_fetched.len(),
                 contracts_fetched.len(),
-                methods.len(),
+                methods.len()
             );
         }
     }

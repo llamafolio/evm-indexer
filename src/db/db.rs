@@ -22,13 +22,13 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 pub const MAX_DIESEL_PARAM_SIZE: u16 = u16::MAX;
 
 #[derive(Debug, Clone)]
-pub struct EVMDatabase {
+pub struct Database {
     pub db_url: String,
     pub chain: Chain,
     pub redis: redis::Client,
 }
 
-impl EVMDatabase {
+impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 

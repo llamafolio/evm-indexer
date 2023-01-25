@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use crate::{
     db::{
-        db::EVMDatabase,
+        db::Database,
         schema::{erc20_balances, erc20_transfers},
     },
     utils::{format_address, format_singed_number},
@@ -27,7 +27,7 @@ pub struct DatabaseErc20Balance {
 pub struct ERC20Balances {}
 
 impl ERC20Balances {
-    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseErc20Transfer>> {
+    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
         let mut connection = db.establish_connection();
 
         let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
@@ -46,11 +46,7 @@ impl ERC20Balances {
         }
     }
 
-    pub async fn parse(
-        &self,
-        db: &EVMDatabase,
-        transfers: &Vec<DatabaseErc20Transfer>,
-    ) -> Result<()> {
+    pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
 
         let mut count_received = 0;
@@ -141,7 +137,7 @@ impl ERC20Balances {
         token: String,
         address: String,
         chain: String,
-        db: &EVMDatabase,
+        db: &Database,
     ) -> Option<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
@@ -161,7 +157,7 @@ impl ERC20Balances {
         }
     }
 
-    pub fn store_balance(&self, balance: &DatabaseErc20Balance, db: &EVMDatabase) -> Result<()> {
+    pub fn store_balance(&self, balance: &DatabaseErc20Balance, db: &Database) -> Result<()> {
         let mut connection = db.establish_connection();
 
         diesel::insert_into(erc20_balances::dsl::erc20_balances)

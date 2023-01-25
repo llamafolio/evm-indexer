@@ -18,12 +18,12 @@ use std::time::Duration;
 use serde_json::Error;
 
 #[derive(Debug, Clone)]
-pub struct EVMRpc {
+pub struct Rpc {
     pub clients: Vec<HttpClient>,
     pub chain: Chain,
 }
 
-impl EVMRpc {
+impl Rpc {
     pub async fn new(config: &EVMIndexerConfig) -> Result<Self> {
         info!("Starting EVM rpc service");
 

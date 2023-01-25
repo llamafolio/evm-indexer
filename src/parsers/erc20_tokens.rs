@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     chains::chains::get_chain,
     db::{
-        db::{get_chunks, EVMDatabase},
+        db::{get_chunks, Database},
         schema::{erc20_tokens, erc20_transfers},
     },
 };
@@ -43,7 +43,7 @@ abigen!(
 );
 
 impl ERC20Tokens {
-    pub fn fetch(&self, db: &EVMDatabase) -> Result<Vec<DatabaseErc20Transfer>> {
+    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
         let mut connection = db.establish_connection();
 
         let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
@@ -62,11 +62,7 @@ impl ERC20Tokens {
         }
     }
 
-    pub async fn parse(
-        &self,
-        db: &EVMDatabase,
-        transfers: &Vec<DatabaseErc20Transfer>,
-    ) -> Result<()> {
+    pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
 
         let unique_tokens: Vec<String> = transfers

@@ -4,7 +4,7 @@ use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
     configs::parser_config::EVMParserConfig,
-    db::db::EVMDatabase,
+    db::db::Database,
     parsers::{
         erc20_balances::ERC20Balances, erc20_tokens::ERC20Tokens, erc20_transfers::ERC20Transfers,
         llamafolio_adapters::LlamafolioParser,
@@ -29,7 +29,7 @@ async fn main() {
 
     info!("Starting EVM Parser.");
 
-    let db = EVMDatabase::new(config.db_url, config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 
