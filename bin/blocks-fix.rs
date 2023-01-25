@@ -59,7 +59,9 @@ async fn main() {
             count += 1;
         }
 
-        connection.batch_execute(&query).unwrap();
+        if query != String::from("") {
+            connection.batch_execute(&query).unwrap();
+        }
 
         println!("Fixed {} blocks", count);
     }
