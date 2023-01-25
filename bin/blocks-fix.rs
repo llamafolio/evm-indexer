@@ -25,7 +25,7 @@ async fn main() {
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(100000)
+            .limit(1000000)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
