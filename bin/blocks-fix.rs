@@ -7,11 +7,11 @@ use evm_indexer::{
 };
 use futures::future::join_all;
 
-async fn fix_block(db: &Database, hash: String, bloom: String) {
+async fn fix_block(db: &Database, hash: String, bloom: String) -> anyhow::Result<()> {
     let bloom_vec: Vec<u8> = match serde_json::from_str(&bloom) {
         Ok(data) => data,
         Err(_) => {
-            return;
+            return Ok(());
         }
     };
 
@@ -25,6 +25,8 @@ async fn fix_block(db: &Database, hash: String, bloom: String) {
         .set((blocks::logs_bloom.eq(formatted), blocks::parsed.eq(true)))
         .execute(&mut connection)
         .unwrap();
+
+    Ok(())
 }
 
 #[tokio::main()]
