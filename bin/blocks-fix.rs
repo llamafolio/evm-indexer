@@ -1,33 +1,10 @@
-use diesel::prelude::*;
+use diesel::{ prelude::*, connection::SimpleConnection };
 use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
     db::{ db::Database, schema::blocks },
     utils::format_bytes_slice,
 };
-use futures::future::join_all;
-
-async fn fix_block(db: &Database, hash: String, bloom: String) -> anyhow::Result<()> {
-    let bloom_vec: Vec<u8> = match serde_json::from_str(&bloom) {
-        Ok(data) => data,
-        Err(_) => {
-            return Ok(());
-        }
-    };
-
-    let formatted = format_bytes_slice(&bloom_vec[..]);
-
-    let mut connection = db.establish_connection();
-
-    diesel
-        ::update(blocks::dsl::blocks)
-        .filter(blocks::block_hash.eq(hash))
-        .set((blocks::logs_bloom.eq(formatted), blocks::parsed.eq(true)))
-        .execute(&mut connection)
-        .unwrap();
-
-    Ok(())
-}
 
 #[tokio::main()]
 async fn main() {
@@ -39,7 +16,7 @@ async fn main() {
         ETHEREUM
     ).await.unwrap();
 
-    println!("Fixing blocks log blooms");
+    println!("Fixing blocks log_blooms");
 
     let mut connection = db.establish_connection();
 
@@ -47,21 +24,39 @@ async fn main() {
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(50)
+            .limit(1000)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
-        let blocks_count = blocks.len();
+        println!("Fetched {} blocks to fix", blocks.len());
 
-        let mut works = vec![];
+        let mut count = 0;
+
+        let mut query = String::new();
 
         for (block_hash, logs_bloom) in blocks {
-            works.push(fix_block(&db, block_hash, logs_bloom));
+            let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
+                Ok(data) => data,
+                Err(_) => {
+                    continue;
+                }
+            };
+
+            let formatted = format_bytes_slice(&bloom_vec[..]);
+
+            let sql = format!(
+                "UPDATE blocks SET logs_bloom = '{}' WHERE block_hash = '{}';",
+                formatted,
+                block_hash
+            );
+
+            query.push_str(&sql);
+
+            count += 1;
         }
-        println!("Fixing {} blocks", blocks_count);
 
-        join_all(works).await;
+        connection.batch_execute(&query).unwrap();
 
-        println!("Fixed {} blocks", blocks_count);
+        println!("Fixed {} blocks", count);
     }
 }
