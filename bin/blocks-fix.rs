@@ -50,7 +50,11 @@ async fn main() {
                 block_hash
             );
 
+            let sql2 =
+                format!("UPDATE blocks SET parsed = true WHERE block_hash = '{}';", block_hash);
+
             query.push_str(&sql);
+            query.push_str(&sql2);
 
             count += 1;
         }
