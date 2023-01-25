@@ -38,6 +38,13 @@ async fn main() {
             let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
                 Ok(data) => data,
                 Err(_) => {
+                    diesel
+                        ::update(blocks::dsl::blocks)
+                        .filter(blocks::block_hash.eq(block_hash))
+                        .set(blocks::parsed.eq(true))
+                        .execute(&mut connection)
+                        .unwrap();
+
                     continue;
                 }
             };
@@ -45,16 +52,12 @@ async fn main() {
             let formatted = format_bytes_slice(&bloom_vec[..]);
 
             let sql = format!(
-                "UPDATE blocks SET logs_bloom = '{}' WHERE block_hash = '{}';",
+                "UPDATE blocks SET logs_bloom = '{}',parsed = true WHERE block_hash = '{}';",
                 formatted,
                 block_hash
             );
 
-            let sql2 =
-                format!("UPDATE blocks SET parsed = true WHERE block_hash = '{}';", block_hash);
-
             query.push_str(&sql);
-            query.push_str(&sql2);
 
             count += 1;
         }
