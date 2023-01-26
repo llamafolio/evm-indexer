@@ -5,13 +5,13 @@ use evm_indexer::{
     chains::chains::Chain,
     configs::indexer_config::EVMIndexerConfig,
     db::{
-        db::EVMDatabase,
+        db::Database,
         models::models::{
-            DatabaseChainIndexedState, DatabaseEVMBlock, DatabaseEVMContract,
-            DatabaseEVMTransaction, DatabaseEVMTransactionLog, DatabaseEVMTransactionReceipt,
+            DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseLog,
+            DatabaseReceipt, DatabaseTransaction,
         },
     },
-    rpc::rpc::EVMRpc,
+    rpc::rpc::Rpc,
 };
 use futures::{future::join_all, StreamExt};
 use log::*;
@@ -38,11 +38,11 @@ async fn main() {
         info!("Syncing chain {}.", config.chain.name.clone());
     }
 
-    let rpc = EVMRpc::new(&config)
+    let rpc = Rpc::new(&config)
         .await
         .expect("Unable to start RPC client.");
 
-    let db = EVMDatabase::new(
+    let db = Database::new(
         config.db_url.clone(),
         config.redis_url.clone(),
         config.chain.clone(),
@@ -80,7 +80,7 @@ async fn main() {
     }
 }
 
-async fn sync_chain(rpc: &EVMRpc, db: &EVMDatabase, config: &EVMIndexerConfig) {
+async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
     let last_block = rpc.get_last_block().await.unwrap();
 
     let full_block_range = config.start_block..last_block;
@@ -114,11 +114,11 @@ async fn sync_chain(rpc: &EVMRpc, db: &EVMDatabase, config: &EVMIndexerConfig) {
 
         let results = join_all(work).await;
 
-        let mut db_blocks: Vec<DatabaseEVMBlock> = Vec::new();
-        let mut db_transactions: Vec<DatabaseEVMTransaction> = Vec::new();
-        let mut db_receipts: Vec<DatabaseEVMTransactionReceipt> = Vec::new();
-        let mut db_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
-        let mut db_contracts: Vec<DatabaseEVMContract> = Vec::new();
+        let mut db_blocks: Vec<DatabaseBlock> = Vec::new();
+        let mut db_transactions: Vec<DatabaseTransaction> = Vec::new();
+        let mut db_receipts: Vec<DatabaseReceipt> = Vec::new();
+        let mut db_logs: Vec<DatabaseLog> = Vec::new();
+        let mut db_contracts: Vec<DatabaseContract> = Vec::new();
 
         for result in results {
             match result {
@@ -151,15 +151,15 @@ async fn sync_chain(rpc: &EVMRpc, db: &EVMDatabase, config: &EVMIndexerConfig) {
 }
 
 async fn fetch_block(
-    rpc: &EVMRpc,
+    rpc: &Rpc,
     block_number: &i64,
     chain: &Chain,
 ) -> Option<(
-    DatabaseEVMBlock,
-    Vec<DatabaseEVMTransaction>,
-    Vec<DatabaseEVMTransactionReceipt>,
-    Vec<DatabaseEVMTransactionLog>,
-    Vec<DatabaseEVMContract>,
+    DatabaseBlock,
+    Vec<DatabaseTransaction>,
+    Vec<DatabaseReceipt>,
+    Vec<DatabaseLog>,
+    Vec<DatabaseContract>,
 )> {
     let block_data = rpc.get_block(block_number).await.unwrap();
 
@@ -177,9 +177,9 @@ async fn fetch_block(
                 return None;
             }
 
-            let mut db_receipts: Vec<DatabaseEVMTransactionReceipt> = Vec::new();
-            let mut db_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
-            let mut db_contracts: Vec<DatabaseEVMContract> = Vec::new();
+            let mut db_receipts: Vec<DatabaseReceipt> = Vec::new();
+            let mut db_logs: Vec<DatabaseLog> = Vec::new();
+            let mut db_contracts: Vec<DatabaseContract> = Vec::new();
 
             if chain.supports_blocks_receipts {
                 let receipts_data = rpc.get_block_receipts(block_number).await.unwrap();
@@ -243,7 +243,7 @@ async fn fetch_block(
     }
 }
 
-async fn subscribe_heads(chain: Chain, db: &EVMDatabase, rpc: &EVMRpc, config: &EVMIndexerConfig) {
+async fn subscribe_heads(chain: Chain, db: &Database, rpc: &Rpc, config: &EVMIndexerConfig) {
     let wss = match WebSocket::new(&config.websocket.clone()).await {
         Ok(ws) => Some(Web3::new(ws)),
         Err(_) => None,

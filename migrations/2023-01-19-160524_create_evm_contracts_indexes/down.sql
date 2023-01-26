@@ -1,1 +1,0 @@
-DROP INDEX evm_contracts_by_contract;

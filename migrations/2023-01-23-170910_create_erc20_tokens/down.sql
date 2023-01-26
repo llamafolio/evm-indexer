@@ -1,1 +1,0 @@
-DROP TABLE evm_erc20_tokens;

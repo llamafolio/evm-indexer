@@ -1,7 +1,7 @@
 use crate::{
     chains::chains::get_chains,
     db::{
-        db::{get_chunks, EVMDatabase},
+        db::{get_chunks, Database},
         schema::contracts_adapters,
     },
 };
@@ -83,7 +83,7 @@ impl LlamafolioParser {
 
     pub async fn parse(
         &self,
-        db: &EVMDatabase,
+        db: &Database,
         adapters: &Vec<DatabaseContractAdapter>,
     ) -> Result<()> {
         let mut connection = db.establish_connection();

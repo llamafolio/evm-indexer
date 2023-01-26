@@ -16,6 +16,7 @@ ethers = { version = "1", features = ["ws", "rustls"] }
 field_count = "0.1"
 futures = "0.3"
 hex = "0.4"
+itertools = "0.10"
 jsonrpsee = { version = "0.16", features = ["macros", "server"] }
 jsonrpsee-http-client = "0.16"
 log = "0.4"

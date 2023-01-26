@@ -2,9 +2,9 @@ use crate::{
     chains::chains::Chain,
     configs::indexer_config::EVMIndexerConfig,
     db::models::models::{
-        DatabaseEVMBlock, DatabaseEVMContract, DatabaseEVMTransaction, DatabaseEVMTransactionLog,
-        DatabaseEVMTransactionReceipt,
+        DatabaseBlock, DatabaseContract, DatabaseLog, DatabaseReceipt, DatabaseTransaction,
     },
+    utils::format_small_number,
 };
 use ethers::types::{Block, Transaction, TransactionReceipt, U256};
 
@@ -18,12 +18,12 @@ use std::time::Duration;
 use serde_json::Error;
 
 #[derive(Debug, Clone)]
-pub struct EVMRpc {
+pub struct Rpc {
     pub clients: Vec<HttpClient>,
     pub chain: Chain,
 }
 
-impl EVMRpc {
+impl Rpc {
     pub async fn new(config: &EVMIndexerConfig) -> Result<Self> {
         info!("Starting EVM rpc service");
 
@@ -86,7 +86,7 @@ impl EVMRpc {
     pub async fn get_block(
         &self,
         block_number: &i64,
-    ) -> Result<Option<(DatabaseEVMBlock, Vec<DatabaseEVMTransaction>)>> {
+    ) -> Result<Option<(DatabaseBlock, Vec<DatabaseTransaction>)>> {
         let client = self.get_client();
 
         let raw_block = client
@@ -102,12 +102,12 @@ impl EVMRpc {
 
                 match block {
                     Ok(block) => {
-                        let db_block = DatabaseEVMBlock::from_rpc(&block, self.chain.name);
+                        let db_block = DatabaseBlock::from_rpc(&block, self.chain.name);
 
                         let mut db_transactions = Vec::new();
 
                         for transaction in block.transactions {
-                            let db_transaction = DatabaseEVMTransaction::from_rpc(
+                            let db_transaction = DatabaseTransaction::from_rpc(
                                 transaction,
                                 self.chain.name,
                                 db_block.timestamp.clone(),
@@ -128,13 +128,7 @@ impl EVMRpc {
     pub async fn get_transaction_receipt(
         &self,
         transaction: String,
-    ) -> Result<
-        Option<(
-            DatabaseEVMTransactionReceipt,
-            Vec<DatabaseEVMTransactionLog>,
-            Option<DatabaseEVMContract>,
-        )>,
-    > {
+    ) -> Result<Option<(DatabaseReceipt, Vec<DatabaseLog>, Option<DatabaseContract>)>> {
         let client = self.get_client();
 
         let raw_receipt = client
@@ -147,20 +141,29 @@ impl EVMRpc {
 
                 match receipt {
                     Ok(receipt) => {
-                        let db_receipt = DatabaseEVMTransactionReceipt::from_rpc(&receipt);
+                        let db_receipt = DatabaseReceipt::from_rpc(&receipt);
 
-                        let mut db_transaction_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
+                        let mut db_transaction_logs: Vec<DatabaseLog> = Vec::new();
 
-                        let db_contract = match receipt.contract_address {
-                            Some(_) => Some(DatabaseEVMContract::from_rpc(
-                                receipt.clone(),
-                                self.chain.name,
-                            )),
-                            None => None,
+                        let status: String = match receipt.status {
+                            None => String::from("-1"),
+                            Some(status) => format_small_number(status),
                         };
 
+                        let mut db_contract: Option<DatabaseContract> = None;
+
+                        if status == "1" {
+                            db_contract = match receipt.contract_address {
+                                Some(_) => Some(DatabaseContract::from_rpc(
+                                    receipt.clone(),
+                                    self.chain.name,
+                                )),
+                                None => None,
+                            };
+                        }
+
                         for log in receipt.logs {
-                            let db_log = DatabaseEVMTransactionLog::from_rpc(log);
+                            let db_log = DatabaseLog::from_rpc(log, self.chain.name.to_owned());
 
                             db_transaction_logs.push(db_log)
                         }
@@ -179,9 +182,9 @@ impl EVMRpc {
         block_number: &i64,
     ) -> Result<
         Option<(
-            Vec<DatabaseEVMTransactionReceipt>,
-            Vec<DatabaseEVMTransactionLog>,
-            Vec<DatabaseEVMContract>,
+            Vec<DatabaseReceipt>,
+            Vec<DatabaseLog>,
+            Vec<DatabaseContract>,
         )>,
     > {
         let client = self.get_client();
@@ -200,19 +203,19 @@ impl EVMRpc {
 
                 match receipts {
                     Ok(receipts) => {
-                        let mut db_receipts: Vec<DatabaseEVMTransactionReceipt> = Vec::new();
+                        let mut db_receipts: Vec<DatabaseReceipt> = Vec::new();
 
-                        let mut db_transaction_logs: Vec<DatabaseEVMTransactionLog> = Vec::new();
+                        let mut db_transaction_logs: Vec<DatabaseLog> = Vec::new();
 
-                        let mut db_contracts: Vec<DatabaseEVMContract> = Vec::new();
+                        let mut db_contracts: Vec<DatabaseContract> = Vec::new();
 
                         for receipt in receipts {
-                            let db_receipt = DatabaseEVMTransactionReceipt::from_rpc(&receipt);
+                            let db_receipt = DatabaseReceipt::from_rpc(&receipt);
 
                             db_receipts.push(db_receipt);
 
                             let db_contract = match receipt.contract_address {
-                                Some(_) => Some(DatabaseEVMContract::from_rpc(
+                                Some(_) => Some(DatabaseContract::from_rpc(
                                     receipt.clone(),
                                     self.chain.name,
                                 )),
@@ -224,7 +227,7 @@ impl EVMRpc {
                             }
 
                             for log in receipt.logs {
-                                let db_log = DatabaseEVMTransactionLog::from_rpc(log);
+                                let db_log = DatabaseLog::from_rpc(log, self.chain.name.to_owned());
 
                                 db_transaction_logs.push(db_log)
                             }

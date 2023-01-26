@@ -4,9 +4,9 @@ use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
     configs::parser_config::EVMParserConfig,
-    db::db::EVMDatabase,
+    db::db::Database,
     parsers::{
-        erc20_tokens_parser::ERC20TokensParser, erc20_transfers_parser::ERC20TransfersParser,
+        erc20_balances::ERC20Balances, erc20_tokens::ERC20Tokens, erc20_transfers::ERC20Transfers,
         llamafolio_adapters::LlamafolioParser,
     },
 };
@@ -29,7 +29,7 @@ async fn main() {
 
     info!("Starting EVM Parser.");
 
-    let db = EVMDatabase::new(config.db_url, config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 
@@ -54,20 +54,41 @@ async fn main() {
         });
     }
 
-    if config.erc20_tokens_parser {
+    if config.erc20_tokens {
         info!("Starting the ERC20 Tokens parser.");
 
         tokio::spawn({
             let db = db.clone();
             async move {
                 loop {
-                    let erc20_tokens_parser = ERC20TokensParser {};
+                    let parser = ERC20Tokens {};
 
-                    let transfers = erc20_tokens_parser.fetch(&db).unwrap();
+                    let data = parser.fetch(&db).unwrap();
 
-                    info!("Fetched {} transfers to parse.", transfers.len());
+                    info!("ERC20Tokens: Fetched {} transfers to parse.", data.len());
 
-                    erc20_tokens_parser.parse(&db, &transfers).await.unwrap();
+                    parser.parse(&db, &data).await.unwrap();
+
+                    sleep(Duration::from_secs(2))
+                }
+            }
+        });
+    }
+
+    if config.erc20_balances {
+        info!("Starting the ERC20 Balances parser.");
+
+        tokio::spawn({
+            let db = db.clone();
+            async move {
+                loop {
+                    let parser = ERC20Balances {};
+
+                    let data = parser.fetch(&db).unwrap();
+
+                    info!("ERC20Balances: Fetched {} transfers to parse.", data.len());
+
+                    parser.parse(&db, &data).await.unwrap();
 
                     sleep(Duration::from_secs(2))
                 }
@@ -78,11 +99,11 @@ async fn main() {
     info!("Starting the ERC20 Transfers parser.");
 
     loop {
-        let erc20_transfers_parser = ERC20TransfersParser {};
+        let erc20_transfers_parser = ERC20Transfers {};
 
         let logs = erc20_transfers_parser.fetch(&db).unwrap();
 
-        info!("Fetched {} logs to parse.", logs.len());
+        info!("ERC20Transfers: Fetched {} logs to parse.", logs.len());
 
         erc20_transfers_parser.parse(&db, &logs).await.unwrap();
 

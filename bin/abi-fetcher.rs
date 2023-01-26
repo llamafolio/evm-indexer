@@ -2,8 +2,8 @@ use dotenv::dotenv;
 use ethabi::Contract;
 use evm_indexer::chains::chains::{get_chain, ETHEREUM};
 use evm_indexer::configs::abi_fetcher_config::EVMAbiFetcherConfig;
-use evm_indexer::db::db::EVMDatabase;
-use evm_indexer::db::models::models::{DatabaseEVMAbi, DatabaseEVMContract, DatabaseEVMMethod};
+use evm_indexer::db::db::Database;
+use evm_indexer::db::models::models::{DatabaseAbi, DatabaseContract, DatabaseMethod};
 use log::LevelFilter;
 use log::*;
 use reqwest::Client;
@@ -36,7 +36,7 @@ async fn main() {
 
     info!("Starting EVM ABI fetcher");
 
-    let db = EVMDatabase::new(config.db_url, config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 
@@ -48,9 +48,9 @@ async fn main() {
 
             let client = Client::new();
 
-            let mut contracts_fetched: Vec<DatabaseEVMContract> = Vec::new();
+            let mut contracts_fetched: Vec<DatabaseContract> = Vec::new();
 
-            let mut abis_fetched: Vec<DatabaseEVMAbi> = Vec::new();
+            let mut abis_fetched: Vec<DatabaseAbi> = Vec::new();
 
             for mut contract in contracts {
                 let uri_str: String;
@@ -73,8 +73,10 @@ async fn main() {
                             );
                         }
                     }
-                    None => continue,
-                };
+                    None => {
+                        continue;
+                    }
+                }
 
                 let response = client.get(uri_str).send().await;
 
@@ -84,7 +86,7 @@ async fn main() {
                             let abi_response: Result<AbiResponse, Error> =
                                 serde_json::from_str(&response);
 
-                            let mut db_contract_abi = DatabaseEVMAbi {
+                            let mut db_contract_abi = DatabaseAbi {
                                 chain: chain.name.to_owned(),
                                 contract: contract.contract.clone(),
                                 abi: None,
@@ -114,24 +116,34 @@ async fn main() {
                                         }
                                     }
                                 }
-                                Err(_) => continue,
+                                Err(_) => {
+                                    continue;
+                                }
                             }
                         }
-                        Err(_) => continue,
+                        Err(_) => {
+                            continue;
+                        }
                     },
-                    Err(_) => continue,
+                    Err(_) => {
+                        continue;
+                    }
                 }
             }
 
-            let mut methods: Vec<DatabaseEVMMethod> = Vec::new();
+            let mut methods: Vec<DatabaseMethod> = Vec::new();
 
             for abi in &abis_fetched {
                 let contract: Contract = match &abi.abi {
                     Some(abi) => match serde_json::from_str(abi) {
                         Ok(contract) => contract,
-                        Err(_) => continue,
+                        Err(_) => {
+                            continue;
+                        }
                     },
-                    None => continue,
+                    None => {
+                        continue;
+                    }
                 };
 
                 let functions = contract.functions();
@@ -139,7 +151,7 @@ async fn main() {
                 for function in functions {
                     let signature = format!("0x{}", hex::encode(function.short_signature()));
 
-                    let db_method = DatabaseEVMMethod {
+                    let db_method = DatabaseMethod {
                         name: function.name.clone(),
                         method: signature,
                     };
@@ -156,7 +168,7 @@ async fn main() {
                 "Stored {} ABIs from {} contracts with {} methods.",
                 abis_fetched.len(),
                 contracts_fetched.len(),
-                methods.len(),
+                methods.len()
             );
         }
     }

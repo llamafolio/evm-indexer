@@ -1,1 +1,0 @@
-ALTER TABLE evm_transactions_logs DROP erc20_transfers_parsed;

@@ -1,1 +1,0 @@
-DROP TABLE evm_contracts_interactions;
