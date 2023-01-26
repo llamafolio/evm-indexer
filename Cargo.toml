@@ -44,3 +44,7 @@ name = "abi-fetcher"
 [[bin]]
 path = "bin/parser.rs"
 name = "parser"
+
+[[bin]]
+path = "bin/logs-fix.rs"
+name = "logs-fix"
