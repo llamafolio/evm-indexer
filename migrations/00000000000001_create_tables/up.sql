@@ -60,9 +60,9 @@ CREATE TABLE transactions (
 
 CREATE INDEX IF NOT EXISTS transactions_by_block_number ON transactions (block_number DESC);
 
-CREATE INDEX IF NOT EXISTS transactions_by_sender ON transactions (from_address);
+CREATE INDEX IF NOT EXISTS transactions_by_sender ON transactions (from_address) STORING (to_address);  
 
-CREATE INDEX IF NOT EXISTS transactions_by_receiver ON transactions (to_address);
+CREATE INDEX IF NOT EXISTS transactions_by_receiver ON transactions (to_address) STORING (from_address); 
 
 CREATE INDEX IF NOT EXISTS transactions_by_chain ON transactions (chain);
 
