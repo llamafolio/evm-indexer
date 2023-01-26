@@ -31,6 +31,10 @@ async fn main() {
 
         println!("Fetched {} blocks to fix", blocks.len());
 
+        if blocks.len() <= 0 {
+            panic!("Finished");
+        }
+
         let chunks = blocks.chunks(10000);
 
         let mut works = vec![];
