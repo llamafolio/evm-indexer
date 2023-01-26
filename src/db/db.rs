@@ -274,7 +274,7 @@ impl Database {
         for (start, end) in chunks {
             diesel::insert_into(contracts::dsl::contracts)
                 .values(&contracts[start..end])
-                .on_conflict(contracts::hash)
+                .on_conflict((contracts::contract, contracts::chain))
                 .do_update()
                 .set(contracts::parsed.eq(true))
                 .execute(&mut connection)
