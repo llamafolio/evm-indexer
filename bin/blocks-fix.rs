@@ -1,8 +1,8 @@
-use diesel::{ connection::SimpleConnection, prelude::* };
+use diesel::{connection::SimpleConnection, prelude::*};
 use dotenv::dotenv;
 use evm_indexer::{
     chains::chains::ETHEREUM,
-    db::{ db::Database, schema::blocks },
+    db::{db::Database, schema::blocks},
     utils::format_bytes_slice,
 };
 use futures::future::join_all;
@@ -14,8 +14,10 @@ async fn main() {
     let db = Database::new(
         std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
         std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
-        ETHEREUM
-    ).await.unwrap();
+        ETHEREUM,
+    )
+    .await
+    .unwrap();
 
     println!("Fixing blocks log_blooms");
 
@@ -25,7 +27,7 @@ async fn main() {
         let blocks: Vec<(String, String)> = blocks::dsl::blocks
             .select((blocks::block_hash, blocks::logs_bloom))
             .filter(blocks::parsed.eq(false))
-            .limit(1000000)
+            .limit(100000)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
@@ -52,8 +54,7 @@ async fn main() {
                         let bloom_vec: Vec<u8> = match serde_json::from_str(&logs_bloom) {
                             Ok(data) => data,
                             Err(_) => {
-                                diesel
-                                    ::update(blocks::dsl::blocks)
+                                diesel::update(blocks::dsl::blocks)
                                     .filter(blocks::block_hash.eq(block_hash))
                                     .set(blocks::parsed.eq(true))
                                     .execute(&mut connection)
