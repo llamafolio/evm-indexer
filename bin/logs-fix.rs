@@ -30,7 +30,7 @@ async fn main() {
         let txs: Vec<(String, String)> = transactions::dsl::transactions
             .select((transactions::hash, transactions::chain))
             .filter(transactions::parsed.eq(false))
-            .limit(1000)
+            .limit(10000)
             .load::<(String, String)>(&mut connection)
             .unwrap();
 
