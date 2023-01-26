@@ -155,6 +155,7 @@ pub struct DatabaseTransaction {
     pub to_address: String,
     pub transaction_index: i64,
     pub transaction_type: i64,
+    pub parsed: bool,
     pub value: String,
 }
 
@@ -219,6 +220,7 @@ impl DatabaseTransaction {
             to_address,
             transaction_index,
             transaction_type,
+            parsed: true,
             value: format_number(transaction.value),
         }
     }

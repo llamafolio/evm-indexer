@@ -144,6 +144,7 @@ diesel::table! {
         to_address -> Text,
         transaction_index -> Int8,
         transaction_type -> Nullable<Int8>,
+        parsed -> Bool,
         value -> Text,
     }
 }
