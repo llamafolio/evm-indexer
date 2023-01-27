@@ -110,9 +110,9 @@ CREATE TABLE erc20_transfers (
 
 CREATE INDEX IF NOT EXISTS erc20_transfers_by_hash ON erc20_transfers (hash);
 
-CREATE INDEX IF NOT EXISTS erc20_transfers_by_sender ON erc20_transfers (from_address);
+CREATE INDEX IF NOT EXISTS erc20_transfers_by_sender ON erc20_transfers (from_address) STORING (to_address);
 
-CREATE INDEX IF NOT EXISTS erc20_transfers_by_receiver ON erc20_transfers (to_address);
+CREATE INDEX IF NOT EXISTS erc20_transfers_by_receiver ON erc20_transfers (to_address) STORING (from_address);  
 
 CREATE TABLE erc20_tokens (
   address TEXT NOT NULL, 
