@@ -1,4 +1,4 @@
-use ethers::types::{Bytes, H160, H256, H64, U256, U64};
+use ethers::types::{Bytes, H160, H256, H64, I256, U256, U64};
 
 pub fn format_nonce(h: H64) -> String {
     return format!("{:?}", h);

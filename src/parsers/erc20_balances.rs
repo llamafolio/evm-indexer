@@ -57,7 +57,7 @@ impl ERC20Balances {
 
             let sender = transfer.from_address.clone();
 
-            let amount = I256::from_dec_str(&transfer.value).unwrap();
+            let amount = I256::from_hex_str(&transfer.value).unwrap();
 
             if sender != format_address(H160::zero()) {
                 let mut sender_balance = match self.get_current_balance(
