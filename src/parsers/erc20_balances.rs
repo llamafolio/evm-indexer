@@ -28,6 +28,7 @@ pub struct DatabaseErc20Balance {
     pub token: String,
 }
 
+#[derive(Clone)]
 pub struct ERC20Balances {}
 
 impl ERC20Balances {
@@ -99,21 +100,28 @@ impl ERC20Balances {
 
         println!("{}", unique_values.len());
 
-        let mut fetch_balances = vec![];
+        let mut works = vec![];
 
         for value in unique_values {
-            let data: Vec<&str> = value.split("-").collect();
+            let work = tokio::spawn({
+                let db = db.clone();
+                let parser = self.clone();
+                async move {
+                    let data: Vec<&str> = value.split("-").collect();
+                    let balance = parser.get_current_balance(
+                        data[0].to_owned(),
+                        data[1].to_owned(),
+                        data[2].to_owned(),
+                        &db,
+                    );
 
-            fetch_balances.push(self.get_current_balance(
-                data[0].to_owned(),
-                data[1].to_owned(),
-                data[2].to_owned(),
-                db,
-            ))
+                    return (value, balance);
+                }
+            });
+            works.push(work);
         }
-        println!("{}", fetch_balances.len());
 
-        let balances = join_all(fetch_balances).await;
+        let balances = join_all(works).await;
 
         println!("{}", balances.len());
 
@@ -216,7 +224,7 @@ impl ERC20Balances {
         Ok(())
     }
 
-    pub async fn get_current_balance(
+    pub fn get_current_balance(
         &self,
         token: String,
         address: String,
