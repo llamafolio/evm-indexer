@@ -104,6 +104,7 @@ impl ERC20Balances {
             let work = tokio::spawn({
                 let db = db.clone();
                 let parser = self.clone();
+
                 async move {
                     let data: Vec<&str> = value.split("-").collect();
                     let balance = parser.get_current_balance(
@@ -116,6 +117,7 @@ impl ERC20Balances {
                     return (value, balance);
                 }
             });
+
             works.push(work);
         }
 
@@ -233,12 +235,7 @@ impl ERC20Balances {
 
         let db_balance: Result<DatabaseErc20Balance, Error> = erc20_balances::table
             .select(erc20_balances::all_columns)
-            .filter(
-                erc20_balances::address
-                    .eq(address.clone())
-                    .and(erc20_balances::token.eq(token.clone()))
-                    .and(erc20_balances::chain.eq(chain.clone())),
-            )
+            .filter(erc20_balances::address.eq(address.clone()))
             .first::<DatabaseErc20Balance>(&mut connection);
 
         let balance = match db_balance {
