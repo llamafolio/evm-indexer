@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ops::{Add, Sub},
 };
 
@@ -14,6 +14,7 @@ use anyhow::Result;
 use diesel::{prelude::*, result::Error};
 use ethers::types::{H160, I256};
 use field_count::FieldCount;
+use futures::future::join_all;
 use jsonrpsee::tracing::info;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
@@ -52,23 +53,30 @@ impl ERC20Balances {
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
 
-        let mut count_received = 0;
-        let mut count_sent = 0;
-
-        let mut balances_changes: HashMap<String, DatabaseErc20Balance> = HashMap::new();
-
         let zero_address = format_address(H160::zero());
 
-        let senders: Vec<String> = transfers
+        let senders: Vec<(String, String, String)> = transfers
             .into_iter()
-            .map(|transfer| transfer.from_address.to_owned())
-            .filter(|sender| sender != &zero_address)
+            .filter(|transfer| transfer.from_address != zero_address)
+            .map(|transfer| {
+                (
+                    transfer.token.clone(),
+                    transfer.from_address.clone(),
+                    transfer.chain.clone(),
+                )
+            })
             .collect();
 
-        let receivers: Vec<String> = transfers
+        let receivers: Vec<(String, String, String)> = transfers
             .into_iter()
-            .map(|transfer| transfer.to_address.to_owned())
-            .filter(|sender| sender != &zero_address)
+            .filter(|transfer| transfer.to_address != zero_address)
+            .map(|transfer| {
+                (
+                    transfer.token.clone(),
+                    transfer.to_address.clone(),
+                    transfer.chain.clone(),
+                )
+            })
             .collect();
 
         info!(
@@ -76,6 +84,35 @@ impl ERC20Balances {
             senders.len(),
             receivers.len()
         );
+
+        let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
+
+        let mut unique_values: HashSet<String> = HashSet::new();
+
+        for (token, address, chain) in senders {
+            unique_values.insert(format!("{}-{}-{}", token, address, chain));
+        }
+
+        for (token, address, chain) in receivers {
+            unique_values.insert(format!("{}-{}-{}", token, address, chain));
+        }
+
+        let mut fetch_balances = vec![];
+
+        for value in unique_values {
+            let data: Vec<&str> = value.split("-").collect();
+
+            fetch_balances.push(self.get_current_balance(
+                data[0].to_owned(),
+                data[1].to_owned(),
+                data[2].to_owned(),
+                db,
+            ))
+        }
+
+        let balances = join_all(fetch_balances).await;
+
+        println!("{}", balances.len());
 
         /* for transfer in transfers {
                     let token = transfer.token.clone();
@@ -176,29 +213,38 @@ impl ERC20Balances {
         Ok(())
     }
 
-    pub fn get_current_balance(
+    pub async fn get_current_balance(
         &self,
         token: String,
         address: String,
         chain: String,
         db: &Database,
-    ) -> Option<DatabaseErc20Balance> {
+    ) -> DatabaseErc20Balance {
         let mut connection = db.establish_connection();
 
         let db_balance: Result<DatabaseErc20Balance, Error> = erc20_balances::table
             .select(erc20_balances::all_columns)
             .filter(
                 erc20_balances::address
-                    .eq(address)
-                    .and(erc20_balances::token.eq(token))
-                    .and(erc20_balances::chain.eq(chain)),
+                    .eq(address.clone())
+                    .and(erc20_balances::token.eq(token.clone()))
+                    .and(erc20_balances::chain.eq(chain.clone())),
             )
             .first::<DatabaseErc20Balance>(&mut connection);
 
-        match db_balance {
-            Ok(db_balance) => Some(db_balance),
-            Err(_) => None,
-        }
+        let balance = match db_balance {
+            Ok(db_balance) => db_balance,
+            Err(_) => {
+                return DatabaseErc20Balance {
+                    address: address.clone(),
+                    balance: "0".to_string(),
+                    chain: chain.clone(),
+                    token: token.clone(),
+                }
+            }
+        };
+
+        return balance;
     }
 
     pub fn store_balance(&self, balance: &DatabaseErc20Balance, db: &Database) -> Result<()> {
