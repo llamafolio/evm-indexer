@@ -98,8 +98,6 @@ impl ERC20Balances {
             unique_values.insert(format!("{}-{}-{}", token, address, chain));
         }
 
-        println!("{}", unique_values.len());
-
         let mut works = vec![];
 
         for value in unique_values {
