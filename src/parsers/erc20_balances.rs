@@ -37,7 +37,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(5000)
+            .limit(50000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -87,7 +87,7 @@ impl ERC20Balances {
 
                 sender_balance.balance = final_balance.to_string();
 
-                //self.store_balance(&sender_balance, db).unwrap();
+                self.store_balance(&sender_balance, db).unwrap();
 
                 count_sent += 1;
             }
@@ -123,7 +123,7 @@ impl ERC20Balances {
 
                 receiver_balance.balance = final_balance.to_string();
 
-                //self.store_balance(&receiver_balance, db).unwrap();
+                self.store_balance(&receiver_balance, db).unwrap();
 
                 count_received += 1;
             }
