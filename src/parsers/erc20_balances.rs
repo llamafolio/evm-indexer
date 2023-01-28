@@ -78,7 +78,7 @@ impl ERC20Balances {
                 let balance: I256 = match I256::from_dec_str(&sender_balance.balance) {
                     Ok(balance) => balance,
                     Err(err) => {
-                        println!("{}", err);
+                        println!("{}-{}", err, sender_balance.balance);
                         continue;
                     }
                 };
@@ -114,7 +114,7 @@ impl ERC20Balances {
                 let balance: I256 = match I256::from_dec_str(&receiver_balance.balance) {
                     Ok(balance) => balance,
                     Err(err) => {
-                        println!("{}", err);
+                        println!("{}-{}", err, receiver_balance.balance);
                         continue;
                     }
                 };
