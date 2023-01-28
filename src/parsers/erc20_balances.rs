@@ -67,7 +67,7 @@ impl ERC20Balances {
 
         let receivers: Vec<String> = transfers
             .into_iter()
-            .map(|transfer| transfer.from_address.to_owned())
+            .map(|transfer| transfer.to_address.to_owned())
             .filter(|sender| sender != &zero_address)
             .collect();
 
