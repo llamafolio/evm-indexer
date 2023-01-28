@@ -40,7 +40,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(500)
+            .limit(50000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -57,102 +57,122 @@ impl ERC20Balances {
 
         let mut balances_changes: HashMap<String, DatabaseErc20Balance> = HashMap::new();
 
-        for transfer in transfers {
-            let token = transfer.token.clone();
+        let zero_address = format_address(H160::zero());
 
-            let sender = transfer.from_address.clone();
+        let senders: Vec<String> = transfers
+            .into_iter()
+            .map(|transfer| transfer.from_address.to_owned())
+            .filter(|sender| sender != &zero_address)
+            .collect();
 
-            let amount = I256::from_dec_str(&transfer.value).unwrap();
-
-            if sender != format_address(H160::zero()) {
-                let stored_balance = balances_changes.get(&sender);
-
-                let mut sender_balance: DatabaseErc20Balance;
-
-                if stored_balance.is_some() {
-                    sender_balance = stored_balance.unwrap().to_owned();
-                } else {
-                    sender_balance = match self.get_current_balance(
-                        token.clone(),
-                        sender.clone(),
-                        transfer.chain.clone(),
-                        db,
-                    ) {
-                        Some(db_balance) => db_balance,
-                        None => DatabaseErc20Balance {
-                            address: sender.clone(),
-                            balance: "0".to_string(),
-                            chain: transfer.chain.clone(),
-                            token: token.clone(),
-                        },
-                    };
-                }
-
-                let balance: I256 = I256::from_dec_str(&sender_balance.balance).unwrap();
-
-                let final_balance = balance.add(amount);
-
-                sender_balance.balance = final_balance.to_string();
-
-                balances_changes.insert(sender.clone(), sender_balance);
-
-                count_sent += 1;
-            }
-
-            let receiver = transfer.to_address.clone();
-
-            if receiver != format_address(H160::zero()) {
-                let stored_balance = balances_changes.get(&receiver);
-
-                let mut receiver_balance: DatabaseErc20Balance;
-
-                if stored_balance.is_some() {
-                    receiver_balance = stored_balance.unwrap().to_owned();
-                } else {
-                    receiver_balance = match self.get_current_balance(
-                        token.clone(),
-                        receiver.clone(),
-                        transfer.chain.clone(),
-                        db,
-                    ) {
-                        Some(db_balance) => db_balance,
-                        None => DatabaseErc20Balance {
-                            address: receiver.clone(),
-                            balance: "0".to_string(),
-                            chain: transfer.chain.clone(),
-                            token: token.clone(),
-                        },
-                    };
-                }
-
-                let balance: I256 = I256::from_dec_str(&receiver_balance.balance).unwrap();
-
-                let final_balance = balance.sub(amount);
-
-                receiver_balance.balance = final_balance.to_string();
-
-                balances_changes.insert(receiver.clone(), receiver_balance);
-
-                count_received += 1;
-            }
-        }
-
-        let updates: Vec<&DatabaseErc20Balance> = balances_changes.values().collect();
-        println!("{} balances to store", updates.len());
-
-        /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-        .values(transfers)
-        .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-        .do_update()
-        .set(erc20_transfers::erc20_balances_parsed.eq(true))
-        .execute(&mut connection)
-        .expect("Unable to update parsed erc20 balances into database"); */
+        let receivers: Vec<String> = transfers
+            .into_iter()
+            .map(|transfer| transfer.from_address.to_owned())
+            .filter(|sender| sender != &zero_address)
+            .collect();
 
         info!(
-            "Inserted {} sent balances and {} received balances.",
-            count_sent, count_received
+            "ERC20Tokens: updating balances for {} senders and {} receivers",
+            senders.len(),
+            receivers.len()
         );
 
+        /* for transfer in transfers {
+                    let token = transfer.token.clone();
+
+                    let sender = transfer.from_address.clone();
+
+                    let amount = I256::from_dec_str(&transfer.value).unwrap();
+
+                    if sender != format_address(H160::zero()) {
+                        let stored_balance = balances_changes.get(&sender);
+
+                        let mut sender_balance: DatabaseErc20Balance;
+
+                        if stored_balance.is_some() {
+                            sender_balance = stored_balance.unwrap().to_owned();
+                        } else {
+                            sender_balance = match self.get_current_balance(
+                                token.clone(),
+                                sender.clone(),
+                                transfer.chain.clone(),
+                                db,
+                            ) {
+                                Some(db_balance) => db_balance,
+                                None => DatabaseErc20Balance {
+                                    address: sender.clone(),
+                                    balance: "0".to_string(),
+                                    chain: transfer.chain.clone(),
+                                    token: token.clone(),
+                                },
+                            };
+                        }
+
+                        let balance: I256 = I256::from_dec_str(&sender_balance.balance).unwrap();
+
+                        let final_balance = balance.add(amount);
+
+                        sender_balance.balance = final_balance.to_string();
+
+                        balances_changes.insert(sender.clone(), sender_balance);
+
+                        count_sent += 1;
+                    }
+
+                    let receiver = transfer.to_address.clone();
+
+                    if receiver != format_address(H160::zero()) {
+                        let stored_balance = balances_changes.get(&receiver);
+
+                        let mut receiver_balance: DatabaseErc20Balance;
+
+                        if stored_balance.is_some() {
+                            receiver_balance = stored_balance.unwrap().to_owned();
+                        } else {
+                            receiver_balance = match self.get_current_balance(
+                                token.clone(),
+                                receiver.clone(),
+                                transfer.chain.clone(),
+                                db,
+                            ) {
+                                Some(db_balance) => db_balance,
+                                None => DatabaseErc20Balance {
+                                    address: receiver.clone(),
+                                    balance: "0".to_string(),
+                                    chain: transfer.chain.clone(),
+                                    token: token.clone(),
+                                },
+                            };
+                        }
+
+                        let balance: I256 = I256::from_dec_str(&receiver_balance.balance).unwrap();
+
+                        let final_balance = balance.sub(amount);
+
+                        receiver_balance.balance = final_balance.to_string();
+
+                        balances_changes.insert(receiver.clone(), receiver_balance);
+
+                        count_received += 1;
+                    }
+                }
+
+                let updates: Vec<&DatabaseErc20Balance> = balances_changes.values().collect();
+                println!("{} balances to store", updates.len());
+
+                /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+                .values(transfers)
+                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+                .do_update()
+                .set(erc20_transfers::erc20_balances_parsed.eq(true))
+                .execute(&mut connection)
+                .expect("Unable to update parsed erc20 balances into database"); */
+
+                info!(
+                    "Inserted {} sent balances and {} received balances.",
+                    count_sent, count_received
+                );
+        */
         Ok(())
     }
 
