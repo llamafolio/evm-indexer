@@ -14,7 +14,6 @@ use anyhow::Result;
 use diesel::{prelude::*, result::Error};
 use ethers::types::{H160, I256};
 use field_count::FieldCount;
-use futures::future::join_all;
 use jsonrpsee::tracing::info;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
