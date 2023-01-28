@@ -114,9 +114,9 @@ CREATE INDEX IF NOT EXISTS erc20_transfers_by_sender ON erc20_transfers (from_ad
 
 CREATE INDEX IF NOT EXISTS erc20_transfers_by_receiver ON erc20_transfers (to_address) STORING (from_address);  
 
-CREATE INDEX IF NOT EXISTS erc20_transfers_by_erc20_balances_parsed ON erc20_transfers (erc20_balances_parsed);  
+CREATE INDEX IF NOT EXISTS erc20_transfers_by_erc20_tokens_parsed ON erc20_transfers (erc20_tokens_parsed) STORING (chain, erc20_balances_parsed, from_address, to_address, token, value);
 
-CREATE INDEX IF NOT EXISTS erc20_transfers_by_erc20_tokens_parsed ON erc20_transfers (erc20_tokens_parsed);  
+CREATE INDEX IF NOT EXISTS erc20_transfers_by_erc20_balances_parsed ON erc20_transfers (erc20_balances_parsed) STORING (chain, erc20_tokens_parsed, from_address, to_address, token, value);
 
 CREATE TABLE erc20_tokens (
   address TEXT NOT NULL, 

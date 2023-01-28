@@ -29,10 +29,6 @@ pub fn format_number(n: U256) -> String {
     return format!("{}", n.to_string());
 }
 
-pub fn format_singed_number(n: I256) -> String {
-    return format!("{}", n.to_string());
-}
-
 pub fn format_small_number(n: U64) -> String {
     return format!("{}", n.to_string());
 }

@@ -5,7 +5,7 @@ use crate::{
         db::Database,
         schema::{erc20_balances, erc20_transfers},
     },
-    utils::{format_address, format_singed_number},
+    utils::format_address,
 };
 use anyhow::Result;
 use diesel::{prelude::*, result::Error};
@@ -77,14 +77,17 @@ impl ERC20Balances {
 
                 let balance: I256 = match I256::from_dec_str(&sender_balance.balance) {
                     Ok(balance) => balance,
-                    Err(_) => continue,
+                    Err(err) => {
+                        println!("{}", err);
+                        continue;
+                    }
                 };
 
                 let final_balance = balance.sub(amount);
 
-                sender_balance.balance = format_singed_number(final_balance);
+                sender_balance.balance = final_balance.to_string();
 
-                self.store_balance(&sender_balance, db).unwrap();
+                //self.store_balance(&sender_balance, db).unwrap();
 
                 count_sent += 1;
             }
@@ -108,24 +111,30 @@ impl ERC20Balances {
                     },
                 };
 
-                let balance: I256 = I256::from_dec_str(&receiver_balance.balance).unwrap();
+                let balance: I256 = match I256::from_dec_str(&receiver_balance.balance) {
+                    Ok(balance) => balance,
+                    Err(err) => {
+                        println!("{}", err);
+                        continue;
+                    }
+                };
 
                 let final_balance = balance.add(amount);
 
-                receiver_balance.balance = format_singed_number(final_balance);
+                receiver_balance.balance = final_balance.to_string();
 
-                self.store_balance(&receiver_balance, db).unwrap();
+                //self.store_balance(&receiver_balance, db).unwrap();
 
                 count_received += 1;
             }
 
-            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                .values(transfer)
-                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-                .do_update()
-                .set(erc20_transfers::erc20_balances_parsed.eq(true))
-                .execute(&mut connection)
-                .expect("Unable to update parsed erc20 balances into database");
+            /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+            .values(transfer)
+            .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+            .do_update()
+            .set(erc20_transfers::erc20_balances_parsed.eq(true))
+            .execute(&mut connection)
+            .expect("Unable to update parsed erc20 balances into database"); */
         }
 
         info!(
