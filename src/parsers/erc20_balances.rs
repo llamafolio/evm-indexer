@@ -42,7 +42,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(50)
+            .limit(100)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
