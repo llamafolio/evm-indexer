@@ -55,37 +55,41 @@ impl ERC20Balances {
 
         let zero_address = format_address(H160::zero());
 
-        let senders: Vec<(String, String, String)> = transfers
-            .into_iter()
-            .filter(|transfer| transfer.from_address != zero_address)
-            .map(|transfer| {
-                (
-                    transfer.token.clone(),
-                    transfer.from_address.clone(),
-                    transfer.chain.clone(),
-                )
-            })
-            .collect();
+        let (senders, receivers): (Vec<(String, String, String)>, Vec<(String, String, String)>) =
+            transfers
+                .into_iter()
+                .filter(|transfer| transfer.from_address != zero_address)
+                .map(|transfer| {
+                    (
+                        (
+                            transfer.token.clone(),
+                            transfer.from_address.clone(),
+                            transfer.chain.clone(),
+                        ),
+                        (
+                            transfer.token.clone(),
+                            transfer.from_address.clone(),
+                            transfer.chain.clone(),
+                        ),
+                    )
+                })
+                .unzip();
 
-        let receivers: Vec<(String, String, String)> = transfers
+        let tokens: HashSet<String> = transfers
             .into_iter()
-            .filter(|transfer| transfer.to_address != zero_address)
-            .map(|transfer| {
-                (
-                    transfer.token.clone(),
-                    transfer.to_address.clone(),
-                    transfer.chain.clone(),
-                )
-            })
+            .map(|transfer| transfer.token.clone())
             .collect();
 
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers",
+            "ERC20Tokens: updating balances for {} senders and {} receivers from {} tokens",
             senders.len(),
-            receivers.len()
+            receivers.len(),
+            tokens.len()
         );
 
         let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
+
+        let mut processed_transfers = vec![];
 
         for transfer in transfers {
             let token = transfer.token.clone();
@@ -149,15 +153,17 @@ impl ERC20Balances {
 
                 balances.insert(receiver_id, receiver_balance);
             }
+
+            processed_transfers.push(transfer);
         }
 
-        /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-        .values(transfers)
-        .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-        .do_update()
-        .set(erc20_transfers::erc20_balances_parsed.eq(true))
-        .execute(&mut connection)
-        .expect("Unable to update parsed erc20 balances into database"); */
+        diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+            .values(processed_transfers)
+            .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+            .do_update()
+            .set(erc20_transfers::erc20_balances_parsed.eq(true))
+            .execute(&mut connection)
+            .expect("Unable to update parsed erc20 balances into database");
 
         info!("Inserted {} balances", balances.len());
 
