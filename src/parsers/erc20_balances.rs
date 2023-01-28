@@ -237,14 +237,12 @@ impl ERC20Balances {
 
         let balance = match db_balance {
             Ok(db_balance) => db_balance,
-            Err(_) => {
-                return DatabaseErc20Balance {
-                    address: address.clone(),
-                    balance: "0".to_string(),
-                    chain: chain.clone(),
-                    token: token.clone(),
-                }
-            }
+            Err(_) => DatabaseErc20Balance {
+                address: address.clone(),
+                balance: "0".to_string(),
+                chain: chain.clone(),
+                token: token.clone(),
+            },
         };
 
         return balance;
