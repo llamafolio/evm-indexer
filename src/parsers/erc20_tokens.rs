@@ -21,7 +21,7 @@ use log::info;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
+#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
 #[diesel(table_name = erc20_tokens)]
 pub struct DatabaseErc20Token {
     pub address: String,
