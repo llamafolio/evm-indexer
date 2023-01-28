@@ -84,11 +84,26 @@ impl ERC20Balances {
 
         let tokens_data = self.get_tokens_data(db, &tokens);
 
+        let tokens_data_found = tokens_data.len();
+
+        let mut tokens_map: HashMap<String, DatabaseErc20Token> = HashMap::new();
+
+        for data in tokens_data {
+            tokens_map.insert(data.address.clone(), data);
+        }
+
+        let filtered_transactions: Vec<DatabaseErc20Transfer> = transfers
+            .into_iter()
+            .filter(|transfer| tokens_map.contains_key(&transfer.token))
+            .cloned()
+            .collect();
+
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers from {} tokens",
+            "ERC20Tokens: updating balances for {} senders and {} receivers from {} tokens from {} transactions",
             senders.len(),
             receivers.len(),
-            tokens_data.len()
+            tokens_data_found,
+            filtered_transactions.len()
         );
 
         /* let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
