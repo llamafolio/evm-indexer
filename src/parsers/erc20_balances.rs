@@ -97,6 +97,8 @@ impl ERC20Balances {
             unique_values.insert(format!("{}-{}-{}", token, address, chain));
         }
 
+        println!("{}", unique_values.len());
+
         let mut fetch_balances = vec![];
 
         for value in unique_values {
@@ -109,6 +111,7 @@ impl ERC20Balances {
                 db,
             ))
         }
+        println!("{}", fetch_balances.len());
 
         let balances = join_all(fetch_balances).await;
 
