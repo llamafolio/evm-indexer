@@ -19,9 +19,9 @@ use super::erc20_transfers::DatabaseErc20Transfer;
 #[diesel(table_name = erc20_balances)]
 pub struct DatabaseErc20Balance {
     pub address: String,
+    pub balance: String,
     pub chain: String,
     pub token: String,
-    pub balance: String,
 }
 
 pub struct ERC20Balances {}
@@ -69,9 +69,9 @@ impl ERC20Balances {
                     Some(db_balance) => db_balance,
                     None => DatabaseErc20Balance {
                         address: sender,
+                        balance: "0".to_string(),
                         chain: transfer.chain.clone(),
                         token: token.clone(),
-                        balance: "0".to_string(),
                     },
                 };
 
@@ -105,9 +105,9 @@ impl ERC20Balances {
                     Some(db_balance) => db_balance,
                     None => DatabaseErc20Balance {
                         address: receiver,
+                        balance: "0".to_string(),
                         chain: transfer.chain.clone(),
                         token: token.clone(),
-                        balance: "0".to_string(),
                     },
                 };
 
