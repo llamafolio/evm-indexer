@@ -32,6 +32,10 @@ async fn main() {
 
     let mut connection = db.establish_connection();
 
+    sql_query("SET experimental_enable_temp_tables=on;")
+        .execute(&mut connection)
+        .unwrap();
+
     for i in times {
         println!("Running fix script time {}", i);
 
