@@ -71,8 +71,6 @@ impl ERC20Tokens {
             .unique()
             .collect();
 
-        println!("{}", unique_tokens.len());
-
         let mut tokens_data = vec![];
 
         for token in unique_tokens {
@@ -85,8 +83,6 @@ impl ERC20Tokens {
             .filter(|token| token.is_some())
             .map(|token| token.unwrap())
             .collect();
-
-        println!("{}", db_tokens.len());
 
         let chunks = get_chunks(db_tokens.len(), DatabaseErc20Token::field_count());
 

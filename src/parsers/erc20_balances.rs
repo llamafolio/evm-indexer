@@ -51,6 +51,7 @@ impl ERC20Balances {
 
         let mut count_received = 0;
         let mut count_sent = 0;
+
         for transfer in transfers {
             let token = transfer.token.clone();
 
@@ -74,7 +75,10 @@ impl ERC20Balances {
                     },
                 };
 
-                let balance: I256 = I256::from_dec_str(&sender_balance.balance).unwrap();
+                let balance: I256 = match I256::from_dec_str(&sender_balance.balance) {
+                    Ok(balance) => balance,
+                    Err(_) => continue,
+                };
 
                 let final_balance = balance.sub(amount);
 
