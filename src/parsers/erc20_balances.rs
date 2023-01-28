@@ -168,10 +168,10 @@ impl ERC20Balances {
         let db_balance: Result<DatabaseErc20Balance, Error> = erc20_balances::table
             .select(erc20_balances::all_columns)
             .filter(
-                erc20_balances::token
-                    .eq(token)
-                    .and(erc20_balances::chain.eq(chain))
-                    .and(erc20_balances::address.eq(address)),
+                erc20_balances::address
+                    .eq(address)
+                    .and(erc20_balances::token.eq(token))
+                    .and(erc20_balances::chain.eq(chain)),
             )
             .first::<DatabaseErc20Balance>(&mut connection);
 
