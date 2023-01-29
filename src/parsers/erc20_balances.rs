@@ -216,6 +216,8 @@ impl ERC20Balances {
 
         let new_balances = balances.values();
 
+        let total_new_balances = new_balances.len();
+
         let mut query =
             String::from("UPSERT INTO erc20_balances (address, balance, chain, token) VALUES");
 
@@ -230,7 +232,9 @@ impl ERC20Balances {
         // Remove the last comma of the value list.
         query.pop();
 
-        sql_query(query).execute(&mut connection).unwrap();
+        if total_new_balances > 0 {
+            sql_query(query).execute(&mut connection).unwrap();
+        }
 
         diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
             .values(parsed_transfers)
@@ -240,7 +244,7 @@ impl ERC20Balances {
             .execute(&mut connection)
             .expect("Unable to update parsed erc20 balances into database");
 
-        info!("Inserted {} balances", balances.len());
+        info!("Inserted {} balances", total_new_balances);
 
         Ok(())
     }
