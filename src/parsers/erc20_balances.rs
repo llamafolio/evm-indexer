@@ -178,13 +178,12 @@ impl ERC20Balances {
                     sender_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let sender_balance_amount: f64 = format_units(
-                    I256::from_dec_str(&sender_balance.balance).unwrap(),
-                    decimals as usize,
-                )
-                .unwrap()
-                .parse()
-                .unwrap();
+                let amount_unparsed = I256::from_dec_str(&sender_balance.balance).unwrap();
+
+                let sender_balance_amount: f64 = format_units(amount_unparsed, decimals as usize)
+                    .unwrap()
+                    .parse()
+                    .unwrap();
 
                 sender_balance.balance = (sender_balance_amount - amount).to_string();
 
@@ -215,13 +214,12 @@ impl ERC20Balances {
                     receiver_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let receiver_balance_amount: f64 = format_units(
-                    I256::from_dec_str(&receiver_balance.balance).unwrap(),
-                    decimals as usize,
-                )
-                .unwrap()
-                .parse()
-                .unwrap();
+                let amount_unparsed = I256::from_dec_str(&receiver_balance.balance).unwrap();
+
+                let receiver_balance_amount: f64 = format_units(amount_unparsed, decimals as usize)
+                    .unwrap()
+                    .parse()
+                    .unwrap();
 
                 receiver_balance.balance = (receiver_balance_amount + amount).to_string();
 
