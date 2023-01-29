@@ -137,7 +137,7 @@ impl ERC20Balances {
 
         let mut parsed_transfers = vec![];
 
-        let mut missing_tokens = vec![];
+        let mut missing_tokens: HashSet<(String, String)> = HashSet::new();
 
         for transfer in transfers {
             let token = transfer.token.clone();
@@ -148,12 +148,12 @@ impl ERC20Balances {
                 Some(token_data) => match token_data.decimals {
                     Some(decimals) => decimals,
                     None => {
-                        missing_tokens.push((transfer.token.clone(), transfer.chain.clone()));
+                        missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
                         continue;
                     }
                 },
                 None => {
-                    missing_tokens.push((transfer.token.clone(), transfer.chain.clone()));
+                    missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
                     continue;
                 }
             };
