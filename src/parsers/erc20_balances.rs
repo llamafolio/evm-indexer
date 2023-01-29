@@ -115,8 +115,6 @@ impl ERC20Balances {
             );
         }
 
-        info!("ERC20Tokens: fetched {} balances to update", balances.len(),);
-
         for transfer in transfers {
             let token = transfer.token.clone();
 
@@ -202,8 +200,8 @@ impl ERC20Balances {
                 " ('{}', '{}', '{}', '{}', '{}'),",
                 format!(
                     "{}-{}-{}",
-                    balance.address.clone(),
                     balance.token.clone(),
+                    balance.address.clone(),
                     balance.chain.clone()
                 ),
                 balance.address,
