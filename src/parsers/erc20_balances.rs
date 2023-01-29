@@ -302,16 +302,11 @@ impl ERC20Balances {
 
         let (token, chain) = tokens.first().unwrap();
 
-        let mut query = format!(
-            "SELECT * FROM erc20_tokens WHERE ( address = '{}', chain = '{}' ) OR (address,chain) IN ( VALUES ",
-            token, chain
-        );
+        let mut query = format!("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ",);
 
         for (i, (token, chain)) in tokens.into_iter().enumerate() {
-            if i > 0 {
-                let condition = format!("('{}','{}'),", token, chain);
-                query.push_str(&condition)
-            }
+            let condition = format!("('{}','{}'),", token, chain);
+            query.push_str(&condition)
         }
 
         query.pop();
