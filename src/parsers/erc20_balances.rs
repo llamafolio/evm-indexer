@@ -168,6 +168,20 @@ impl ERC20Balances {
             }
         }
 
+        let new_balances = balances.values();
+
+        let mut query = String::from("UPSERT INTO erc20_balances VALUES ");
+
+        for balance in new_balances {
+            let value = format!(
+                " ({}, {}, {}, {})",
+                balance.address, balance.balance, balance.chain, balance.token
+            );
+            query.push_str(&value);
+        }
+
+        sql_query(query).execute(&mut connection).unwrap();
+
         /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
         .values(transfers)
         .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
