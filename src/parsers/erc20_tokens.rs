@@ -130,7 +130,7 @@ impl ERC20Tokens {
                     };
 
                     let value = format!(
-                        " ('{}', '{}', '{}', {}, {}),",
+                        " ('{}', '{}', {}, {}, {}),",
                         token.address,
                         token.chain,
                         token.decimals.unwrap(),
