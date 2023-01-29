@@ -196,7 +196,7 @@ impl ERC20Tokens {
 
         let name: Option<String> = match token.name().call().await {
             Ok(name) => Some(format!("{}", name.trim_matches(char::from(0)))),
-            Err(_) => return None,
+            Err(_) => None,
         };
 
         let decimals: Option<i64> = match token.decimals().call().await {
@@ -206,7 +206,7 @@ impl ERC20Tokens {
 
         let symbol: Option<String> = match token.symbol().call().await {
             Ok(symbol) => Some(format!("{}", symbol.trim_matches(char::from(0)))),
-            Err(_) => return None,
+            Err(_) => None,
         };
 
         return Some(DatabaseErc20Token {
