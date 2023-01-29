@@ -174,7 +174,7 @@ impl ERC20Balances {
 
         for balance in new_balances {
             let value = format!(
-                " ({}, {}, {}, {})",
+                " ('{}', '{}', '{}', '{}')",
                 balance.address, balance.balance, balance.chain, balance.token
             );
             query.push_str(&value);
