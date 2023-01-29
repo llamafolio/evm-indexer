@@ -85,9 +85,9 @@ CREATE TABLE chains_indexed_state (
 );
 
 CREATE TABLE contracts_adapters (
-  adapter_id VARCHAR NOT NULL, 
-  address VARCHAR NOT NULL, 
-  chain VARCHAR NOT NULL, 
+  adapter_id TEXT NOT NULL, 
+  address TEXT NOT NULL, 
+  chain TEXT NOT NULL, 
   CONSTRAINT contracts_adapters_pkey PRIMARY KEY (address, chain)
 );
 
@@ -133,7 +133,7 @@ CREATE INDEX IF NOT EXISTS erc20_tokens_by_chain ON erc20_tokens (chain);
 
 CREATE TABLE erc20_balances (
   address TEXT NOT NULL, 
-  balance TEXT NOT NULL, 
+  balance DOUBLE PRECISION NOT NULL, 
   chain TEXT NOT NULL, 
   token TEXT NOT NULL, 
   PRIMARY KEY (address, token, chain)

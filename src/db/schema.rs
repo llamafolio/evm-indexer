@@ -56,17 +56,16 @@ diesel::table! {
 
 diesel::table! {
     contracts_adapters (address, chain) {
-        adapter_id -> Varchar,
-        address -> Varchar,
-        chain -> Varchar,
+        adapter_id -> Text,
+        address -> Text,
+        chain -> Text,
     }
 }
 
 diesel::table! {
-    erc20_balances (balance_id) {
-        balance_id -> Text,
+    erc20_balances (address, token, chain) {
         address -> Text,
-        balance -> Text,
+        balance -> Float8,
         chain -> Text,
         token -> Text,
     }

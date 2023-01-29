@@ -22,7 +22,7 @@ use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Tran
 #[diesel(table_name = erc20_balances)]
 pub struct DatabaseErc20Balance {
     pub address: String,
-    pub balance: String,
+    pub balance: f64,
     pub chain: String,
     pub token: String,
 }
@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(10)
+            .limit(5000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -170,7 +170,7 @@ impl ERC20Balances {
                 if stored_balance.is_none() {
                     sender_balance = DatabaseErc20Balance {
                         address: sender.clone(),
-                        balance: "0".to_string(),
+                        balance: 0.0,
                         chain: transfer.chain.clone(),
                         token: token.clone(),
                     };
@@ -178,9 +178,7 @@ impl ERC20Balances {
                     sender_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let sender_balance_amount: f64 = sender_balance.balance.parse().unwrap();
-
-                sender_balance.balance = (sender_balance_amount - amount).to_string();
+                sender_balance.balance = sender_balance.balance - amount;
 
                 balances.insert(id, sender_balance);
             }
@@ -201,7 +199,7 @@ impl ERC20Balances {
                 if stored_balance.is_none() {
                     receiver_balance = DatabaseErc20Balance {
                         address: receiver.clone(),
-                        balance: "0".to_string(),
+                        balance: 0.0,
                         chain: transfer.chain.clone(),
                         token: token.clone(),
                     };
@@ -209,9 +207,7 @@ impl ERC20Balances {
                     receiver_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let receiver_balance_amount: f64 = receiver_balance.balance.parse().unwrap();
-
-                receiver_balance.balance = (receiver_balance_amount + amount).to_string();
+                receiver_balance.balance = receiver_balance.balance + amount;
 
                 balances.insert(id, receiver_balance);
             }
@@ -258,10 +254,10 @@ impl ERC20Balances {
         let mut connection = db.establish_connection();
 
         let mut query =
-            String::from("SELECT * FROM erc20_balances WHERE (token, address, chain) IN ( VALUES");
+            String::from("SELECT * FROM erc20_balances WHERE (address, token, chain) IN ( VALUES");
 
         for (token, address, chain) in balances {
-            let condition = format!("(('{}','{}','{}')),", token, address, chain);
+            let condition = format!("(('{}','{}','{}')),", address, token, chain);
             query.push_str(&condition)
         }
 
