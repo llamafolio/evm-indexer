@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(5000)
+            .limit(10)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -269,22 +269,16 @@ impl ERC20Balances {
     ) -> Vec<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
-        let (first_token, first_address, first_chain) = balances.first().unwrap();
+        let mut query =
+            String::from("SELECT * FROM erc20_balances WHERE (token, address, chain) IN ( VALUES");
 
-        let mut query = format!(
-            "SELECT * FROM erc20_balances WHERE (token = '{}', address = '{}', chain = '{}')",
-            first_token, first_address, first_chain
-        );
-
-        for (i, (token, address, chain)) in balances.into_iter().enumerate() {
-            if i > 0 {
-                let condition = format!(
-                    " OR (token = '{}', address = '{}', chain = '{}')",
-                    token, address, chain
-                );
-                query.push_str(&condition)
-            }
+        for (token, address, chain) in balances {
+            let condition = format!("(('{}','{}','{}')),", token, address, chain);
+            query.push_str(&condition)
         }
+
+        query.pop();
+        query.push_str(")");
 
         let results: Vec<DatabaseErc20Balance> = sql_query(query)
             .load::<DatabaseErc20Balance>(&mut connection)
@@ -300,12 +294,11 @@ impl ERC20Balances {
     ) -> Vec<DatabaseErc20Token> {
         let mut connection = db.establish_connection();
 
-        let (token, chain) = tokens.first().unwrap();
+        let mut query =
+            String::from("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ");
 
-        let mut query = format!("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ",);
-
-        for (i, (token, chain)) in tokens.into_iter().enumerate() {
-            let condition = format!("('{}','{}'),", token, chain);
+        for (token, chain) in tokens {
+            let condition = format!("(('{}','{}')),", token, chain);
             query.push_str(&condition)
         }
 
