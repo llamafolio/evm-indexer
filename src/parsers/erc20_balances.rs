@@ -191,10 +191,21 @@ impl ERC20Balances {
 
             let amount_value = U256::from_dec_str(&transfer.value).unwrap();
 
-            let amount: f64 = format_units(amount_value, decimals as usize)
+            let amount: f64 = match format_units(amount_value, decimals as usize)
                 .unwrap()
                 .parse()
-                .unwrap();
+            {
+                Ok(amount) => amount,
+                Err(_) => {
+                    let new_retries = retries + 1;
+
+                    let _: () = redis_connection
+                        .set(redis_retries_key.clone(), new_retries)
+                        .unwrap();
+
+                    continue;
+                }
+            };
 
             if sender != format_address(H160::zero()) {
                 let id = (
