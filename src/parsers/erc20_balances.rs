@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(100)
+            .limit(50000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -222,13 +222,13 @@ impl ERC20Balances {
 
         sql_query(query).execute(&mut connection).unwrap();
 
-        /*    diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-        .values(transfers)
-        .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-        .do_update()
-        .set(erc20_transfers::erc20_balances_parsed.eq(true))
-        .execute(&mut connection)
-        .expect("Unable to update parsed erc20 balances into database"); */
+        diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+            .values(transfers)
+            .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+            .do_update()
+            .set(erc20_transfers::erc20_balances_parsed.eq(true))
+            .execute(&mut connection)
+            .expect("Unable to update parsed erc20 balances into database");
 
         info!("Inserted {} balances", balances.len());
 
