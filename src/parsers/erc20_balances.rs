@@ -55,26 +55,31 @@ impl ERC20Balances {
 
         let zero_address = format_address(H160::zero());
 
-        let (senders, receivers): (Vec<String>, Vec<String>) = transfers
+        let senders: Vec<String> = transfers
             .into_iter()
             .filter(|transfer| transfer.from_address != zero_address)
             .map(|transfer| {
-                (
-                    format!(
-                        "{}-{}-{}",
-                        transfer.token.clone(),
-                        transfer.from_address.clone(),
-                        transfer.chain.clone(),
-                    ),
-                    format!(
-                        "{}-{}-{}",
-                        transfer.token.clone(),
-                        transfer.to_address.clone(),
-                        transfer.chain.clone(),
-                    ),
+                format!(
+                    "{}-{}-{}",
+                    transfer.token.clone(),
+                    transfer.from_address.clone(),
+                    transfer.chain.clone(),
                 )
             })
-            .unzip();
+            .collect();
+
+        let receivers: Vec<String> = transfers
+            .into_iter()
+            .filter(|transfer| transfer.to_address != zero_address)
+            .map(|transfer| {
+                format!(
+                    "{}-{}-{}",
+                    transfer.token.clone(),
+                    transfer.to_address.clone(),
+                    transfer.chain.clone(),
+                )
+            })
+            .collect();
 
         info!(
             "ERC20Tokens: updating balances for {} senders and {} receivers",
