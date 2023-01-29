@@ -170,7 +170,8 @@ impl ERC20Balances {
 
         let new_balances = balances.values();
 
-        let mut query = String::from("UPSERT INTO erc20_balances VALUES ");
+        let mut query =
+            String::from("INSERT INTO erc20_balances (address, balance, chain, token) VALUES ");
 
         for balance in new_balances {
             let value = format!(
@@ -179,6 +180,9 @@ impl ERC20Balances {
             );
             query.push_str(&value);
         }
+
+        let conflict = "ON CONFLICT (address, token, chain) DO UPDATE";
+        query.push_str(conflict);
 
         sql_query(query).execute(&mut connection).unwrap();
 
