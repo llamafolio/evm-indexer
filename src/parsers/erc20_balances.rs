@@ -184,13 +184,23 @@ impl ERC20Balances {
 
         let new_balances = balances.values();
 
-        let mut query =
-            String::from("UPSERT INTO erc20_balances (address, balance, chain, token) VALUES");
+        let mut query = String::from(
+            "UPSERT INTO erc20_balances (balance_id, address, balance, chain, token) VALUES",
+        );
 
         for balance in new_balances {
             let value = format!(
-                " ('{}', '{}', '{}', '{}'),",
-                balance.address, balance.balance, balance.chain, balance.token
+                " ('{}', '{}', '{}', '{}', '{}'),",
+                format!(
+                    "{}-{}-{}",
+                    balance.address.clone(),
+                    balance.token.clone(),
+                    balance.chain.clone()
+                ),
+                balance.address,
+                balance.balance,
+                balance.chain,
+                balance.token
             );
             query.push_str(&value);
         }
@@ -229,7 +239,7 @@ impl ERC20Balances {
         for (i, (address, token, chain)) in balances.into_iter().enumerate() {
             if i > 0 {
                 let condition = format!(
-                    " balance_id = {}",
+                    " OR balance_id = {}",
                     format!("{}-{}-{}", address, token, chain)
                 );
                 query.push_str(&condition)
