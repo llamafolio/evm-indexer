@@ -91,9 +91,10 @@ impl ERC20Balances {
         let tokens_data = self.get_tokens(db, &tokens);
 
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers from {} tokens",
+            "ERC20Tokens: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
             senders.len(),
             receivers.len(),
+            tokens.len(),
             tokens_data.len()
         );
 
