@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error};
+use diesel::{prelude::*, result::Error, sql_query};
 use ethabi::Address;
 use ethers::{
     prelude::abigen,
@@ -112,16 +112,44 @@ impl ERC20Tokens {
 
                 let mut connection = db.establish_connection();
 
-                diesel::insert_into(erc20_tokens::dsl::erc20_tokens)
-                    .values(&tokens)
-                    .on_conflict_do_nothing()
-                    .execute(&mut connection)
-                    .unwrap();
+                let mut query = String::from(
+                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
+                );
+
+                let tokens_amount = tokens.len();
+
+                for token in tokens {
+                    let name = match token.name {
+                        Some(name) => format!("'{}'", name),
+                        None => String::from("NULL"),
+                    };
+
+                    let symbol = match token.symbol {
+                        Some(symbol) => format!("'{}'", symbol),
+                        None => String::from("NULL"),
+                    };
+
+                    let value = format!(
+                        " ('{}', '{}', '{}', {}, {}),",
+                        token.address,
+                        token.chain,
+                        token.decimals.unwrap(),
+                        name,
+                        symbol
+                    );
+
+                    query.push_str(&value);
+                }
+
+                query.pop();
+
+                if tokens_amount > 0 {
+                    sql_query(query).execute(&mut connection).unwrap();
+                }
 
                 info!(
                     "ERC20Tokens: inserted {} tokens for chain {}",
-                    tokens.len(),
-                    name
+                    tokens_amount, name
                 );
             }
         }
