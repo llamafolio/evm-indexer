@@ -55,25 +55,26 @@ impl ERC20Balances {
 
         let zero_address = format_address(H160::zero());
 
-        let (senders, receivers): (Vec<(String, String, String)>, Vec<(String, String, String)>) =
-            transfers
-                .into_iter()
-                .filter(|transfer| transfer.from_address != zero_address)
-                .map(|transfer| {
-                    (
-                        (
-                            transfer.token.clone(),
-                            transfer.from_address.clone(),
-                            transfer.chain.clone(),
-                        ),
-                        (
-                            transfer.token.clone(),
-                            transfer.to_address.clone(),
-                            transfer.chain.clone(),
-                        ),
-                    )
-                })
-                .unzip();
+        let (senders, receivers): (Vec<String>, Vec<String>) = transfers
+            .into_iter()
+            .filter(|transfer| transfer.from_address != zero_address)
+            .map(|transfer| {
+                (
+                    format!(
+                        "{}-{}-{}",
+                        transfer.token.clone(),
+                        transfer.from_address.clone(),
+                        transfer.chain.clone(),
+                    ),
+                    format!(
+                        "{}-{}-{}",
+                        transfer.token.clone(),
+                        transfer.to_address.clone(),
+                        transfer.chain.clone(),
+                    ),
+                )
+            })
+            .unzip();
 
         info!(
             "ERC20Tokens: updating balances for {} senders and {} receivers",
@@ -81,25 +82,26 @@ impl ERC20Balances {
             receivers.len(),
         );
 
-        let mut unique_balances: HashSet<(String, String, String)> = HashSet::new();
+        let mut unique_balances: HashSet<String> = HashSet::new();
 
-        for (token, address, chain) in senders {
-            unique_balances.insert((token, address, chain));
+        for balance_id in senders {
+            unique_balances.insert(balance_id);
         }
 
-        for (token, address, chain) in receivers {
-            unique_balances.insert((token, address, chain));
+        for balance_id in receivers {
+            unique_balances.insert(balance_id);
         }
 
-        let balances_ids: Vec<(String, String, String)> = unique_balances.into_iter().collect();
+        let balances_ids: Vec<String> = unique_balances.into_iter().collect();
 
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
-        let mut balances: HashMap<(String, String, String), DatabaseErc20Balance> = HashMap::new();
+        let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
 
         for balance in stored_balances {
             balances.insert(
-                (
+                format!(
+                    "{}-{}-{}",
                     balance.token.clone(),
                     balance.address.clone(),
                     balance.chain.clone(),
@@ -118,7 +120,8 @@ impl ERC20Balances {
             let amount = I256::from_dec_str(&transfer.value).unwrap();
 
             if sender != format_address(H160::zero()) {
-                let id = (
+                let id = format!(
+                    "{}-{}-{}",
                     transfer.token.clone(),
                     sender.clone(),
                     transfer.chain.clone(),
@@ -151,7 +154,8 @@ impl ERC20Balances {
             let receiver = transfer.to_address.clone();
 
             if receiver != format_address(H160::zero()) {
-                let id = (
+                let id = format!(
+                    "{}-{}-{}",
                     transfer.token.clone(),
                     receiver.clone(),
                     transfer.chain.clone(),
@@ -226,22 +230,18 @@ impl ERC20Balances {
     pub fn get_current_balances(
         self: &ERC20Balances,
         db: &Database,
-        balances: &Vec<(String, String, String)>,
+        balances: &Vec<String>,
     ) -> Vec<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
-        let (first_address, first_token, first_chain) = balances.first().unwrap();
         let mut query = format!(
             "SELECT * FROM erc20_balances WHERE balance_id = '{}'",
-            format!("{}-{}-{}", first_address, first_token, first_chain)
+            balances.first().unwrap()
         );
 
-        for (i, (address, token, chain)) in balances.into_iter().enumerate() {
+        for (i, balance_id) in balances.into_iter().enumerate() {
             if i > 0 {
-                let condition = format!(
-                    " OR balance_id = '{}'",
-                    format!("{}-{}-{}", address, token, chain)
-                );
+                let condition = format!(" OR balance_id = '{}'", balance_id);
                 query.push_str(&condition)
             }
         }
