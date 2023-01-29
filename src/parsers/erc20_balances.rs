@@ -73,7 +73,7 @@ impl ERC20Balances {
             .map(|transfer| {
                 (
                     transfer.token.clone(),
-                    transfer.from_address.clone(),
+                    transfer.to_address.clone(),
                     transfer.chain.clone(),
                 )
             })
@@ -213,6 +213,8 @@ impl ERC20Balances {
                 } else {
                     receiver_balance = stored_balance.unwrap().to_owned();
                 }
+
+                println!("{}", receiver_balance.balance);
 
                 let amount_unparsed = I256::from_dec_str(&receiver_balance.balance).unwrap();
 
