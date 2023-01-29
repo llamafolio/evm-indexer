@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(50000)
+            .limit(10)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -68,7 +68,7 @@ impl ERC20Balances {
                         ),
                         (
                             transfer.token.clone(),
-                            transfer.from_address.clone(),
+                            transfer.to_address.clone(),
                             transfer.chain.clone(),
                         ),
                     )
@@ -183,6 +183,8 @@ impl ERC20Balances {
 
         let conflict = "ON CONFLICT (address, token, chain) DO UPDATE";
         query.push_str(conflict);
+
+        println!("{}", query);
 
         sql_query(query).execute(&mut connection).unwrap();
 
