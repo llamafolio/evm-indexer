@@ -122,13 +122,26 @@ impl ERC20Tokens {
                     let name = match token.name {
                         Some(name) => {
                             let name_fixed: String = name.replace("'", "");
-                            format!("'{}'", name_fixed)
+
+                            let name_bytes = name_fixed.as_bytes();
+
+                            let name_parsed = String::from_utf8_lossy(name_bytes);
+
+                            format!("'{}'", name_parsed)
                         }
                         None => String::from("NULL"),
                     };
 
                     let symbol = match token.symbol {
-                        Some(symbol) => format!("'{}'", symbol),
+                        Some(symbol) => {
+                            let symbol_fixed: String = symbol.replace("'", "");
+
+                            let symbol_bytes = symbol_fixed.as_bytes();
+
+                            let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
+
+                            format!("'{}'", symbol_parsed)
+                        }
                         None => String::from("NULL"),
                     };
 
@@ -191,13 +204,26 @@ impl ERC20Tokens {
             let name = match token.name {
                 Some(name) => {
                     let name_fixed: String = name.replace("'", "");
-                    format!("'{}'", name_fixed)
+
+                    let name_bytes = name_fixed.as_bytes();
+
+                    let name_parsed = String::from_utf8_lossy(name_bytes);
+
+                    format!("'{}'", name_parsed)
                 }
                 None => String::from("NULL"),
             };
 
             let symbol = match token.symbol {
-                Some(symbol) => format!("'{}'", symbol),
+                Some(symbol) => {
+                    let symbol_fixed: String = symbol.replace("'", "");
+
+                    let symbol_bytes = symbol_fixed.as_bytes();
+
+                    let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
+
+                    format!("'{}'", symbol_parsed)
+                }
                 None => String::from("NULL"),
             };
 
