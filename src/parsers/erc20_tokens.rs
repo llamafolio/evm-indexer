@@ -177,7 +177,7 @@ impl ERC20Tokens {
         Ok(())
     }
 
-    async fn get_token_metadata(&self, token_id: String) -> Option<DatabaseErc20Token> {
+    pub async fn get_token_metadata(&self, token_id: String) -> Option<DatabaseErc20Token> {
         let address_chain: Vec<&str> = token_id.split("-").collect();
 
         let address = address_chain[0];

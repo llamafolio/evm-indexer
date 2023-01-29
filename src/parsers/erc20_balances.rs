@@ -3,8 +3,9 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     db::{
         db::Database,
-        schema::{erc20_balances, erc20_transfers},
+        schema::{erc20_balances, erc20_tokens, erc20_transfers},
     },
+    parsers::erc20_tokens::ERC20Tokens,
     utils::format_address,
 };
 use anyhow::Result;
@@ -14,6 +15,7 @@ use ethers::{
     utils::format_units,
 };
 use field_count::FieldCount;
+use futures::future::join_all;
 use jsonrpsee::tracing::info;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
@@ -135,6 +137,8 @@ impl ERC20Balances {
 
         let mut parsed_transfers = vec![];
 
+        let mut missing_tokens = vec![];
+
         for transfer in transfers {
             let token = transfer.token.clone();
 
@@ -143,9 +147,15 @@ impl ERC20Balances {
             let decimals = match tokens_map.get(&(transfer.token.clone(), transfer.chain.clone())) {
                 Some(token_data) => match token_data.decimals {
                     Some(decimals) => decimals,
-                    None => continue,
+                    None => {
+                        missing_tokens.push((transfer.token.clone(), transfer.chain.clone()));
+                        continue;
+                    }
                 },
-                None => continue,
+                None => {
+                    missing_tokens.push((transfer.token.clone(), transfer.chain.clone()));
+                    continue;
+                }
             };
 
             let amount_value = U256::from_dec_str(&transfer.value).unwrap();
@@ -236,16 +246,48 @@ impl ERC20Balances {
             sql_query(query).execute(&mut connection).unwrap();
         }
 
-        diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-            .values(parsed_transfers)
-            .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-            .do_update()
-            .set(erc20_transfers::erc20_balances_parsed.eq(true))
-            .execute(&mut connection)
-            .expect("Unable to update parsed erc20 balances into database");
+        if parsed_transfers.len() > 0 {
+            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+                .values(parsed_transfers)
+                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+                .do_update()
+                .set(erc20_transfers::erc20_balances_parsed.eq(true))
+                .execute(&mut connection)
+                .expect("Unable to update parsed erc20 balances into database");
+        }
 
         info!("Inserted {} balances", total_new_balances);
 
+        if missing_tokens.len() > 0 {
+            let erc20_tokens = ERC20Tokens {};
+
+            info!(
+                "Fetching data for {} missing tokens data",
+                missing_tokens.len()
+            );
+
+            let mut works = vec![];
+            for (token, chain) in missing_tokens {
+                let id = format!("{}-{}", token, chain);
+                works.push(erc20_tokens.get_token_metadata(id))
+            }
+
+            let result = join_all(works).await;
+
+            let tokens: Vec<DatabaseErc20Token> = result
+                .into_iter()
+                .filter(|token| token.is_some())
+                .map(|token| token.unwrap())
+                .collect();
+
+            diesel::insert_into(erc20_tokens::dsl::erc20_tokens)
+                .values(&tokens)
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .unwrap();
+
+            info!("Inserted {} missing tokens data", tokens.len());
+        }
         Ok(())
     }
 
