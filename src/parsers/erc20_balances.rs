@@ -148,8 +148,6 @@ impl ERC20Balances {
                 None => continue,
             };
 
-            println!("{}", decimals);
-
             let amount_value = U256::from_dec_str(&transfer.value).unwrap();
 
             let amount: f64 = format_units(amount_value, decimals as usize)

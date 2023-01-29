@@ -184,5 +184,5 @@ CREATE TABLE logs (
 
 CREATE INDEX IF NOT EXISTS logs_by_hash ON logs (hash);
 
-CREATE INDEX IF NOT EXISTS logs_by_erc20_transfers_parsed; ON logs (erc20_transfers_parsed) STORING (address, chain, data, removed, topics)
+CREATE INDEX IF NOT EXISTS logs_by_erc20_transfers_parsed ON logs (erc20_transfers_parsed) STORING (address, chain, data, removed, topics);
 
