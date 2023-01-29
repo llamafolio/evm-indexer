@@ -60,11 +60,9 @@ async fn main() {
         tokio::spawn({
             let db = db.clone();
             async move {
+                let parser = ERC20Tokens {};
+                parser.parse_extenal(&db).await.unwrap();
                 loop {
-                    let parser = ERC20Tokens {};
-
-                    parser.parse_extenal(&db).await.unwrap();
-
                     let data = parser.fetch(&db).unwrap();
 
                     info!("ERC20Tokens: Fetched {} transfers to parse.", data.len());
