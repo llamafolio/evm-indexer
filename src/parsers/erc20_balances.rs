@@ -96,6 +96,11 @@ impl ERC20Balances {
 
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
+        info!(
+            "ERC20Tokens: fetched {} balances to update",
+            stored_balances.len()
+        );
+
         let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
 
         for balance in stored_balances {
