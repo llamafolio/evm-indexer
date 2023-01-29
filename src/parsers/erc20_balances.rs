@@ -60,8 +60,8 @@ impl ERC20Balances {
             .filter(|transfer| transfer.from_address != zero_address)
             .map(|transfer| {
                 (
-                    transfer.token.clone(),
                     transfer.from_address.clone(),
+                    transfer.token.clone(),
                     transfer.chain.clone(),
                 )
             })
@@ -72,8 +72,8 @@ impl ERC20Balances {
             .filter(|transfer| transfer.to_address != zero_address)
             .map(|transfer| {
                 (
-                    transfer.token.clone(),
                     transfer.to_address.clone(),
+                    transfer.token.clone(),
                     transfer.chain.clone(),
                 )
             })
@@ -103,12 +103,12 @@ impl ERC20Balances {
 
         let mut unique_balances: HashSet<(String, String, String)> = HashSet::new();
 
-        for (token, address, chain) in senders {
-            unique_balances.insert((token, address, chain));
+        for (address, token, chain) in senders {
+            unique_balances.insert((address, token, chain));
         }
 
-        for (token, address, chain) in receivers {
-            unique_balances.insert((token, address, chain));
+        for (address, token, chain) in receivers {
+            unique_balances.insert((address, token, chain));
         }
 
         let balances_ids: Vec<(String, String, String)> = unique_balances.into_iter().collect();
@@ -125,8 +125,8 @@ impl ERC20Balances {
         for balance in stored_balances {
             balances.insert(
                 (
-                    balance.token.clone(),
                     balance.address.clone(),
+                    balance.token.clone(),
                     balance.chain.clone(),
                 ),
                 balance,
@@ -148,18 +148,19 @@ impl ERC20Balances {
                 None => continue,
             };
 
-            let amount: f64 = format_units(
-                U256::from_dec_str(&transfer.value).unwrap(),
-                decimals as usize,
-            )
-            .unwrap()
-            .parse()
-            .unwrap();
+            println!("{}", decimals);
+
+            let amount_value = U256::from_dec_str(&transfer.value).unwrap();
+
+            let amount: f64 = format_units(amount_value, decimals as usize)
+                .unwrap()
+                .parse()
+                .unwrap();
 
             if sender != format_address(H160::zero()) {
                 let id = (
-                    transfer.token.clone(),
                     sender.clone(),
+                    transfer.token.clone(),
                     transfer.chain.clone(),
                 );
 
@@ -187,8 +188,8 @@ impl ERC20Balances {
 
             if receiver != format_address(H160::zero()) {
                 let id = (
-                    transfer.token.clone(),
                     receiver.clone(),
+                    transfer.token.clone(),
                     transfer.chain.clone(),
                 );
 
@@ -256,7 +257,7 @@ impl ERC20Balances {
         let mut query =
             String::from("SELECT * FROM erc20_balances WHERE (address, token, chain) IN ( VALUES");
 
-        for (token, address, chain) in balances {
+        for (address, token, chain) in balances {
             let condition = format!("(('{}','{}','{}')),", address, token, chain);
             query.push_str(&condition)
         }
