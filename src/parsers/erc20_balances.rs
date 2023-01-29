@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::{Add, Sub},
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     db::{
@@ -12,11 +9,14 @@ use crate::{
 };
 use anyhow::Result;
 use diesel::{prelude::*, result::Error, sql_query};
-use ethers::types::{H160, I256};
+use ethers::{
+    types::{H160, I256, U256},
+    utils::format_units,
+};
 use field_count::FieldCount;
 use jsonrpsee::tracing::info;
 
-use super::erc20_transfers::DatabaseErc20Transfer;
+use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
 #[diesel(table_name = erc20_balances)]
@@ -55,12 +55,11 @@ impl ERC20Balances {
 
         let zero_address = format_address(H160::zero());
 
-        let senders: Vec<String> = transfers
+        let senders: Vec<(String, String, String)> = transfers
             .into_iter()
             .filter(|transfer| transfer.from_address != zero_address)
             .map(|transfer| {
-                format!(
-                    "{}-{}-{}",
+                (
                     transfer.token.clone(),
                     transfer.from_address.clone(),
                     transfer.chain.clone(),
@@ -68,36 +67,51 @@ impl ERC20Balances {
             })
             .collect();
 
-        let receivers: Vec<String> = transfers
+        let receivers: Vec<(String, String, String)> = transfers
             .into_iter()
             .filter(|transfer| transfer.to_address != zero_address)
             .map(|transfer| {
-                format!(
-                    "{}-{}-{}",
+                (
                     transfer.token.clone(),
-                    transfer.to_address.clone(),
+                    transfer.from_address.clone(),
                     transfer.chain.clone(),
                 )
             })
             .collect();
 
+        let tokens: Vec<(String, String)> = transfers
+            .into_iter()
+            .map(|transfer| (transfer.token.clone(), transfer.chain.clone()))
+            .collect::<HashSet<(String, String)>>()
+            .into_iter()
+            .collect();
+
+        let tokens_data = self.get_tokens(db, &tokens);
+
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers",
+            "ERC20Tokens: updating balances for {} senders and {} receivers from {} tokens",
             senders.len(),
             receivers.len(),
+            tokens_data.len()
         );
 
-        let mut unique_balances: HashSet<String> = HashSet::new();
+        let mut tokens_map: HashMap<(String, String), DatabaseErc20Token> = HashMap::new();
 
-        for balance_id in senders {
-            unique_balances.insert(balance_id);
+        for token in tokens_data {
+            tokens_map.insert((token.address.clone(), token.chain.clone()), token);
         }
 
-        for balance_id in receivers {
-            unique_balances.insert(balance_id);
+        let mut unique_balances: HashSet<(String, String, String)> = HashSet::new();
+
+        for (token, address, chain) in senders {
+            unique_balances.insert((token, address, chain));
         }
 
-        let balances_ids: Vec<String> = unique_balances.into_iter().collect();
+        for (token, address, chain) in receivers {
+            unique_balances.insert((token, address, chain));
+        }
+
+        let balances_ids: Vec<(String, String, String)> = unique_balances.into_iter().collect();
 
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
@@ -106,12 +120,11 @@ impl ERC20Balances {
             stored_balances.len()
         );
 
-        let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
+        let mut balances: HashMap<(String, String, String), DatabaseErc20Balance> = HashMap::new();
 
         for balance in stored_balances {
             balances.insert(
-                format!(
-                    "{}-{}-{}",
+                (
                     balance.token.clone(),
                     balance.address.clone(),
                     balance.chain.clone(),
@@ -120,16 +133,31 @@ impl ERC20Balances {
             );
         }
 
+        let mut parsed_transfers = vec![];
+
         for transfer in transfers {
             let token = transfer.token.clone();
 
             let sender = transfer.from_address.clone();
 
-            let amount = I256::from_dec_str(&transfer.value).unwrap();
+            let decimals = match tokens_map.get(&(transfer.token.clone(), transfer.chain.clone())) {
+                Some(token_data) => match token_data.decimals {
+                    Some(decimals) => decimals,
+                    None => continue,
+                },
+                None => continue,
+            };
+
+            let amount: f64 = format_units(
+                U256::from_dec_str(&transfer.value).unwrap(),
+                decimals as usize,
+            )
+            .unwrap()
+            .parse()
+            .unwrap();
 
             if sender != format_address(H160::zero()) {
-                let id = format!(
-                    "{}-{}-{}",
+                let id = (
                     transfer.token.clone(),
                     sender.clone(),
                     transfer.chain.clone(),
@@ -150,11 +178,15 @@ impl ERC20Balances {
                     sender_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let new_balance = I256::from_dec_str(&sender_balance.balance)
-                    .unwrap()
-                    .sub(amount);
+                let sender_balance_amount: f64 = format_units(
+                    I256::from_dec_str(&sender_balance.balance).unwrap(),
+                    decimals as usize,
+                )
+                .unwrap()
+                .parse()
+                .unwrap();
 
-                sender_balance.balance = new_balance.to_string();
+                sender_balance.balance = (sender_balance_amount - amount).to_string();
 
                 balances.insert(id, sender_balance);
             }
@@ -162,8 +194,7 @@ impl ERC20Balances {
             let receiver = transfer.to_address.clone();
 
             if receiver != format_address(H160::zero()) {
-                let id = format!(
-                    "{}-{}-{}",
+                let id = (
                     transfer.token.clone(),
                     receiver.clone(),
                     transfer.chain.clone(),
@@ -184,35 +215,31 @@ impl ERC20Balances {
                     receiver_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let new_balance = I256::from_dec_str(&receiver_balance.balance)
-                    .unwrap()
-                    .add(amount);
+                let receiver_balance_amount: f64 = format_units(
+                    I256::from_dec_str(&receiver_balance.balance).unwrap(),
+                    decimals as usize,
+                )
+                .unwrap()
+                .parse()
+                .unwrap();
 
-                receiver_balance.balance = new_balance.to_string();
+                receiver_balance.balance = (receiver_balance_amount + amount).to_string();
 
                 balances.insert(id, receiver_balance);
             }
+
+            parsed_transfers.push(transfer);
         }
 
         let new_balances = balances.values();
 
-        let mut query = String::from(
-            "UPSERT INTO erc20_balances (balance_id, address, balance, chain, token) VALUES",
-        );
+        let mut query =
+            String::from("UPSERT INTO erc20_balances (address, balance, chain, token) VALUES");
 
         for balance in new_balances {
             let value = format!(
-                " ('{}', '{}', '{}', '{}', '{}'),",
-                format!(
-                    "{}-{}-{}",
-                    balance.token.clone(),
-                    balance.address.clone(),
-                    balance.chain.clone()
-                ),
-                balance.address,
-                balance.balance,
-                balance.chain,
-                balance.token
+                " ('{}', '{}', '{}', '{}'),",
+                balance.address, balance.balance, balance.chain, balance.token
             );
             query.push_str(&value);
         }
@@ -223,7 +250,7 @@ impl ERC20Balances {
         sql_query(query).execute(&mut connection).unwrap();
 
         diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-            .values(transfers)
+            .values(parsed_transfers)
             .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
             .do_update()
             .set(erc20_transfers::erc20_balances_parsed.eq(true))
@@ -238,24 +265,58 @@ impl ERC20Balances {
     pub fn get_current_balances(
         self: &ERC20Balances,
         db: &Database,
-        balances: &Vec<String>,
+        balances: &Vec<(String, String, String)>,
     ) -> Vec<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
+        let (first_token, first_address, first_chain) = balances.first().unwrap();
+
         let mut query = format!(
-            "SELECT * FROM erc20_balances WHERE balance_id = '{}'",
-            balances.first().unwrap()
+            "SELECT * FROM erc20_balances WHERE (token = '{}', address = '{}', chain = '{}')",
+            first_token, first_address, first_chain
         );
 
-        for (i, balance_id) in balances.into_iter().enumerate() {
+        for (i, (token, address, chain)) in balances.into_iter().enumerate() {
             if i > 0 {
-                let condition = format!(" OR balance_id = '{}'", balance_id);
+                let condition = format!(
+                    " OR (token = '{}', address = '{}', chain = '{}')",
+                    token, address, chain
+                );
                 query.push_str(&condition)
             }
         }
 
         let results: Vec<DatabaseErc20Balance> = sql_query(query)
             .load::<DatabaseErc20Balance>(&mut connection)
+            .unwrap();
+
+        return results;
+    }
+
+    pub fn get_tokens(
+        self: &ERC20Balances,
+        db: &Database,
+        tokens: &Vec<(String, String)>,
+    ) -> Vec<DatabaseErc20Token> {
+        let mut connection = db.establish_connection();
+
+        let (token, chain) = tokens.first().unwrap();
+
+        let mut query = format!(
+            "SELECT * FROM erc20_tokens WHERE (token = '{}',chain = '{}')",
+            token, chain
+        );
+
+        for (i, (token, chain)) in tokens.into_iter().enumerate() {
+            if i > 0 {
+                let condition = format!(" OR (token = '{}', chain = '{}')", token, chain);
+
+                query.push_str(&condition)
+            }
+        }
+
+        let results: Vec<DatabaseErc20Token> = sql_query(query)
+            .load::<DatabaseErc20Token>(&mut connection)
             .unwrap();
 
         return results;

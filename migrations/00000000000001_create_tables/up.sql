@@ -132,19 +132,18 @@ CREATE INDEX IF NOT EXISTS erc20_tokens_by_address ON erc20_tokens (address);
 CREATE INDEX IF NOT EXISTS erc20_tokens_by_chain ON erc20_tokens (chain);
 
 CREATE TABLE erc20_balances (
-  balance_id TEXT NOT NULL,
   address TEXT NOT NULL, 
   balance TEXT NOT NULL, 
   chain TEXT NOT NULL, 
   token TEXT NOT NULL, 
-  CONSTRAINT erc20_balances_pkey PRIMARY KEY (balance_id)
+  PRIMARY KEY (address, token, chain)
 );
 
 CREATE INDEX IF NOT EXISTS erc20_balances_by_token ON erc20_balances (token);
 
 CREATE INDEX IF NOT EXISTS erc20_balances_by_address ON erc20_balances (address);
 
-CREATE INDEX IF NOT EXISTS erc20_balances_by_balance_id ON erc20_balances (address);
+CREATE INDEX IF NOT EXISTS erc20_balances_by_balance ON erc20_balances (balance DESC);
 
 CREATE TABLE receipts (
   contract_address TEXT,
