@@ -171,17 +171,20 @@ impl ERC20Balances {
         let new_balances = balances.values();
 
         let mut query =
-            String::from("INSERT INTO erc20_balances (address, balance, chain, token) VALUES ");
+            String::from("INSERT INTO erc20_balances (address, balance, chain, token) VALUES");
 
         for balance in new_balances {
             let value = format!(
-                " ('{}', '{}', '{}', '{}')",
+                " ('{}', '{}', '{}', '{}'),",
                 balance.address, balance.balance, balance.chain, balance.token
             );
             query.push_str(&value);
         }
 
-        let conflict = "ON CONFLICT (address, token, chain) DO UPDATE";
+        // Remove the last comma of the value list.
+        query.pop();
+
+        let conflict = " ON CONFLICT (address, token, chain) DO UPDATE";
         query.push_str(conflict);
 
         println!("{}", query);
