@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(10)
+            .limit(50000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -198,11 +198,9 @@ impl ERC20Balances {
         // Remove the last comma of the value list.
         query.pop();
 
-        println!("{}", query);
-
         sql_query(query).execute(&mut connection).unwrap();
 
-        /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+        /*    diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
         .values(transfers)
         .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
         .do_update()
@@ -224,14 +222,14 @@ impl ERC20Balances {
 
         let (first_address, first_token, first_chain) = balances.first().unwrap();
         let mut query = format!(
-            "SELECT * FROM erc20_balances WHERE address = '{}' AND token = '{}' AND chain = '{}'",
+            "SELECT * FROM erc20_balances WHERE (address = '{}' AND token = '{}' AND chain = '{}')",
             first_address, first_token, first_chain
         );
 
         for (i, (address, token, chain)) in balances.into_iter().enumerate() {
             if i > 0 {
                 let condition = format!(
-                    " OR address = '{}' AND token = '{}' AND chain = '{}'",
+                    " OR (address = '{}' AND token = '{}' AND chain = '{}')",
                     address, token, chain
                 );
                 query.push_str(&condition)
