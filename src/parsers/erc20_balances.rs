@@ -11,14 +11,14 @@ use crate::{
     utils::format_address,
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error};
+use diesel::{prelude::*, result::Error, sql_query};
 use ethers::types::{H160, I256};
 use field_count::FieldCount;
 use jsonrpsee::tracing::info;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
+#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
 #[diesel(table_name = erc20_balances)]
 pub struct DatabaseErc20Balance {
     pub address: String,
@@ -41,7 +41,7 @@ impl ERC20Balances {
                     .is_null()
                     .or(erc20_transfers::erc20_balances_parsed.eq(false)),
             )
-            .limit(50000)
+            .limit(5000)
             .load::<DatabaseErc20Transfer>(&mut connection);
 
         match transfers {
@@ -55,11 +55,12 @@ impl ERC20Balances {
 
         let zero_address = format_address(H160::zero());
 
-        let senders: Vec<(String, String, String)> = transfers
+        let senders: Vec<String> = transfers
             .into_iter()
             .filter(|transfer| transfer.from_address != zero_address)
             .map(|transfer| {
-                (
+                format!(
+                    "{}-{}-{}",
                     transfer.token.clone(),
                     transfer.from_address.clone(),
                     transfer.chain.clone(),
@@ -67,11 +68,12 @@ impl ERC20Balances {
             })
             .collect();
 
-        let receivers: Vec<(String, String, String)> = transfers
+        let receivers: Vec<String> = transfers
             .into_iter()
             .filter(|transfer| transfer.to_address != zero_address)
             .map(|transfer| {
-                (
+                format!(
+                    "{}-{}-{}",
                     transfer.token.clone(),
                     transfer.to_address.clone(),
                     transfer.chain.clone(),
@@ -82,10 +84,41 @@ impl ERC20Balances {
         info!(
             "ERC20Tokens: updating balances for {} senders and {} receivers",
             senders.len(),
-            receivers.len()
+            receivers.len(),
+        );
+
+        let mut unique_balances: HashSet<String> = HashSet::new();
+
+        for balance_id in senders {
+            unique_balances.insert(balance_id);
+        }
+
+        for balance_id in receivers {
+            unique_balances.insert(balance_id);
+        }
+
+        let balances_ids: Vec<String> = unique_balances.into_iter().collect();
+
+        let stored_balances = self.get_current_balances(db, &balances_ids);
+
+        info!(
+            "ERC20Tokens: fetched {} balances to update",
+            stored_balances.len()
         );
 
         let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
+
+        for balance in stored_balances {
+            balances.insert(
+                format!(
+                    "{}-{}-{}",
+                    balance.token.clone(),
+                    balance.address.clone(),
+                    balance.chain.clone(),
+                ),
+                balance,
+            );
+        }
 
         for transfer in transfers {
             let token = transfer.token.clone();
@@ -95,9 +128,14 @@ impl ERC20Balances {
             let amount = I256::from_dec_str(&transfer.value).unwrap();
 
             if sender != format_address(H160::zero()) {
-                let sender_id = format!("{}-{}-{}", transfer.token, sender, transfer.chain);
+                let id = format!(
+                    "{}-{}-{}",
+                    transfer.token.clone(),
+                    sender.clone(),
+                    transfer.chain.clone(),
+                );
 
-                let stored_balance = balances.get(&sender_id);
+                let stored_balance = balances.get(&id);
 
                 let mut sender_balance: DatabaseErc20Balance;
 
@@ -118,21 +156,26 @@ impl ERC20Balances {
 
                 sender_balance.balance = new_balance.to_string();
 
-                balances.insert(sender_id, sender_balance);
+                balances.insert(id, sender_balance);
             }
 
             let receiver = transfer.to_address.clone();
 
             if receiver != format_address(H160::zero()) {
-                let receiver_id = format!("{}-{}-{}", transfer.token, receiver, transfer.chain);
+                let id = format!(
+                    "{}-{}-{}",
+                    transfer.token.clone(),
+                    receiver.clone(),
+                    transfer.chain.clone(),
+                );
 
-                let stored_balance = balances.get(&receiver_id);
+                let stored_balance = balances.get(&id);
 
                 let mut receiver_balance: DatabaseErc20Balance;
 
                 if stored_balance.is_none() {
                     receiver_balance = DatabaseErc20Balance {
-                        address: sender.clone(),
+                        address: receiver.clone(),
                         balance: "0".to_string(),
                         chain: transfer.chain.clone(),
                         token: token.clone(),
@@ -147,65 +190,74 @@ impl ERC20Balances {
 
                 receiver_balance.balance = new_balance.to_string();
 
-                balances.insert(receiver_id, receiver_balance);
+                balances.insert(id, receiver_balance);
             }
         }
 
-        /* diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-        .values(transfers)
-        .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-        .do_update()
-        .set(erc20_transfers::erc20_balances_parsed.eq(true))
-        .execute(&mut connection)
-        .expect("Unable to update parsed erc20 balances into database"); */
+        let new_balances = balances.values();
+
+        let mut query = String::from(
+            "UPSERT INTO erc20_balances (balance_id, address, balance, chain, token) VALUES",
+        );
+
+        for balance in new_balances {
+            let value = format!(
+                " ('{}', '{}', '{}', '{}', '{}'),",
+                format!(
+                    "{}-{}-{}",
+                    balance.token.clone(),
+                    balance.address.clone(),
+                    balance.chain.clone()
+                ),
+                balance.address,
+                balance.balance,
+                balance.chain,
+                balance.token
+            );
+            query.push_str(&value);
+        }
+
+        // Remove the last comma of the value list.
+        query.pop();
+
+        sql_query(query).execute(&mut connection).unwrap();
+
+        diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+            .values(transfers)
+            .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+            .do_update()
+            .set(erc20_transfers::erc20_balances_parsed.eq(true))
+            .execute(&mut connection)
+            .expect("Unable to update parsed erc20 balances into database");
 
         info!("Inserted {} balances", balances.len());
 
         Ok(())
     }
 
-    pub fn get_current_balance(
-        &self,
-        token: String,
-        address: String,
-        chain: String,
+    pub fn get_current_balances(
+        self: &ERC20Balances,
         db: &Database,
-    ) -> DatabaseErc20Balance {
+        balances: &Vec<String>,
+    ) -> Vec<DatabaseErc20Balance> {
         let mut connection = db.establish_connection();
 
-        let db_balance: Result<DatabaseErc20Balance, Error> = erc20_balances::table
-            .select(erc20_balances::all_columns)
-            .filter(erc20_balances::address.eq(address.clone()))
-            .first::<DatabaseErc20Balance>(&mut connection);
+        let mut query = format!(
+            "SELECT * FROM erc20_balances WHERE balance_id = '{}'",
+            balances.first().unwrap()
+        );
 
-        let balance = match db_balance {
-            Ok(db_balance) => db_balance,
-            Err(_) => DatabaseErc20Balance {
-                address: address.clone(),
-                balance: "0".to_string(),
-                chain: chain.clone(),
-                token: token.clone(),
-            },
-        };
+        for (i, balance_id) in balances.into_iter().enumerate() {
+            if i > 0 {
+                let condition = format!(" OR balance_id = '{}'", balance_id);
+                query.push_str(&condition)
+            }
+        }
 
-        return balance;
-    }
+        let results: Vec<DatabaseErc20Balance> = sql_query(query)
+            .load::<DatabaseErc20Balance>(&mut connection)
+            .unwrap();
 
-    pub fn store_balance(&self, balance: &DatabaseErc20Balance, db: &Database) -> Result<()> {
-        let mut connection = db.establish_connection();
-
-        diesel::insert_into(erc20_balances::dsl::erc20_balances)
-            .values(balance)
-            .on_conflict((
-                erc20_balances::address,
-                erc20_balances::token,
-                erc20_balances::chain,
-            ))
-            .do_update()
-            .set(erc20_balances::balance.eq(balance.balance.clone()))
-            .execute(&mut connection)
-            .expect("Unable to store erc20 balance");
-
-        Ok(())
+        return results;
     }
 }

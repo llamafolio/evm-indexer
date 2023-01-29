@@ -63,7 +63,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    erc20_balances (address, token, chain) {
+    erc20_balances (balance_id) {
+        balance_id -> Text,
         address -> Text,
         balance -> Text,
         chain -> Text,
