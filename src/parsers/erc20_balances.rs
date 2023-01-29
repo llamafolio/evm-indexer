@@ -10,7 +10,7 @@ use crate::{
 use anyhow::Result;
 use diesel::{prelude::*, result::Error, sql_query};
 use ethers::{
-    types::{H160, I256, U256},
+    types::{H160, U256},
     utils::format_units,
 };
 use field_count::FieldCount;
@@ -178,12 +178,7 @@ impl ERC20Balances {
                     sender_balance = stored_balance.unwrap().to_owned();
                 }
 
-                let amount_unparsed = I256::from_dec_str(&sender_balance.balance).unwrap();
-
-                let sender_balance_amount: f64 = format_units(amount_unparsed, decimals as usize)
-                    .unwrap()
-                    .parse()
-                    .unwrap();
+                let sender_balance_amount: f64 = sender_balance.balance.parse().unwrap();
 
                 sender_balance.balance = (sender_balance_amount - amount).to_string();
 
@@ -214,14 +209,7 @@ impl ERC20Balances {
                     receiver_balance = stored_balance.unwrap().to_owned();
                 }
 
-                println!("{}", receiver_balance.balance);
-
-                let amount_unparsed = I256::from_dec_str(&receiver_balance.balance).unwrap();
-
-                let receiver_balance_amount: f64 = format_units(amount_unparsed, decimals as usize)
-                    .unwrap()
-                    .parse()
-                    .unwrap();
+                let receiver_balance_amount: f64 = receiver_balance.balance.parse().unwrap();
 
                 receiver_balance.balance = (receiver_balance_amount + amount).to_string();
 
