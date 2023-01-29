@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     db::{
         db::Database,
-        schema::{erc20_balances, erc20_tokens, erc20_transfers},
+        schema::{erc20_balances, erc20_transfers},
     },
     parsers::erc20_tokens::ERC20Tokens,
     utils::format_address,
@@ -281,13 +281,31 @@ impl ERC20Balances {
                 .map(|token| token.unwrap())
                 .collect();
 
-            diesel::insert_into(erc20_tokens::dsl::erc20_tokens)
-                .values(&tokens)
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
-                .unwrap();
+            let tokens_amount = tokens.len();
 
-            info!("Inserted {} missing tokens data", tokens.len());
+            let mut query = String::from(
+                "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
+            );
+
+            for token in tokens {
+                let value = format!(
+                    " ('{}', '{}', '{}', '{}', '{}'),",
+                    token.address,
+                    token.chain,
+                    token.decimals.unwrap(),
+                    token.name.unwrap(),
+                    token.symbol.unwrap()
+                );
+                query.push_str(&value);
+            }
+
+            query.pop();
+
+            if tokens_amount > 0 {
+                sql_query(query).execute(&mut connection).unwrap();
+            }
+
+            info!("Inserted {} missing tokens data", tokens_amount);
         }
         Ok(())
     }
