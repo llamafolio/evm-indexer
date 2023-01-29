@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     db::{
-        db::Database,
+        db::{get_chunks, Database},
         schema::{erc20_balances, erc20_transfers},
     },
     parsers::erc20_tokens::ERC20Tokens,
@@ -158,7 +158,7 @@ impl ERC20Balances {
             };
 
             if retries > 5 {
-                retried_transfers_passed.push(transfer);
+                retried_transfers_passed.push(transfer.to_owned());
                 continue;
             }
 
@@ -252,7 +252,7 @@ impl ERC20Balances {
                 balances.insert(id, receiver_balance);
             }
 
-            parsed_transfers.push(transfer);
+            parsed_transfers.push(transfer.to_owned());
         }
 
         let new_balances = balances.values();
@@ -277,19 +277,26 @@ impl ERC20Balances {
             sql_query(query).execute(&mut connection).unwrap();
         }
 
-        let mut total_transfers_parsed: Vec<&DatabaseErc20Transfer> = Vec::new();
+        let mut total_transfers_parsed: Vec<DatabaseErc20Transfer> = Vec::new();
 
         total_transfers_parsed.append(&mut parsed_transfers);
         total_transfers_parsed.append(&mut retried_transfers_passed);
 
         if total_transfers_parsed.len() > 0 {
-            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                .values(total_transfers_parsed)
-                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-                .do_update()
-                .set(erc20_transfers::erc20_balances_parsed.eq(true))
-                .execute(&mut connection)
-                .expect("Unable to update parsed erc20 balances into database");
+            let chunks = get_chunks(
+                total_transfers_parsed.len(),
+                DatabaseErc20Transfer::field_count(),
+            );
+
+            for (start, end) in chunks {
+                diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
+                    .values(&total_transfers_parsed[start..end])
+                    .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
+                    .do_update()
+                    .set(erc20_transfers::erc20_balances_parsed.eq(true))
+                    .execute(&mut connection)
+                    .expect("Unable to update parsed erc20 balances into database");
+            }
         }
 
         info!(
