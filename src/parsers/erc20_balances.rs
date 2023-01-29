@@ -288,13 +288,23 @@ impl ERC20Balances {
             );
 
             for token in tokens {
+                let name = match token.name {
+                    Some(name) => format!("'{}'", name),
+                    None => String::from("NULL"),
+                };
+
+                let symbol = match token.symbol {
+                    Some(symbol) => format!("'{}'", symbol),
+                    None => String::from("NULL"),
+                };
+
                 let value = format!(
-                    " ('{}', '{}', '{}', '{}', '{}'),",
+                    " ('{}', '{}', '{}', {}, {}),",
                     token.address,
                     token.chain,
                     token.decimals.unwrap(),
-                    token.name.unwrap(),
-                    token.symbol.unwrap()
+                    name,
+                    symbol
                 );
                 query.push_str(&value);
             }
