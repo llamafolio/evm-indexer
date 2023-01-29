@@ -95,11 +95,17 @@ impl ERC20Balances {
 
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
-        let mut balances: HashMap<String, DatabaseErc20Balance> = HashMap::new();
+        let mut balances: HashMap<(String, String, String), DatabaseErc20Balance> = HashMap::new();
 
         for balance in stored_balances {
-            let id = format!("{}-{}-{}", balance.token, balance.address, balance.chain);
-            balances.insert(id, balance);
+            balances.insert(
+                (
+                    balance.token.clone(),
+                    balance.address.clone(),
+                    balance.chain.clone(),
+                ),
+                balance,
+            );
         }
 
         info!("ERC20Tokens: fetched {} balances to update", balances.len(),);
@@ -112,9 +118,13 @@ impl ERC20Balances {
             let amount = I256::from_dec_str(&transfer.value).unwrap();
 
             if sender != format_address(H160::zero()) {
-                let sender_id = format!("{}-{}-{}", transfer.token, sender, transfer.chain);
+                let id = (
+                    transfer.token.clone(),
+                    sender.clone(),
+                    transfer.chain.clone(),
+                );
 
-                let stored_balance = balances.get(&sender_id);
+                let stored_balance = balances.get(&id);
 
                 let mut sender_balance: DatabaseErc20Balance;
 
@@ -135,21 +145,25 @@ impl ERC20Balances {
 
                 sender_balance.balance = new_balance.to_string();
 
-                balances.insert(sender_id, sender_balance);
+                balances.insert(id, sender_balance);
             }
 
             let receiver = transfer.to_address.clone();
 
             if receiver != format_address(H160::zero()) {
-                let receiver_id = format!("{}-{}-{}", transfer.token, receiver, transfer.chain);
+                let id = (
+                    transfer.token.clone(),
+                    receiver.clone(),
+                    transfer.chain.clone(),
+                );
 
-                let stored_balance = balances.get(&receiver_id);
+                let stored_balance = balances.get(&id);
 
                 let mut receiver_balance: DatabaseErc20Balance;
 
                 if stored_balance.is_none() {
                     receiver_balance = DatabaseErc20Balance {
-                        address: sender.clone(),
+                        address: receiver.clone(),
                         balance: "0".to_string(),
                         chain: transfer.chain.clone(),
                         token: token.clone(),
@@ -164,7 +178,7 @@ impl ERC20Balances {
 
                 receiver_balance.balance = new_balance.to_string();
 
-                balances.insert(receiver_id, receiver_balance);
+                balances.insert(id, receiver_balance);
             }
         }
 
