@@ -120,7 +120,10 @@ impl ERC20Tokens {
 
                 for token in tokens {
                     let name = match token.name {
-                        Some(name) => format!("'{}'", name),
+                        Some(name) => {
+                            let name_fixed: String = name.replace("'", "");
+                            format!("'{}'", name_fixed)
+                        }
                         None => String::from("NULL"),
                     };
 
@@ -178,17 +181,45 @@ impl ERC20Tokens {
             .map(|token| token.unwrap())
             .collect();
 
-        let chunks = get_chunks(db_tokens.len(), DatabaseErc20Token::field_count());
+        let mut query = String::from(
+            "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
+        );
 
-        for (start, end) in chunks {
-            diesel::insert_into(erc20_tokens::dsl::erc20_tokens)
-                .values(&db_tokens[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
-                .expect("Unable to store erc20 tokens into database");
+        let tokens_amount = db_tokens.len();
+
+        for token in db_tokens {
+            let name = match token.name {
+                Some(name) => {
+                    let name_fixed: String = name.replace("'", "");
+                    format!("'{}'", name_fixed)
+                }
+                None => String::from("NULL"),
+            };
+
+            let symbol = match token.symbol {
+                Some(symbol) => format!("'{}'", symbol),
+                None => String::from("NULL"),
+            };
+
+            let value = format!(
+                " ('{}', '{}', {}, {}, {}),",
+                token.address,
+                token.chain,
+                token.decimals.unwrap(),
+                name,
+                symbol
+            );
+
+            query.push_str(&value);
         }
 
-        info!("Inserted {} erc20 tokens to the database.", db_tokens.len());
+        query.pop();
+
+        if tokens_amount > 0 {
+            sql_query(query).execute(&mut connection).unwrap();
+        }
+
+        info!("Inserted {} erc20 tokens to the database.", tokens_amount);
 
         let transfers_chunks = get_chunks(transfers.len(), DatabaseErc20Transfer::field_count());
 

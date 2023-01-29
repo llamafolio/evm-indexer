@@ -335,7 +335,10 @@ impl ERC20Balances {
 
             for token in tokens {
                 let name = match token.name {
-                    Some(name) => format!("'{}'", name),
+                    Some(name) => {
+                        let name_fixed: String = name.replace("'", "");
+                        format!("'{}'", name_fixed)
+                    }
                     None => String::from("NULL"),
                 };
 

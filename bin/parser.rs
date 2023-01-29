@@ -62,6 +62,7 @@ async fn main() {
             async move {
                 let parser = ERC20Tokens {};
                 parser.parse_extenal(&db).await.unwrap();
+
                 loop {
                     let data = parser.fetch(&db).unwrap();
 
