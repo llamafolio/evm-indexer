@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    chains::chains::get_chain,
+    chains::chains::{get_chain, get_chains},
     db::{
         db::{get_chunks, Database},
         schema::{erc20_tokens, erc20_transfers},
@@ -18,6 +18,8 @@ use field_count::FieldCount;
 use futures::future::join_all;
 use itertools::Itertools;
 use log::info;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
@@ -29,6 +31,14 @@ pub struct DatabaseErc20Token {
     pub name: Option<String>,
     pub decimals: Option<i64>,
     pub symbol: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TokenListData {
+    pub symbol: String,
+    pub name: String,
+    pub address: String,
+    pub decimals: i64,
 }
 
 pub struct ERC20Tokens {}
@@ -60,6 +70,62 @@ impl ERC20Tokens {
             Ok(transfers) => Ok(transfers),
             Err(_) => Ok(Vec::new()),
         }
+    }
+
+    pub async fn parse_extenal(&self, db: &Database) -> Result<()> {
+        let chains = get_chains();
+
+        for (name, chain) in chains {
+            info!("ERC20Tokens: fetching extenal tokens for chain {}", name);
+
+            for url in chain.tokens_lists {
+                let client = Client::new();
+                let response = client.get(&**url).send().await;
+
+                let mut tokens = vec![];
+
+                match response {
+                    Ok(data) => match data.text().await {
+                        Ok(response) => {
+                            let tokens_list = serde_json::from_str::<Vec<TokenListData>>(&response);
+                            match tokens_list {
+                                Ok(tokens_list) => {
+                                    for token in tokens_list {
+                                        let db_token = DatabaseErc20Token {
+                                            address: token.address,
+                                            chain: name.clone(),
+                                            name: Some(token.name),
+                                            decimals: Some(token.decimals),
+                                            symbol: Some(token.symbol),
+                                        };
+
+                                        tokens.push(db_token);
+                                    }
+                                }
+                                Err(_) => continue,
+                            }
+                        }
+                        Err(_) => continue,
+                    },
+                    Err(_) => continue,
+                }
+
+                let mut connection = db.establish_connection();
+
+                diesel::insert_into(erc20_tokens::dsl::erc20_tokens)
+                    .values(&tokens)
+                    .on_conflict_do_nothing()
+                    .execute(&mut connection)
+                    .unwrap();
+
+                info!(
+                    "ERC20Tokens: inserted {} tokens for chain {}",
+                    tokens.len(),
+                    name
+                );
+            }
+        }
+        Ok(())
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
