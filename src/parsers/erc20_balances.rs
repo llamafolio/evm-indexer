@@ -232,14 +232,14 @@ impl ERC20Balances {
 
         let (first_address, first_token, first_chain) = balances.first().unwrap();
         let mut query = format!(
-            "SELECT * FROM erc20_balances WHERE balance_id = {}",
+            "SELECT * FROM erc20_balances WHERE balance_id = '{}'",
             format!("{}-{}-{}", first_address, first_token, first_chain)
         );
 
         for (i, (address, token, chain)) in balances.into_iter().enumerate() {
             if i > 0 {
                 let condition = format!(
-                    " OR balance_id = {}",
+                    " OR balance_id = '{}'",
                     format!("{}-{}-{}", address, token, chain)
                 );
                 query.push_str(&condition)
