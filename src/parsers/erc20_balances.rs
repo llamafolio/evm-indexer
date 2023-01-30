@@ -319,7 +319,7 @@ impl ERC20Balances {
         }
 
         info!(
-            "Inserted {} balances with {} transactions skiped",
+            "Inserted {} balances with {} transactions skipped",
             total_new_balances,
             retried_transfers_passed.len()
         );
