@@ -68,12 +68,12 @@ impl ERC20Transfers {
                     ethabi::EventParam {
                         name: "from".to_owned(),
                         kind: ParamType::Address,
-                        indexed: false,
+                        indexed: true,
                     },
                     ethabi::EventParam {
                         name: "to".to_owned(),
                         kind: ParamType::Address,
-                        indexed: false,
+                        indexed: true,
                     },
                     ethabi::EventParam {
                         name: "amount".to_owned(),
