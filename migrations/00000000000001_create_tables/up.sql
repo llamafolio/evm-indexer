@@ -108,6 +108,8 @@ CREATE TABLE erc20_transfers (
   PRIMARY KEY (hash, log_index)
 );
 
+CREATE INDEX IF NOT EXISTS erc20_transfers_by_token ON erc20_transfers (token);
+
 CREATE INDEX IF NOT EXISTS erc20_transfers_by_hash ON erc20_transfers (hash);
 
 CREATE INDEX IF NOT EXISTS erc20_transfers_by_sender ON erc20_transfers (from_address) STORING (to_address);
@@ -139,9 +141,9 @@ CREATE TABLE erc20_balances (
   PRIMARY KEY (address, token, chain)
 );
 
-CREATE INDEX IF NOT EXISTS erc20_balances_by_token ON erc20_balances (token);
+CREATE INDEX IF NOT EXISTS erc20_balances_by_token ON erc20_balances (token, chain);
 
-CREATE INDEX IF NOT EXISTS erc20_balances_by_address ON erc20_balances (address);
+CREATE INDEX IF NOT EXISTS erc20_balances_by_address ON erc20_balances (address, chain);
 
 CREATE INDEX IF NOT EXISTS erc20_balances_by_balance ON erc20_balances (balance DESC);
 
@@ -181,6 +183,8 @@ CREATE TABLE logs (
   topics TEXT[] NOT NULL, 
   CONSTRAINT logs_pkey PRIMARY KEY (hash, log_index)
 );
+
+CREATE INDEX IF NOT EXISTS logs_by_address ON logs (address, chain);
 
 CREATE INDEX IF NOT EXISTS logs_by_hash ON logs (hash);
 
