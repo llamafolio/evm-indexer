@@ -21,6 +21,8 @@ use redis::Commands;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
 
+pub const REDIS_KEY_PREFIX: &'static str = "BALANCE_PARSE_";
+
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
 #[diesel(table_name = erc20_balances)]
 pub struct DatabaseErc20Balance {
@@ -149,15 +151,19 @@ impl ERC20Balances {
 
             let sender = transfer.from_address.clone();
 
-            let redis_retries_key =
-                format!("BALANCE_PARSE-{}-{}", token.clone(), transfer.chain.clone());
+            let redis_retries_key = format!(
+                "{}_{}-{}",
+                REDIS_KEY_PREFIX,
+                token.clone(),
+                transfer.chain.clone()
+            );
 
             let retries = match redis_connection.get::<String, i64>(redis_retries_key.clone()) {
                 Ok(retries) => retries,
                 Err(_) => 0,
             };
 
-            if retries > 5 {
+            if retries > 10 {
                 retried_transfers_passed.push(transfer.to_owned());
                 continue;
             }
