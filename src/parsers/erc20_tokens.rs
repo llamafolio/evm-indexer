@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     chains::chains::{get_chain, get_chains},
@@ -16,7 +16,6 @@ use ethers::{
 };
 use field_count::FieldCount;
 use futures::future::join_all;
-use itertools::Itertools;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -178,7 +177,8 @@ impl ERC20Tokens {
         let unique_tokens: Vec<(String, String)> = transfers
             .into_iter()
             .map(|token| (token.token.clone(), token.chain.clone()))
-            .unique()
+            .collect::<HashSet<(String, String)>>()
+            .into_iter()
             .collect();
 
         let mut tokens_data = vec![];

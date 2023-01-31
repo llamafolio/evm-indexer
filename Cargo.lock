@@ -1386,7 +1386,6 @@ dependencies = [
  "field_count",
  "futures",
  "hex",
- "itertools",
  "jsonrpsee",
  "jsonrpsee-http-client",
  "log",
