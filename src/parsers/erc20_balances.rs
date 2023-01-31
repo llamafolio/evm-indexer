@@ -445,10 +445,14 @@ impl ERC20Balances {
         query.pop();
         query.push_str(")");
 
-        let results: Vec<DatabaseErc20Token> = sql_query(query)
-            .load::<DatabaseErc20Token>(&mut connection)
-            .unwrap();
+        if tokens.len() > 0 {
+            let results: Vec<DatabaseErc20Token> = sql_query(query)
+                .load::<DatabaseErc20Token>(&mut connection)
+                .unwrap();
 
-        return results;
+            return results;
+        }
+
+        return Vec::new();
     }
 }
