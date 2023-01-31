@@ -335,8 +335,7 @@ impl ERC20Balances {
 
             let mut works = vec![];
             for (token, chain) in missing_tokens {
-                let id = format!("{}-{}", token, chain);
-                works.push(erc20_tokens.get_token_metadata(id))
+                works.push(erc20_tokens.get_token_metadata((token, chain)))
             }
 
             let result = join_all(works).await;
