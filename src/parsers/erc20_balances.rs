@@ -298,6 +298,8 @@ impl ERC20Balances {
 
         let mut total_transfers_parsed: Vec<DatabaseErc20Transfer> = Vec::new();
 
+        let transactions_skipped = retried_transfers_passed.len();
+
         total_transfers_parsed.append(&mut parsed_transfers);
         total_transfers_parsed.append(&mut retried_transfers_passed);
 
@@ -320,8 +322,7 @@ impl ERC20Balances {
 
         info!(
             "Inserted {} balances with {} transactions skipped",
-            total_new_balances,
-            retried_transfers_passed.len()
+            total_new_balances, transactions_skipped
         );
 
         if missing_tokens.len() > 0 {
