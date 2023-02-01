@@ -17,11 +17,8 @@ use ethers::{
 use field_count::FieldCount;
 use futures::future::join_all;
 use jsonrpsee::tracing::info;
-use redis::Commands;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
-
-pub const REDIS_KEY_PREFIX: &'static str = "BALANCE_PARSE_";
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
 #[diesel(table_name = erc20_balances)]
@@ -57,7 +54,6 @@ impl ERC20Balances {
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
-        let mut redis_connection = db.redis.get_connection().unwrap();
 
         let zero_address = format_address(H160::zero());
 
@@ -142,8 +138,6 @@ impl ERC20Balances {
 
         let mut parsed_transfers = vec![];
 
-        let mut retried_transfers_passed = vec![];
-
         let mut missing_tokens: HashSet<(String, String)> = HashSet::new();
 
         for transfer in transfers {
@@ -151,45 +145,16 @@ impl ERC20Balances {
 
             let sender = transfer.from_address.clone();
 
-            let redis_retries_key = format!(
-                "{}_{}-{}",
-                REDIS_KEY_PREFIX,
-                token.clone(),
-                transfer.chain.clone()
-            );
-
-            let retries = match redis_connection.get::<String, i64>(redis_retries_key.clone()) {
-                Ok(retries) => retries,
-                Err(_) => 0,
-            };
-
-            if retries > 10 {
-                retried_transfers_passed.push(transfer.to_owned());
-                continue;
-            }
-
             let decimals = match tokens_map.get(&(transfer.token.clone(), transfer.chain.clone())) {
                 Some(token_data) => match token_data.decimals {
                     Some(decimals) => decimals,
                     None => {
                         missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
-                        let new_retries = retries + 1;
-
-                        let _: () = redis_connection
-                            .set(redis_retries_key.clone(), new_retries)
-                            .unwrap();
-
                         continue;
                     }
                 },
                 None => {
                     missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
-
-                    let new_retries = retries + 1;
-
-                    let _: () = redis_connection
-                        .set(redis_retries_key.clone(), new_retries)
-                        .unwrap();
 
                     continue;
                 }
@@ -200,25 +165,9 @@ impl ERC20Balances {
             let amount: f64 = match format_units(amount_value, decimals as usize) {
                 Ok(amount) => match amount.parse::<f64>() {
                     Ok(amount) => amount,
-                    Err(_) => {
-                        let new_retries = retries + 1;
-
-                        let _: () = redis_connection
-                            .set(redis_retries_key.clone(), new_retries)
-                            .unwrap();
-
-                        continue;
-                    }
+                    Err(_) => continue,
                 },
-                Err(_) => {
-                    let new_retries = retries + 1;
-
-                    let _: () = redis_connection
-                        .set(redis_retries_key.clone(), new_retries)
-                        .unwrap();
-
-                    continue;
-                }
+                Err(_) => continue,
             };
 
             if sender != format_address(H160::zero()) {
@@ -302,22 +251,12 @@ impl ERC20Balances {
             sql_query(query).execute(&mut connection).unwrap();
         }
 
-        let mut total_transfers_parsed: Vec<DatabaseErc20Transfer> = Vec::new();
-
-        let transactions_skipped = retried_transfers_passed.len();
-
-        total_transfers_parsed.append(&mut parsed_transfers);
-        total_transfers_parsed.append(&mut retried_transfers_passed);
-
-        if total_transfers_parsed.len() > 0 {
-            let chunks = get_chunks(
-                total_transfers_parsed.len(),
-                DatabaseErc20Transfer::field_count(),
-            );
+        if parsed_transfers.len() > 0 {
+            let chunks = get_chunks(parsed_transfers.len(), DatabaseErc20Transfer::field_count());
 
             for (start, end) in chunks {
                 diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                    .values(&total_transfers_parsed[start..end])
+                    .values(&parsed_transfers[start..end])
                     .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
                     .do_update()
                     .set(erc20_transfers::erc20_balances_parsed.eq(true))
@@ -326,10 +265,7 @@ impl ERC20Balances {
             }
         }
 
-        info!(
-            "Inserted {} balances with {} transactions skipped",
-            total_new_balances, transactions_skipped
-        );
+        info!("Inserted {} balances", total_new_balances);
 
         if missing_tokens.len() > 0 {
             let erc20_tokens = ERC20Tokens {};
