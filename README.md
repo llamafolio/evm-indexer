@@ -88,5 +88,5 @@ The repository contains [Hasura Cloud](https://hasura.io/cloud/) docker compose 
 2. Run the docker compose file
 
 ```
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose up -d
 ```
