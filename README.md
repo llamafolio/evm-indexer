@@ -79,7 +79,7 @@ docker build . -t indexer
 
 `TODO: programs and flags.`
 
-## Use it together with Hasura
+## Deploy a GraphQL API with Hasura.
 
 The repository contains [Hasura Cloud](https://hasura.io/cloud/) docker compose file to deploy it together with the indexer.
 
