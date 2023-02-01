@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use crate::db::{
+use crate::{db::{
     db::{get_chunks, Database},
     models::models::DatabaseLog,
-    schema::{nft_transfers, logs},
-};
+    schema::{nft_transfers, nft_token_uris, logs},
+}, parsers::nft_token_uri::DatabaseNftTokenUri};
 use anyhow::Result;
 use bigdecimal::{BigDecimal, FromPrimitive};
 use diesel::{prelude::*, result::Error};
@@ -348,7 +348,7 @@ impl NftTransfers {
                                     chain: log.chain.to_owned(),
                                     log_index: log.log_index,
                                     transfer_index: i as i64,
-                                    transfer_type: "ERC1155TransferSingle".to_owned(),
+                                    transfer_type: "ERC1155TransferBatch".to_owned(),
                                     token: log.address.clone(),
                                     from_address: from_address.clone(),
                                     to_address: to_address.clone(),
@@ -367,6 +367,19 @@ impl NftTransfers {
             }
         }
 
+        // Insert into nft_token_uris
+        let mut db_nft_token_uris = Vec::new();
+
+        for nft_transfer in db_nft_transfers.clone() {
+            db_nft_token_uris.push(DatabaseNftTokenUri {
+                token: nft_transfer.token,
+                token_id: nft_transfer.token_id,
+                chain: nft_transfer.chain,
+                token_uri: None,
+                is_parsed: false,
+            })
+        }
+
         let mut connection = db.establish_connection();
 
         let chunks = get_chunks(
@@ -377,6 +390,19 @@ impl NftTransfers {
         for (start, end) in chunks {
             diesel::insert_into(nft_transfers::dsl::nft_transfers)
                 .values(&db_nft_transfers[start..end])
+                .on_conflict_do_nothing()
+                .execute(&mut connection)
+                .expect("Unable to store NFT transfers into database");
+        }
+
+        let token_uri_chunks = get_chunks(
+            db_nft_token_uris.len(),
+            DatabaseNftTokenUri::field_count(),
+        );
+
+        for (start, end) in token_uri_chunks {
+            diesel::insert_into(nft_token_uris::dsl::nft_token_uris)
+                .values(&db_nft_token_uris[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
                 .expect("Unable to store NFT transfers into database");

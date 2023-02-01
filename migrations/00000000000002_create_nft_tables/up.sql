@@ -64,5 +64,6 @@ CREATE TABLE nft_token_uris (
   token_id DECIMAL NOT NULL,
   chain TEXT NOT NULL,
   token_uri TEXT,
+  is_parsed BOOLEAN NOT NULL,
   PRIMARY KEY (token, token_id, chain)
 )

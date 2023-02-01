@@ -132,6 +132,7 @@ diesel::table! {
         token_id -> Numeric,
         chain -> Text,
         token_uri -> Nullable<Text>,
+        is_parsed -> Bool,
     }
 }
 
