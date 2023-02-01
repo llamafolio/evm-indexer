@@ -91,7 +91,7 @@ impl ERC20Balances {
         let tokens_data = self.get_tokens(db, &tokens);
 
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
+            "ERC20Balances: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
             senders.len(),
             receivers.len(),
             tokens.len(),
@@ -119,7 +119,7 @@ impl ERC20Balances {
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
         info!(
-            "ERC20Tokens: fetched {} balances to update",
+            "ERC20Balances: fetched {} balances to update",
             stored_balances.len()
         );
 
@@ -265,13 +265,13 @@ impl ERC20Balances {
             }
         }
 
-        info!("Inserted {} balances", total_new_balances);
+        info!("ERC20Balances: Inserted {} balances", total_new_balances);
 
         if missing_tokens.len() > 0 {
             let erc20_tokens = ERC20Tokens {};
 
             info!(
-                "Fetching data for {} missing tokens data",
+                "ERC20Balances: Fetching data for {} missing tokens data",
                 missing_tokens.len()
             );
 
@@ -339,7 +339,10 @@ impl ERC20Balances {
                 sql_query(query).execute(&mut connection).unwrap();
             }
 
-            info!("Inserted {} missing tokens data", tokens_amount);
+            info!(
+                "ERC20Balances: Inserted {} missing tokens data",
+                tokens_amount
+            );
         }
         Ok(())
     }
