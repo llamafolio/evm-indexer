@@ -275,74 +275,83 @@ impl ERC20Balances {
                 missing_tokens.len()
             );
 
-            let mut works = vec![];
-            for (token, chain) in missing_tokens {
-                works.push(erc20_tokens.get_token_metadata((token, chain)))
-            }
-
-            let result = join_all(works).await;
-
-            let tokens: Vec<DatabaseErc20Token> = result
+            let missing_tokens_vector = missing_tokens
                 .into_iter()
-                .filter(|token| token.is_some())
-                .map(|token| token.unwrap())
-                .collect();
+                .collect::<Vec<(String, String)>>();
 
-            let tokens_amount = tokens.len();
+            let chunks = missing_tokens_vector.chunks(200);
 
-            let mut query = String::from(
-                "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
-            );
+            for chunk in chunks {
+                let mut works = vec![];
+                for (token, chain) in chunk {
+                    works
+                        .push(erc20_tokens.get_token_metadata((token.to_owned(), chain.to_owned())))
+                }
 
-            for token in tokens {
-                let name = match token.name {
-                    Some(name) => {
-                        let name_fixed: String = name.replace("'", "");
+                let result = join_all(works).await;
 
-                        let name_bytes = name_fixed.as_bytes();
+                let tokens: Vec<DatabaseErc20Token> = result
+                    .into_iter()
+                    .filter(|token| token.is_some())
+                    .map(|token| token.unwrap())
+                    .collect();
 
-                        let name_parsed = String::from_utf8_lossy(name_bytes);
+                let tokens_amount = tokens.len();
 
-                        format!("'{}'", name_parsed)
-                    }
-                    None => String::from("NULL"),
-                };
-
-                let symbol = match token.symbol {
-                    Some(symbol) => {
-                        let symbol_fixed: String = symbol.replace("'", "");
-
-                        let symbol_bytes = symbol_fixed.as_bytes();
-
-                        let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
-
-                        format!("'{}'", symbol_parsed)
-                    }
-                    None => String::from("NULL"),
-                };
-
-                let value = format!(
-                    " ('{}', '{}', '{}', {}, {}),",
-                    token.address,
-                    token.chain,
-                    token.decimals.unwrap(),
-                    name,
-                    symbol
+                let mut query = String::from(
+                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
                 );
 
-                query.push_str(&value);
+                for token in tokens {
+                    let name = match token.name {
+                        Some(name) => {
+                            let name_fixed: String = name.replace("'", "");
+
+                            let name_bytes = name_fixed.as_bytes();
+
+                            let name_parsed = String::from_utf8_lossy(name_bytes);
+
+                            format!("'{}'", name_parsed)
+                        }
+                        None => String::from("NULL"),
+                    };
+
+                    let symbol = match token.symbol {
+                        Some(symbol) => {
+                            let symbol_fixed: String = symbol.replace("'", "");
+
+                            let symbol_bytes = symbol_fixed.as_bytes();
+
+                            let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
+
+                            format!("'{}'", symbol_parsed)
+                        }
+                        None => String::from("NULL"),
+                    };
+
+                    let value = format!(
+                        " ('{}', '{}', '{}', {}, {}),",
+                        token.address,
+                        token.chain,
+                        token.decimals.unwrap(),
+                        name,
+                        symbol
+                    );
+
+                    query.push_str(&value);
+                }
+
+                query.pop();
+
+                if tokens_amount > 0 {
+                    sql_query(query).execute(&mut connection).unwrap();
+                }
+
+                info!(
+                    "ERC20Balances: Inserted {} missing tokens data",
+                    tokens_amount
+                );
             }
-
-            query.pop();
-
-            if tokens_amount > 0 {
-                sql_query(query).execute(&mut connection).unwrap();
-            }
-
-            info!(
-                "ERC20Balances: Inserted {} missing tokens data",
-                tokens_amount
-            );
         }
         Ok(())
     }
