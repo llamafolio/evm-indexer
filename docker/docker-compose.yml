@@ -15,6 +15,7 @@ services:
     image: hasura/graphql-engine:latest
     container_name: indexer-hasura
     restart: always
+    env_file: ".env"
     ports:
       - "8080:8080"
     depends_on:
@@ -22,5 +23,5 @@ services:
     environment:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:${HASURA_DB_PASSWORD}@postgres:5432/postgres
-      HASURA_GRAPHQL_ADMIN_SECRET: $"{HASURA_CONSOLE_SECRET}"
-      HASURA_GRAPHQL_SERVER_PORT: "8081"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_CONSOLE_SECRET}
+      HASURA_GRAPHQL_SERVER_PORT: ${HASURA_PORT:-8080}
