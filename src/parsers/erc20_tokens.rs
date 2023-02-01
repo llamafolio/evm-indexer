@@ -247,7 +247,10 @@ impl ERC20Tokens {
                 .expect("Unable to store erc20 tokens data");
         }
 
-        info!("Inserted {} erc20 tokens to the database.", tokens_amount);
+        info!(
+            "ERC20Tokens: Inserted {} erc20 tokens to the database.",
+            tokens_amount
+        );
 
         let transfers_chunks = get_chunks(transfers.len(), DatabaseErc20Transfer::field_count());
 
