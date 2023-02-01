@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use crate::db::{
     db::{get_chunks, Database},
     models::models::DatabaseLog,
     schema::{nft_transfers, logs},
 };
 use anyhow::Result;
+use bigdecimal::{BigDecimal, FromPrimitive};
 use diesel::{prelude::*, result::Error};
 use ethabi::{ethereum_types::H256, ParamType};
 use ethers::types::Bytes;
@@ -18,10 +21,13 @@ pub struct DatabaseNftTransfer {
     pub nft_tokens_parsed: bool,
     pub from_address: String,
     pub to_address: String,
+    pub token: String,
+    pub token_id: BigDecimal,
+    pub value: BigDecimal,
     pub hash: String,
     pub log_index: i64,
-    pub token: String,
-    pub value: String,
+    pub transfer_index: i64,
+    pub transfer_type: String,
 }
 
 pub struct NftTransfers {}
@@ -47,22 +53,18 @@ impl NftTransfers {
     }
 
     pub async fn parse(&self, db: &Database, logs: &Vec<DatabaseLog>) -> Result<()> {
-        let mut db_erc20_transfers = Vec::new();
+        let mut db_nft_transfers = Vec::new();
 
         let mut db_parsed_logs = Vec::new();
 
         for log in logs {
             let mut parsed_log = log.to_owned();
 
-            parsed_log.erc20_transfers_parsed = true;
+            parsed_log.nft_transfers_parsed = true;
 
             db_parsed_logs.push(parsed_log);
 
-            if log.topics.len() != 3 {
-                continue;
-            }
-
-            let event = ethabi::Event {
+            let event721 = ethabi::Event {
                 name: "Transfer".to_owned(),
                 inputs: vec![
                     ethabi::EventParam {
@@ -76,8 +78,72 @@ impl NftTransfers {
                         indexed: true,
                     },
                     ethabi::EventParam {
-                        name: "amount".to_owned(),
+                        name: "tokenId".to_owned(),
                         kind: ParamType::Uint(256),
+                        indexed: true,
+                    },
+                ],
+                anonymous: false,
+            };
+        
+            let event1155single = ethabi::Event {
+                name: "TransferSingle".to_owned(),
+                inputs: vec![
+                    ethabi::EventParam {
+                        name: "operator".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "from".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "to".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "id".to_owned(),
+                        kind: ParamType::Uint(256),
+                        indexed: false,
+                    },
+                    ethabi::EventParam {
+                        name: "value".to_owned(),
+                        kind: ParamType::Uint(256),
+                        indexed: false,
+                    },
+                ],
+                anonymous: false,
+            };
+        
+            let event1155batch = ethabi::Event {
+                name: "TransferBatch".to_owned(),
+                inputs: vec![
+                    ethabi::EventParam {
+                        name: "operator".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "from".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "to".to_owned(),
+                        kind: ParamType::Address,
+                        indexed: true,
+                    },
+                    ethabi::EventParam {
+                        name: "ids".to_owned(),
+                        kind: ParamType::Array(Box::new(ParamType::Uint(256))),
+                        indexed: false,
+                    },
+                    ethabi::EventParam {
+                        name: "values".to_owned(),
+                        kind: ParamType::Array(Box::new(ParamType::Uint(256))),
                         indexed: false,
                     },
                 ],
@@ -86,23 +152,31 @@ impl NftTransfers {
 
             let topic_1 = log.topics[0].clone().unwrap();
 
-            // Check the first topic against keccak256(Transfer(address,address,uint256))
-            if topic_1 != format!("{:?}", event.signature()) {
-                continue;
-            }
+            // Check the first topic against
+            if topic_1 == format!("{:?}", event721.signature()) && log.topics.len() == 4 {
+                // keccak256(Transfer(address,address,uint256))
 
-            let topic_2 = log.topics[1].clone().unwrap();
-            let topic_3 = log.topics[2].clone().unwrap();
+                let topic_2 = log.topics[1].clone().unwrap();
+                let topic_3 = log.topics[2].clone().unwrap();
+                let topic_4 = log.topics[3].clone().unwrap();
 
-            let topic_2_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_2).unwrap();
+                let topic_2_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_2).unwrap();
+                let topic_3_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_3).unwrap();
+                let topic_4_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_4).unwrap();
 
-            let topic_3_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_3).unwrap();
+                let from_address: String =
+                    match ethabi::decode(&[ParamType::Address], topic_2_hash.as_bytes()) {
+                        Ok(address) => {
+                            if address.len() == 0 {
+                                continue;
+                            } else {
+                                format!("{:?}", address[0].clone().into_address().unwrap())
+                            }
+                        }
+                        Err(_) => continue,
+                    };
 
-            let data_bytes: Bytes =
-                array_bytes::hex_n_into::<String, Bytes, 32>(log.data.clone()).unwrap();
-
-            let from_address: String =
-                match ethabi::decode(&[ParamType::Address], topic_2_hash.as_bytes()) {
+                let to_address = match ethabi::decode(&[ParamType::Address], topic_3_hash.as_bytes()) {
                     Ok(address) => {
                         if address.len() == 0 {
                             continue;
@@ -113,61 +187,204 @@ impl NftTransfers {
                     Err(_) => continue,
                 };
 
-            let to_address = match ethabi::decode(&[ParamType::Address], topic_3_hash.as_bytes()) {
-                Ok(address) => {
-                    if address.len() == 0 {
-                        continue;
-                    } else {
-                        format!("{:?}", address[0].clone().into_address().unwrap())
+                let token_id = match ethabi::decode(&[ParamType::Uint(256)], topic_4_hash.as_bytes()) {
+                    Ok(id) => {
+                        if id.len() == 0 {
+                            continue;
+                        } else {
+                            BigDecimal::from_str(&format!("{:?}", id[0].clone().into_uint().unwrap())).unwrap()
+                        }
                     }
-                }
-                Err(_) => continue,
-            };
+                    Err(_) => continue,
+                };
 
-            let value = match ethabi::decode(&[ParamType::Uint(256)], &data_bytes.0[..]) {
-                Ok(value) => {
-                    if value.len() == 0 {
-                        continue;
-                    } else {
-                        format!("{:?}", value[0].clone().into_uint().unwrap())
+                let db_transfers = DatabaseNftTransfer {
+                    hash: log.hash.clone(),
+                    chain: log.chain.to_owned(),
+                    log_index: log.log_index,
+                    transfer_index: 0,
+                    transfer_type: "ERC721Transfer".to_owned(),
+                    token: log.address.clone(),
+                    from_address,
+                    to_address,
+                    token_id,
+                    value: BigDecimal::from_i64(1).unwrap(),
+                    nft_tokens_parsed: false,
+                    nft_balances_parsed: false,
+                };
+    
+                db_nft_transfers.push(db_transfers)
+            } else if topic_1 == format!("{:?}", event1155single.signature()) && log.topics.len() == 4 {
+                // keccak256(TransferSingle(address,address,address,uint256,uint256))
+
+                let topic_3 = log.topics[2].clone().unwrap();
+                let topic_4 = log.topics[3].clone().unwrap();
+
+                let topic_3_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_3).unwrap();
+                let topic_4_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_4).unwrap();
+
+                let data_bytes: Bytes =
+                    array_bytes::hex_n_into::<String, Bytes, 32>(log.data.clone()).unwrap();
+
+                let from_address: String =
+                    match ethabi::decode(&[ParamType::Address], topic_3_hash.as_bytes()) {
+                        Ok(address) => {
+                            if address.len() == 0 {
+                                continue;
+                            } else {
+                                format!("{:?}", address[0].clone().into_address().unwrap())
+                            }
+                        }
+                        Err(_) => continue,
+                    };
+    
+                let to_address = match ethabi::decode(&[ParamType::Address], topic_4_hash.as_bytes()) {
+                    Ok(address) => {
+                        if address.len() == 0 {
+                            continue;
+                        } else {
+                            format!("{:?}", address[0].clone().into_address().unwrap())
+                        }
                     }
-                }
-                Err(_) => continue,
-            };
+                    Err(_) => continue,
+                };
 
-            let db_transfers = DatabaseErc20Transfer {
-                hash: log.hash.clone(),
-                chain: log.chain.to_owned(),
-                log_index: log.log_index,
-                token: log.address.clone(),
-                from_address,
-                to_address,
-                value,
-                erc20_tokens_parsed: false,
-                erc20_balances_parsed: false,
-            };
+                let (token_id, value) = match ethabi::decode(
+                    &[ParamType::Uint(256), ParamType::Uint(256)],
+                    &data_bytes.0[..],
+                ) {
+                    Ok(value) => {
+                        if value.len() < 2 {
+                            continue;
+                        } else {
+                            (
+                                BigDecimal::from_str(&format!("{:?}", value[0].clone().into_uint().unwrap())).unwrap(),
+                                BigDecimal::from_str(&format!("{:?}", value[1].clone().into_uint().unwrap())).unwrap(),
+                            )
+                        }
+                    }
+                    Err(_) => continue,
+                };
 
-            db_erc20_transfers.push(db_transfers)
+                let db_transfers = DatabaseNftTransfer {
+                    hash: log.hash.clone(),
+                    chain: log.chain.to_owned(),
+                    log_index: log.log_index,
+                    transfer_index: 0,
+                    transfer_type: "ERC1155TransferSingle".to_owned(),
+                    token: log.address.clone(),
+                    from_address,
+                    to_address,
+                    token_id,
+                    value,
+                    nft_tokens_parsed: false,
+                    nft_balances_parsed: false,
+                };
+    
+                db_nft_transfers.push(db_transfers)
+            } else if topic_1 == format!("{:?}", event1155batch.signature()) && log.topics.len() == 4 {
+                // keccak256(TransferBatch(address,address,address,uint256[],uint256[]))
+
+                let topic_3 = log.topics[2].clone().unwrap();
+                let topic_4 = log.topics[3].clone().unwrap();
+
+                let topic_3_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_3).unwrap();
+                let topic_4_hash: H256 = array_bytes::hex_n_into::<String, H256, 32>(topic_4).unwrap();
+
+                let data_bytes: Bytes =
+                    array_bytes::hex_n_into::<String, Bytes, 32>(log.data.clone()).unwrap();
+
+                let from_address: String =
+                    match ethabi::decode(&[ParamType::Address], topic_3_hash.as_bytes()) {
+                        Ok(address) => {
+                            if address.len() == 0 {
+                                continue;
+                            } else {
+                                format!("{:?}", address[0].clone().into_address().unwrap())
+                            }
+                        }
+                        Err(_) => continue,
+                    };
+    
+                let to_address = match ethabi::decode(&[ParamType::Address], topic_4_hash.as_bytes()) {
+                    Ok(address) => {
+                        if address.len() == 0 {
+                            continue;
+                        } else {
+                            format!("{:?}", address[0].clone().into_address().unwrap())
+                        }
+                    }
+                    Err(_) => continue,
+                };
+
+                match ethabi::decode(
+                    &[ParamType::Array(Box::new(ParamType::Uint(256))), ParamType::Array(Box::new(ParamType::Uint(256)))],
+                    &data_bytes.0[..],
+                ) {
+                    Ok(value) => {
+                        if value.len() < 2 {
+                            continue
+                        } else {
+                            let token_ids: Vec<String> = value[0]
+                                .clone()
+                                .into_fixed_array()
+                                .unwrap()
+                                .iter()
+                                .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
+                                .collect();
+        
+                            let values: Vec<String> = value[1]
+                                .clone()
+                                .into_fixed_array()
+                                .unwrap()
+                                .iter()
+                                .map(|x| format!("{:?}", x.clone().into_uint().unwrap()))
+                                .collect();
+        
+                            for (i, (token_id, value)) in token_ids.iter().zip(values.iter()).enumerate()
+                            {
+                                let db_transfers = DatabaseNftTransfer {
+                                    hash: log.hash.clone(),
+                                    chain: log.chain.to_owned(),
+                                    log_index: log.log_index,
+                                    transfer_index: i as i64,
+                                    transfer_type: "ERC1155TransferSingle".to_owned(),
+                                    token: log.address.clone(),
+                                    from_address: from_address.clone(),
+                                    to_address: to_address.clone(),
+                                    token_id: BigDecimal::from_str(token_id).unwrap(),
+                                    value: BigDecimal::from_str(value).unwrap(),
+                                    nft_tokens_parsed: false,
+                                    nft_balances_parsed: false,
+                                };
+
+                                db_nft_transfers.push(db_transfers)
+                            }
+                        }
+                    }
+                    Err(_) => continue,
+                };
+            }
         }
 
         let mut connection = db.establish_connection();
 
         let chunks = get_chunks(
-            db_erc20_transfers.len(),
-            DatabaseErc20Transfer::field_count(),
+            db_nft_transfers.len(),
+            DatabaseNftTransfer::field_count(),
         );
 
         for (start, end) in chunks {
-            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                .values(&db_erc20_transfers[start..end])
+            diesel::insert_into(nft_transfers::dsl::nft_transfers)
+                .values(&db_nft_transfers[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store erc20 transfers into database");
+                .expect("Unable to store NFT transfers into database");
         }
 
         info!(
-            "Inserted {} erc20 transfers to the database.",
-            db_erc20_transfers.len()
+            "Inserted {} NFT transfers to the database.",
+            db_nft_transfers.len()
         );
 
         let log_chunks = get_chunks(db_parsed_logs.len(), DatabaseLog::field_count());
@@ -177,7 +394,7 @@ impl NftTransfers {
                 .values(&db_parsed_logs[start..end])
                 .on_conflict((logs::hash, logs::log_index))
                 .do_update()
-                .set(logs::erc20_transfers_parsed.eq(true))
+                .set(logs::nft_transfers_parsed.eq(true))
                 .execute(&mut connection)
                 .expect("Unable to update parsed logs into database");
         }
