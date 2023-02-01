@@ -5,6 +5,7 @@ services:
     container_name: hasura-db
     image: postgres:15
     restart: always
+    network_mode: host
     volumes:
       - ./hasura_metadata:/var/lib/postgresql/data
     environment:
@@ -16,11 +17,11 @@ services:
     container_name: indexer-hasura
     restart: always
     env_file: ".env"
-    ports:
-      - "${HASURA_PORT:-8080}:8080"
+    network_mode: host
     depends_on:
       - 'postgres'  
     environment:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
-      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:${HASURA_DB_PASSWORD}@postgres:5432/postgres
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:${HASURA_DB_PASSWORD}@localhost:5432/postgres
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_CONSOLE_SECRET}
+      HASURA_GRAPHQL_SERVER_PORT: ${HASURA_PORT:-8080}
