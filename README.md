@@ -14,6 +14,7 @@ If you want to see it in action, we have a small API to showcase at https://inde
 - [Rust](https://www.rust-lang.org/tools/install)
 - [CockroachDB](https://www.cockroachlabs.com/) (or any other PostgreSQL db)
 - [Redis](https://redis.io/) (used to store the indexed blocks state)
+- [Docker](https://www.docker.com/) (Optional for the Hasura Cloud deploy)
 
 ## Available Chains
 
@@ -77,3 +78,15 @@ docker build . -t indexer
 4. Run the image
 
 `TODO: programs and flags.`
+
+## Use it together with Hasura
+
+The repository contains [Hasura Cloud](https://hasura.io/cloud/) docker compose file to deploy it together with the indexer.
+
+1. Copy the `.env.example` file to `.env` and add your environment variables for the Hasura Cloud.
+
+2. Run the docker compose file
+
+```
+docker-compose -f docker/docker-compose.yml up -d
+```
