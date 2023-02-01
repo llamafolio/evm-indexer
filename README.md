@@ -7,7 +7,7 @@
 
 The indexer is ready and used in production. If you want to use it or contribute and need help you can [send me a DM on my personal twitter.](https://twitter.com/eaberrueta)
 
-If you want to see it in action, we have a small API to showcase at https://indexer.kindynos.mx
+You can track the indexer in action from https://dashboard.kindynos.mx or use it through the API at https://indexer.kindynos.mx
 
 ## Requirements
 
