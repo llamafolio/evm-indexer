@@ -279,6 +279,7 @@ pub struct DatabaseLog {
     pub log_index: i64,
     pub removed: bool,
     pub topics: Vec<Option<String>>,
+    pub nft_transfers_parsed: bool,
 }
 
 impl DatabaseLog {
@@ -312,6 +313,7 @@ impl DatabaseLog {
             log_index,
             removed,
             erc20_transfers_parsed: false,
+            nft_transfers_parsed: false,
         }
     }
 }
