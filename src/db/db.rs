@@ -12,8 +12,8 @@ use redis::Commands;
 use crate::chains::chains::Chain;
 
 use super::models::models::{
-    DatabaseAbi, DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseLog,
-    DatabaseMethod, DatabaseReceipt, DatabaseTransaction,
+    DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseContractInformation,
+    DatabaseLog, DatabaseMethod, DatabaseReceipt, DatabaseTransaction,
 };
 use super::schema::*;
 
@@ -53,7 +53,7 @@ impl Database {
         return connection;
     }
 
-    pub async fn get_contracts(&self) -> Result<Vec<DatabaseContract>> {
+    pub async fn get_contracts_missing_parsed(&self) -> Result<Vec<DatabaseContract>> {
         let mut connection = self.establish_connection();
 
         let contracts = contracts::dsl::contracts
@@ -198,17 +198,23 @@ impl Database {
         Ok(())
     }
 
-    pub async fn store_abis(&self, abis: &Vec<DatabaseAbi>) -> Result<()> {
+    pub async fn store_contracts_information(
+        &self,
+        contracts_information: &Vec<DatabaseContractInformation>,
+    ) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(abis.len(), DatabaseAbi::field_count());
+        let chunks = get_chunks(
+            contracts_information.len(),
+            DatabaseContractInformation::field_count(),
+        );
 
         for (start, end) in chunks {
-            diesel::insert_into(abis::dsl::abis)
-                .values(&abis[start..end])
+            diesel::insert_into(contracts_information::dsl::contracts_information)
+                .values(&contracts_information[start..end])
                 .on_conflict_do_nothing()
                 .execute(&mut connection)
-                .expect("Unable to store abis into database");
+                .expect("Unable to store contracts information into database");
         }
 
         Ok(())
@@ -217,7 +223,7 @@ impl Database {
     pub async fn store_methods(&self, methods: &Vec<DatabaseMethod>) -> Result<()> {
         let mut connection = self.establish_connection();
 
-        let chunks = get_chunks(methods.len(), DatabaseAbi::field_count());
+        let chunks = get_chunks(methods.len(), DatabaseMethod::field_count());
 
         for (start, end) in chunks {
             diesel::insert_into(methods::dsl::methods)

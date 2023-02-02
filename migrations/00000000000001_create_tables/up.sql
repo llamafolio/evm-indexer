@@ -1,13 +1,3 @@
-CREATE TABLE abis (
-  abi TEXT, 
-  chain TEXT NOT NULL, 
-  contract TEXT NOT NULL, 
-  verified BOOLEAN NOT NULL, 
-  CONSTRAINT abis_pkey PRIMARY KEY (contract, chain)
-);
-
-CREATE INDEX IF NOT EXISTS abis_by_contract ON abis (contract);
-
 CREATE TABLE blocks (
   base_fee_per_gas TEXT NOT NULL, 
   block_hash TEXT NOT NULL, 
@@ -83,17 +73,6 @@ CREATE TABLE chains_indexed_state (
   indexed_blocks_amount BIGINT NOT NULL, 
   CONSTRAINT chains_indexed_state_pkey PRIMARY KEY (chain)
 );
-
-CREATE TABLE contracts_adapters (
-  adapter_id TEXT NOT NULL, 
-  address TEXT NOT NULL, 
-  chain TEXT NOT NULL, 
-  CONSTRAINT contracts_adapters_pkey PRIMARY KEY (address, chain)
-);
-
-CREATE INDEX IF NOT EXISTS contracts_adapters_by_address ON contracts_adapters (address);
-
-CREATE INDEX IF NOT EXISTS contracts_adapters_by_adapter_id ON contracts_adapters (adapter_id);
 
 CREATE TABLE erc20_transfers (
   chain TEXT NOT NULL, 
@@ -172,6 +151,28 @@ CREATE INDEX IF NOT EXISTS contracts_by_contract ON contracts (contract);
 
 CREATE INDEX IF NOT EXISTS contracts_by_hash ON contracts (hash);
 
+CREATE TABLE contracts_information (
+  name TEXT, 
+  abi TEXT, 
+  chain TEXT NOT NULL, 
+  contract TEXT NOT NULL, 
+  verified BOOLEAN NOT NULL, 
+  CONSTRAINT contract_names_pkey PRIMARY KEY (contract, chain)
+);
+
+CREATE INDEX IF NOT EXISTS contracts_information_by_contract ON contracts_information (contract);
+
+CREATE TABLE contracts_adapters (
+  adapter_id TEXT NOT NULL, 
+  address TEXT NOT NULL, 
+  chain TEXT NOT NULL, 
+  CONSTRAINT contracts_adapters_pkey PRIMARY KEY (address, chain)
+);
+
+CREATE INDEX IF NOT EXISTS contracts_adapters_by_address ON contracts_adapters (address);
+
+CREATE INDEX IF NOT EXISTS contracts_adapters_by_adapter_id ON contracts_adapters (adapter_id);
+
 CREATE TABLE logs (
   address TEXT NOT NULL,
   chain TEXT NOT NULL,
@@ -189,4 +190,3 @@ CREATE INDEX IF NOT EXISTS logs_by_address ON logs (address, chain);
 CREATE INDEX IF NOT EXISTS logs_by_hash ON logs (hash);
 
 CREATE INDEX IF NOT EXISTS logs_by_erc20_transfers_parsed ON logs (erc20_transfers_parsed) STORING (address, chain, data, removed, topics);
-

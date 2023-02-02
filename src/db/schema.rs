@@ -1,15 +1,6 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    abis (contract, chain) {
-        abi -> Nullable<Text>,
-        chain -> Text,
-        contract -> Text,
-        verified -> Bool,
-    }
-}
-
-diesel::table! {
     blocks (block_hash) {
         base_fee_per_gas -> Text,
         block_hash -> Text,
@@ -59,6 +50,16 @@ diesel::table! {
         adapter_id -> Text,
         address -> Text,
         chain -> Text,
+    }
+}
+
+diesel::table! {
+    contracts_information (contract, chain) {
+        name -> Nullable<Text>,
+        abi -> Nullable<Text>,
+        chain -> Text,
+        contract -> Text,
+        verified -> Bool,
     }
 }
 
@@ -149,11 +150,11 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
-    abis,
     blocks,
     chains_indexed_state,
     contracts,
     contracts_adapters,
+    contracts_information,
     erc20_balances,
     erc20_tokens,
     erc20_transfers,

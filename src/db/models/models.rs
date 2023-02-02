@@ -4,7 +4,8 @@ use field_count::FieldCount;
 
 use crate::{
     db::schema::{
-        abis, blocks, chains_indexed_state, contracts, logs, methods, receipts, transactions,
+        blocks, chains_indexed_state, contracts, contracts_information, logs, methods, receipts,
+        transactions,
     },
     utils::{
         format_address, format_bytes, format_bytes_slice, format_hash, format_nonce, format_number,
@@ -324,11 +325,12 @@ pub struct DatabaseMethod {
 }
 
 #[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = abis)]
-pub struct DatabaseAbi {
+#[diesel(table_name = contracts_information)]
+pub struct DatabaseContractInformation {
     pub chain: String,
     pub contract: String,
     pub abi: Option<String>,
+    pub name: Option<String>,
     pub verified: bool,
 }
 
