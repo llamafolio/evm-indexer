@@ -137,16 +137,20 @@ async fn main() {
                                     if contract_response_formatted.status == "1"
                                         && contract_response_formatted.message == "OK"
                                     {
-                                        db_contract_information.abi = Some(result.abi.clone());
-                                        db_contract_information.verified = true;
-
-                                        contract.parsed = true;
-
-                                        contracts_fetched.push(contract);
-
-                                        contracts_information_fetched.push(db_contract_information);
-                                    } else {
                                         if result.abi == "Contract source code not verified" {
+                                            contract.parsed = true;
+
+                                            contracts_fetched.push(contract);
+
+                                            contracts_information_fetched
+                                                .push(db_contract_information);
+                                        } else {
+                                            db_contract_information.abi = Some(result.abi.clone());
+                                            db_contract_information.name =
+                                                Some(result.contract_name.clone());
+
+                                            db_contract_information.verified = true;
+
                                             contract.parsed = true;
 
                                             contracts_fetched.push(contract);
