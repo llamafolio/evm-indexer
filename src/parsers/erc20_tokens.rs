@@ -289,7 +289,7 @@ impl ERC20Tokens {
 
         let decimals: Option<i64> = match token.decimals().call().await {
             Ok(decimals) => Some(decimals as i64),
-            Err(_) => return None,
+            Err(_) => Some(0),
         };
 
         let symbol: Option<String> = match token.symbol().call().await {
