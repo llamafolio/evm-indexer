@@ -10,7 +10,7 @@ use crate::chains::chains::get_chains;
     about = "ABI Fetcher for the EVM indexed chains."
 )]
 pub struct EVMAbiFetcherArgs {
-    #[arg(short, long, help = "Start log with debug", default_value_t = false)]
+    #[arg(long, help = "Start log with debug", default_value_t = false)]
     pub debug: bool,
 }
 

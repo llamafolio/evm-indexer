@@ -6,27 +6,20 @@ use clap::Parser;
     about = "Transaction and Logs parser for the EVM indexer."
 )]
 pub struct EVMParserArgs {
-    #[arg(short, long, help = "Start log with debug", default_value_t = false)]
+    #[arg(long, help = "Start log with debug", default_value_t = false)]
     pub debug: bool,
 
     #[arg(
-        short,
         long,
         help = "Start the llamafolio adapters fetcher",
         default_value_t = false
     )]
     pub llamafolio_adapters: bool,
 
-    #[arg(
-        short,
-        long,
-        help = "Start the erc20 tokens parser",
-        default_value_t = false
-    )]
+    #[arg(long, help = "Start the erc20 tokens parser", default_value_t = false)]
     pub erc20_tokens: bool,
 
     #[arg(
-        short,
         long,
         help = "Start the erc20 balances parser",
         default_value_t = false
