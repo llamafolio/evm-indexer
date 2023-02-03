@@ -7,17 +7,16 @@ use clap::Parser;
     about = "A scalable SQL indexer for EVM compatible blockchains."
 )]
 pub struct EVMIndexerArgs {
-    #[arg(short, long, help = "Start log with debug.", default_value_t = false)]
+    #[arg(long, help = "Start log with debug.", default_value_t = false)]
     pub debug: bool,
 
-    #[arg(short, long, help = "Chain name to sync.", default_value_t = String::from("mainnet"))]
+    #[arg(long, help = "Chain name to sync.", default_value_t = String::from("mainnet"))]
     pub chain: String,
 
-    #[arg(short, long, help = "Block to start syncing.", default_value_t = 0)]
+    #[arg(long, help = "Block to start syncing.", default_value_t = 0)]
     pub start_block: i64,
 
     #[arg(
-        short,
         long,
         help = "Amount of blocks to fetch at the same time.",
         default_value_t = 200
@@ -25,21 +24,16 @@ pub struct EVMIndexerArgs {
     pub batch_size: usize,
 
     #[arg(
-        short,
         long,
         help = "Reset a chain to restart the index.",
         default_value_t = false
     )]
     pub reset: bool,
 
-    #[arg(short, long, help = "Websocket to fetch blocks from.")]
+    #[arg(long, help = "Websocket to fetch blocks from.")]
     pub websocket: String,
 
-    #[arg(
-        short,
-        long,
-        help = "Comma separated list of rpcs to use to fetch blocks."
-    )]
+    #[arg(long, help = "Comma separated list of rpcs to use to fetch blocks.")]
     pub rpcs: String,
 }
 
