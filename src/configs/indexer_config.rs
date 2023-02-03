@@ -36,7 +36,6 @@ pub struct EVMIndexerArgs {
     pub websocket: String,
 
     #[arg(
-        short,
         long,
         help = "Comma separated list of rpcs to use to fetch blocks."
     )]
