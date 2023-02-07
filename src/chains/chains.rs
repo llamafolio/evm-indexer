@@ -120,7 +120,7 @@ pub const ARBITRUM_NOVA: Chain = Chain {
     id: 42170,
     name: "arbitrum-nova",
     block_explorer: "https://nova.arbiscan.io/",
-    abi_source_api: "https://nova-api.arbiscan.io/",
+    abi_source_api: "https://api-nova.arbiscan.io/",
     abi_source_require_auth: true,
     supports_blocks_receipts: false,
     public_rpc: "https://nova.arbitrum.io/rpc",

@@ -3,7 +3,9 @@ use ethabi::Contract;
 use evm_indexer::chains::chains::{get_chain, ETHEREUM};
 use evm_indexer::configs::abi_fetcher_config::EVMAbiFetcherConfig;
 use evm_indexer::db::db::Database;
-use evm_indexer::db::models::models::{DatabaseAbi, DatabaseContract, DatabaseMethod};
+use evm_indexer::db::models::models::{
+    DatabaseContract, DatabaseContractInformation, DatabaseMethod,
+};
 use log::LevelFilter;
 use log::*;
 use reqwest::Client;
@@ -14,10 +16,41 @@ use simple_logger::SimpleLogger;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AbiResponse {
+pub struct Response {
     pub status: String,
     pub message: String,
-    pub result: String,
+    pub result: Vec<ContractDataResult>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractDataResult {
+    #[serde(rename = "SourceCode")]
+    pub source_code: String,
+    #[serde(rename = "ABI")]
+    pub abi: String,
+    #[serde(rename = "ContractName")]
+    pub contract_name: String,
+    #[serde(rename = "CompilerVersion")]
+    pub compiler_version: String,
+    #[serde(rename = "OptimizationUsed")]
+    pub optimization_used: String,
+    #[serde(rename = "Runs")]
+    pub runs: String,
+    #[serde(rename = "ConstructorArguments")]
+    pub constructor_arguments: String,
+    #[serde(rename = "EVMVersion")]
+    pub evmversion: String,
+    #[serde(rename = "Library")]
+    pub library: String,
+    #[serde(rename = "LicenseType")]
+    pub license_type: String,
+    #[serde(rename = "Proxy")]
+    pub proxy: String,
+    #[serde(rename = "Implementation")]
+    pub implementation: String,
+    #[serde(rename = "SwarmSource")]
+    pub swarm_source: String,
 }
 
 #[tokio::main()]
@@ -36,12 +69,12 @@ async fn main() {
 
     info!("Starting EVM ABI fetcher");
 
-    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url.clone(), config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 
     loop {
-        let contracts = db.get_contracts().await.unwrap();
+        let contracts = db.get_contracts_missing_parsed().await.unwrap();
 
         if contracts.len() > 0 {
             info!("Fetching ABIs for {} contracts.", contracts.len());
@@ -50,7 +83,7 @@ async fn main() {
 
             let mut contracts_fetched: Vec<DatabaseContract> = Vec::new();
 
-            let mut abis_fetched: Vec<DatabaseAbi> = Vec::new();
+            let mut contracts_information_fetched: Vec<DatabaseContractInformation> = Vec::new();
 
             for mut contract in contracts {
                 let uri_str: String;
@@ -63,12 +96,12 @@ async fn main() {
                     Some(token) => {
                         if chain.abi_source_require_auth {
                             uri_str = format!(
-                                "{}api?module=contract&action=getabi&address={}&apikey={}",
+                                "{}api?module=contract&action=getsourcecode&address={}&apikey={}",
                                 chain.abi_source_api, contract.contract, token
                             );
                         } else {
                             uri_str = format!(
-                                "{}api?module=contract&action=getabi&address={}",
+                                "{}api?module=contract&action=getsourcecode&address={}",
                                 chain.abi_source_api, contract.contract
                             );
                         }
@@ -83,36 +116,47 @@ async fn main() {
                 match response {
                     Ok(data) => match data.text().await {
                         Ok(response) => {
-                            let abi_response: Result<AbiResponse, Error> =
+                            let contract_response: Result<Response, Error> =
                                 serde_json::from_str(&response);
 
-                            let mut db_contract_abi = DatabaseAbi {
+                            let mut db_contract_information = DatabaseContractInformation {
                                 chain: chain.name.to_owned(),
                                 contract: contract.contract.clone(),
                                 abi: None,
+                                name: None,
                                 verified: false,
                             };
 
-                            match abi_response {
-                                Ok(abi_response_formatted) => {
-                                    if abi_response_formatted.status == "1"
-                                        && abi_response_formatted.message == "OK"
+                            match contract_response {
+                                Ok(contract_response_formatted) => {
+                                    let result = match contract_response_formatted.result.first() {
+                                        Some(result) => result,
+                                        None => continue,
+                                    };
+
+                                    if contract_response_formatted.status == "1"
+                                        && contract_response_formatted.message == "OK"
                                     {
-                                        db_contract_abi.abi = Some(abi_response_formatted.result);
-                                        db_contract_abi.verified = true;
-
-                                        contract.parsed = true;
-
-                                        contracts_fetched.push(contract);
-                                        abis_fetched.push(db_contract_abi);
-                                    } else {
-                                        if abi_response_formatted.result
-                                            == "Contract source code not verified"
-                                        {
+                                        if result.abi == "Contract source code not verified" {
                                             contract.parsed = true;
 
                                             contracts_fetched.push(contract);
-                                            abis_fetched.push(db_contract_abi);
+
+                                            contracts_information_fetched
+                                                .push(db_contract_information);
+                                        } else {
+                                            db_contract_information.abi = Some(result.abi.clone());
+                                            db_contract_information.name =
+                                                Some(result.contract_name.clone());
+
+                                            db_contract_information.verified = true;
+
+                                            contract.parsed = true;
+
+                                            contracts_fetched.push(contract);
+
+                                            contracts_information_fetched
+                                                .push(db_contract_information);
                                         }
                                     }
                                 }
@@ -133,8 +177,8 @@ async fn main() {
 
             let mut methods: Vec<DatabaseMethod> = Vec::new();
 
-            for abi in &abis_fetched {
-                let contract: Contract = match &abi.abi {
+            for contracts_information in &contracts_information_fetched {
+                let contract: Contract = match &contracts_information.abi {
                     Some(abi) => match serde_json::from_str(abi) {
                         Ok(contract) => contract,
                         Err(_) => {
@@ -161,12 +205,14 @@ async fn main() {
             }
 
             db.update_contracts(&contracts_fetched).await.unwrap();
-            db.store_abis(&abis_fetched).await.unwrap();
+            db.store_contracts_information(&contracts_information_fetched)
+                .await
+                .unwrap();
             db.store_methods(&methods).await.unwrap();
 
             info!(
                 "Stored {} ABIs from {} contracts with {} methods.",
-                abis_fetched.len(),
+                contracts_information_fetched.len(),
                 contracts_fetched.len(),
                 methods.len()
             );

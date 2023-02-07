@@ -17,7 +17,6 @@ use ethers::{
 use field_count::FieldCount;
 use futures::future::join_all;
 use jsonrpsee::tracing::info;
-use redis::Commands;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
 
@@ -55,7 +54,6 @@ impl ERC20Balances {
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
-        let mut redis_connection = db.redis.get_connection().unwrap();
 
         let zero_address = format_address(H160::zero());
 
@@ -93,7 +91,7 @@ impl ERC20Balances {
         let tokens_data = self.get_tokens(db, &tokens);
 
         info!(
-            "ERC20Tokens: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
+            "ERC20Balances: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
             senders.len(),
             receivers.len(),
             tokens.len(),
@@ -121,7 +119,7 @@ impl ERC20Balances {
         let stored_balances = self.get_current_balances(db, &balances_ids);
 
         info!(
-            "ERC20Tokens: fetched {} balances to update",
+            "ERC20Balances: fetched {} balances to update",
             stored_balances.len()
         );
 
@@ -140,8 +138,6 @@ impl ERC20Balances {
 
         let mut parsed_transfers = vec![];
 
-        let mut retried_transfers_passed = vec![];
-
         let mut missing_tokens: HashSet<(String, String)> = HashSet::new();
 
         for transfer in transfers {
@@ -149,41 +145,16 @@ impl ERC20Balances {
 
             let sender = transfer.from_address.clone();
 
-            let redis_retries_key =
-                format!("BALANCE_PARSE-{}-{}", token.clone(), transfer.chain.clone());
-
-            let retries = match redis_connection.get::<String, i64>(redis_retries_key.clone()) {
-                Ok(retries) => retries,
-                Err(_) => 0,
-            };
-
-            if retries > 5 {
-                retried_transfers_passed.push(transfer.to_owned());
-                continue;
-            }
-
             let decimals = match tokens_map.get(&(transfer.token.clone(), transfer.chain.clone())) {
                 Some(token_data) => match token_data.decimals {
                     Some(decimals) => decimals,
                     None => {
                         missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
-                        let new_retries = retries + 1;
-
-                        let _: () = redis_connection
-                            .set(redis_retries_key.clone(), new_retries)
-                            .unwrap();
-
                         continue;
                     }
                 },
                 None => {
                     missing_tokens.insert((transfer.token.clone(), transfer.chain.clone()));
-
-                    let new_retries = retries + 1;
-
-                    let _: () = redis_connection
-                        .set(redis_retries_key.clone(), new_retries)
-                        .unwrap();
 
                     continue;
                 }
@@ -194,25 +165,9 @@ impl ERC20Balances {
             let amount: f64 = match format_units(amount_value, decimals as usize) {
                 Ok(amount) => match amount.parse::<f64>() {
                     Ok(amount) => amount,
-                    Err(_) => {
-                        let new_retries = retries + 1;
-
-                        let _: () = redis_connection
-                            .set(redis_retries_key.clone(), new_retries)
-                            .unwrap();
-
-                        continue;
-                    }
+                    Err(_) => continue,
                 },
-                Err(_) => {
-                    let new_retries = retries + 1;
-
-                    let _: () = redis_connection
-                        .set(redis_retries_key.clone(), new_retries)
-                        .unwrap();
-
-                    continue;
-                }
+                Err(_) => continue,
             };
 
             if sender != format_address(H160::zero()) {
@@ -296,20 +251,12 @@ impl ERC20Balances {
             sql_query(query).execute(&mut connection).unwrap();
         }
 
-        let mut total_transfers_parsed: Vec<DatabaseErc20Transfer> = Vec::new();
-
-        total_transfers_parsed.append(&mut parsed_transfers);
-        total_transfers_parsed.append(&mut retried_transfers_passed);
-
-        if total_transfers_parsed.len() > 0 {
-            let chunks = get_chunks(
-                total_transfers_parsed.len(),
-                DatabaseErc20Transfer::field_count(),
-            );
+        if parsed_transfers.len() > 0 {
+            let chunks = get_chunks(parsed_transfers.len(), DatabaseErc20Transfer::field_count());
 
             for (start, end) in chunks {
                 diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                    .values(&total_transfers_parsed[start..end])
+                    .values(&parsed_transfers[start..end])
                     .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
                     .do_update()
                     .set(erc20_transfers::erc20_balances_parsed.eq(true))
@@ -318,86 +265,93 @@ impl ERC20Balances {
             }
         }
 
-        info!(
-            "Inserted {} balances with {} transactions skipped",
-            total_new_balances,
-            retried_transfers_passed.len()
-        );
+        info!("ERC20Balances: Inserted {} balances", total_new_balances);
 
         if missing_tokens.len() > 0 {
             let erc20_tokens = ERC20Tokens {};
 
             info!(
-                "Fetching data for {} missing tokens data",
+                "ERC20Balances: Fetching data for {} missing tokens data",
                 missing_tokens.len()
             );
 
-            let mut works = vec![];
-            for (token, chain) in missing_tokens {
-                let id = format!("{}-{}", token, chain);
-                works.push(erc20_tokens.get_token_metadata(id))
-            }
-
-            let result = join_all(works).await;
-
-            let tokens: Vec<DatabaseErc20Token> = result
+            let missing_tokens_vector = missing_tokens
                 .into_iter()
-                .filter(|token| token.is_some())
-                .map(|token| token.unwrap())
-                .collect();
+                .collect::<Vec<(String, String)>>();
 
-            let tokens_amount = tokens.len();
+            let chunks = missing_tokens_vector.chunks(200);
 
-            let mut query = String::from(
-                "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
-            );
+            for chunk in chunks {
+                let mut works = vec![];
+                for (token, chain) in chunk {
+                    works
+                        .push(erc20_tokens.get_token_metadata((token.to_owned(), chain.to_owned())))
+                }
 
-            for token in tokens {
-                let name = match token.name {
-                    Some(name) => {
-                        let name_fixed: String = name.replace("'", "");
+                let result = join_all(works).await;
 
-                        let name_bytes = name_fixed.as_bytes();
+                let tokens: Vec<DatabaseErc20Token> = result
+                    .into_iter()
+                    .filter(|token| token.is_some())
+                    .map(|token| token.unwrap())
+                    .collect();
 
-                        let name_parsed = String::from_utf8_lossy(name_bytes);
+                let tokens_amount = tokens.len();
 
-                        format!("'{}'", name_parsed)
-                    }
-                    None => String::from("NULL"),
-                };
-
-                let symbol = match token.symbol {
-                    Some(symbol) => {
-                        let symbol_fixed: String = symbol.replace("'", "");
-
-                        let symbol_bytes = symbol_fixed.as_bytes();
-
-                        let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
-
-                        format!("'{}'", symbol_parsed)
-                    }
-                    None => String::from("NULL"),
-                };
-
-                let value = format!(
-                    " ('{}', '{}', '{}', {}, {}),",
-                    token.address,
-                    token.chain,
-                    token.decimals.unwrap(),
-                    name,
-                    symbol
+                let mut query = String::from(
+                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
                 );
 
-                query.push_str(&value);
+                for token in tokens {
+                    let name = match token.name {
+                        Some(name) => {
+                            let name_fixed: String = name.replace("'", "");
+
+                            let name_bytes = name_fixed.as_bytes();
+
+                            let name_parsed = String::from_utf8_lossy(name_bytes);
+
+                            format!("'{}'", name_parsed)
+                        }
+                        None => String::from("NULL"),
+                    };
+
+                    let symbol = match token.symbol {
+                        Some(symbol) => {
+                            let symbol_fixed: String = symbol.replace("'", "");
+
+                            let symbol_bytes = symbol_fixed.as_bytes();
+
+                            let symbol_parsed = String::from_utf8_lossy(symbol_bytes);
+
+                            format!("'{}'", symbol_parsed)
+                        }
+                        None => String::from("NULL"),
+                    };
+
+                    let value = format!(
+                        " ('{}', '{}', '{}', {}, {}),",
+                        token.address,
+                        token.chain,
+                        token.decimals.unwrap(),
+                        name,
+                        symbol
+                    );
+
+                    query.push_str(&value);
+                }
+
+                query.pop();
+
+                if tokens_amount > 0 {
+                    sql_query(query).execute(&mut connection).unwrap();
+                }
+
+                info!(
+                    "ERC20Balances: Inserted {} missing tokens data",
+                    tokens_amount
+                );
             }
-
-            query.pop();
-
-            if tokens_amount > 0 {
-                sql_query(query).execute(&mut connection).unwrap();
-            }
-
-            info!("Inserted {} missing tokens data", tokens_amount);
         }
         Ok(())
     }
@@ -445,10 +399,14 @@ impl ERC20Balances {
         query.pop();
         query.push_str(")");
 
-        let results: Vec<DatabaseErc20Token> = sql_query(query)
-            .load::<DatabaseErc20Token>(&mut connection)
-            .unwrap();
+        if tokens.len() > 0 {
+            let results: Vec<DatabaseErc20Token> = sql_query(query)
+                .load::<DatabaseErc20Token>(&mut connection)
+                .unwrap();
 
-        return results;
+            return results;
+        }
+
+        return Vec::new();
     }
 }

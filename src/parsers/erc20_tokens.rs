@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     chains::chains::{get_chain, get_chains},
@@ -16,7 +16,6 @@ use ethers::{
 };
 use field_count::FieldCount;
 use futures::future::join_all;
-use itertools::Itertools;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -175,16 +174,17 @@ impl ERC20Tokens {
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
         let mut connection = db.establish_connection();
 
-        let unique_tokens: Vec<String> = transfers
+        let unique_tokens: Vec<(String, String)> = transfers
             .into_iter()
-            .map(|token| format!("{}-{}", token.token, token.chain))
-            .unique()
+            .map(|token| (token.token.clone(), token.chain.clone()))
+            .collect::<HashSet<(String, String)>>()
+            .into_iter()
             .collect();
 
         let mut tokens_data = vec![];
 
-        for token in unique_tokens {
-            tokens_data.push(self.get_token_metadata(token))
+        for (address, chain) in unique_tokens {
+            tokens_data.push(self.get_token_metadata((address, chain)))
         }
 
         let db_tokens: Vec<DatabaseErc20Token> = join_all(tokens_data)
@@ -242,10 +242,15 @@ impl ERC20Tokens {
         query.pop();
 
         if tokens_amount > 0 {
-            sql_query(query).execute(&mut connection).unwrap();
+            sql_query(query)
+                .execute(&mut connection)
+                .expect("Unable to store erc20 tokens data");
         }
 
-        info!("Inserted {} erc20 tokens to the database.", tokens_amount);
+        info!(
+            "ERC20Tokens: Inserted {} erc20 tokens to the database.",
+            tokens_amount
+        );
 
         let transfers_chunks = get_chunks(transfers.len(), DatabaseErc20Transfer::field_count());
 
@@ -262,12 +267,10 @@ impl ERC20Tokens {
         Ok(())
     }
 
-    pub async fn get_token_metadata(&self, token_id: String) -> Option<DatabaseErc20Token> {
-        let address_chain: Vec<&str> = token_id.split("-").collect();
-
-        let address = address_chain[0];
-        let chain = address_chain[1];
-
+    pub async fn get_token_metadata(
+        &self,
+        (address, chain): (String, String),
+    ) -> Option<DatabaseErc20Token> {
         let chain_data = get_chain(chain.to_string());
 
         let provider = match Provider::<Http>::try_from(chain_data.public_rpc) {
@@ -286,7 +289,7 @@ impl ERC20Tokens {
 
         let decimals: Option<i64> = match token.decimals().call().await {
             Ok(decimals) => Some(decimals as i64),
-            Err(_) => return None,
+            Err(_) => Some(0),
         };
 
         let symbol: Option<String> = match token.symbol().call().await {
@@ -295,8 +298,8 @@ impl ERC20Tokens {
         };
 
         return Some(DatabaseErc20Token {
-            address: address_chain[0].to_string(),
-            chain: address_chain[1].to_string(),
+            address,
+            chain,
             name,
             decimals,
             symbol,
