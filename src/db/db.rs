@@ -53,6 +53,22 @@ impl Database {
         return connection;
     }
 
+    pub async fn update_indexed_blocks(&self) -> Result<()> {
+        let mut connection = self.establish_connection();
+
+        let blocks: HashSet<i64> = blocks::dsl::blocks
+            .select(blocks::number)
+            .filter(blocks::chain.eq(self.chain.name.clone()))
+            .load::<i64>(&mut connection)
+            .unwrap()
+            .into_iter()
+            .collect();
+
+        self.store_indexed_blocks(&blocks).await.unwrap();
+
+        Ok(())
+    }
+
     pub async fn get_contracts_missing_parsed(&self) -> Result<Vec<DatabaseContract>> {
         let mut connection = self.establish_connection();
 

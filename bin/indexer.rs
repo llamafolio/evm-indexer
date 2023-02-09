@@ -50,6 +50,8 @@ async fn main() {
     .await
     .expect("Unable to start DB connection.");
 
+    info!("Updating state of indexed tokens.");
+
     if !config.reset {
         let mut finished_initial_sync = false;
 
