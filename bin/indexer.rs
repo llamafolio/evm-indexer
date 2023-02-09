@@ -50,8 +50,10 @@ async fn main() {
     .await
     .expect("Unable to start DB connection.");
 
-    info!("Updating state of indexed tokens.");
-    db.update_indexed_blocks().await.unwrap();
+    if config.recalc_blocks_indexer {
+        info!("Updating state of indexed tokens.");
+        db.update_indexed_blocks().await.unwrap();
+    }
 
     if !config.reset {
         let mut finished_initial_sync = false;
