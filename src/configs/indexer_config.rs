@@ -30,6 +30,13 @@ pub struct EVMIndexerArgs {
     )]
     pub reset: bool,
 
+    #[arg(
+        long,
+        help = "Recalculate the amount of blocks indexed.",
+        default_value_t = false
+    )]
+    pub recalculate_indexed_blocks: bool,
+
     #[arg(long, help = "Websocket to fetch blocks from.")]
     pub websocket: String,
 
@@ -48,6 +55,7 @@ pub struct EVMIndexerConfig {
     pub reset: bool,
     pub websocket: String,
     pub rpcs: Vec<String>,
+    pub recalc_blocks_indexer: bool,
 }
 
 impl EVMIndexerConfig {
@@ -74,6 +82,7 @@ impl EVMIndexerConfig {
             reset: args.reset,
             websocket: args.websocket,
             rpcs,
+            recalc_blocks_indexer: args.recalculate_indexed_blocks,
         }
     }
 }
