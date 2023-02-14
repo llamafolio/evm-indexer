@@ -78,15 +78,3 @@ docker build . -t indexer
 4. Run the image
 
 `TODO: programs and flags.`
-
-## Deploy a GraphQL API with Hasura.
-
-The repository contains [Hasura Cloud](https://hasura.io/cloud/) docker compose file to deploy it together with the indexer.
-
-1. Copy the `.env.example` file to `.env` and add your environment variables for the Hasura Cloud.
-
-2. Run the docker compose file
-
-```
-docker-compose up -d
-```
