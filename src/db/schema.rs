@@ -106,6 +106,7 @@ diesel::table! {
         log_index -> Int8,
         removed -> Bool,
         topics -> Array<Nullable<Text>>,
+        nft_transfers_parsed -> Bool,
     }
 }
 
@@ -113,6 +114,54 @@ diesel::table! {
     methods (method) {
         method -> Text,
         name -> Text,
+    }
+}
+
+diesel::table! {
+    nft_balances (address, token, chain) {
+        address -> Text,
+        chain -> Text,
+        token -> Text,
+        token_id -> Numeric,
+        balance -> Numeric,
+    }
+}
+
+diesel::table! {
+    nft_token_uris (token, token_id, chain) {
+        token -> Text,
+        token_id -> Numeric,
+        chain -> Text,
+        token_uri -> Nullable<Text>,
+        is_parsed -> Bool,
+    }
+}
+
+diesel::table! {
+    nft_tokens (address, chain) {
+        address -> Text,
+        chain -> Text,
+        nft_type -> Text,
+        name -> Nullable<Text>,
+        symbol -> Nullable<Text>,
+        contract_uri -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nft_transfers (hash, log_index, transfer_index) {
+        chain -> Text,
+        nft_balances_parsed -> Bool,
+        nft_tokens_parsed -> Bool,
+        from_address -> Text,
+        to_address -> Text,
+        token -> Text,
+        token_id -> Numeric,
+        value -> Numeric,
+        hash -> Text,
+        log_index -> Int8,
+        transfer_index -> Int8,
+        transfer_type -> Text,
     }
 }
 
@@ -160,6 +209,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     erc20_transfers,
     logs,
     methods,
+    nft_balances,
+    nft_token_uris,
+    nft_tokens,
+    nft_transfers,
     receipts,
     transactions,
 );

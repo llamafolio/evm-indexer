@@ -8,7 +8,7 @@ anyhow = "1"
 array-bytes = "6.0.0"
 async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
-diesel = { version = "2", features = ["postgres"] }
+diesel = { version = "2", features = ["postgres", "numeric"] }
 diesel_migrations = { version = "2", features = ["postgres"] }
 dotenv = "0.15"
 ethabi = "18"
@@ -26,6 +26,8 @@ serde = "1"
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 web3 = "0.18"
+bigdecimal = "0.3.0"
+itertools = "0.10.5"
 
 [dependencies.simple_logger]
 version = "4.0.0"
