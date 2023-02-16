@@ -32,10 +32,7 @@ impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
-        let mut connection =
-            PgConnection::establish(&db_url).expect("Unable to connect to the database");
-
-        // TODO: restore migrations 
+        // TODO: restore migrations
         //connection.run_pending_migrations(MIGRATIONS).unwrap();
 
         let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
