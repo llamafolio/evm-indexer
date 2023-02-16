@@ -35,7 +35,8 @@ impl Database {
         let mut connection =
             PgConnection::establish(&db_url).expect("Unable to connect to the database");
 
-        connection.run_pending_migrations(MIGRATIONS).unwrap();
+        // TODO: restore migrations 
+        //connection.run_pending_migrations(MIGRATIONS).unwrap();
 
         let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
 
