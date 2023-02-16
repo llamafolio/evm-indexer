@@ -1,17 +1,14 @@
 use crate::db::{
     db::{get_chunks, Database},
     models::models::DatabaseLog,
-    schema::{erc20_transfers, logs},
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error};
 use ethabi::{ethereum_types::H256, ParamType};
 use ethers::types::Bytes;
 use field_count::FieldCount;
 use log::info;
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = erc20_transfers)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseErc20Transfer {
     pub chain: String,
     pub erc20_balances_parsed: bool,
@@ -27,8 +24,8 @@ pub struct DatabaseErc20Transfer {
 pub struct ERC20Transfers {}
 
 impl ERC20Transfers {
-    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseLog>> {
-        let mut connection = db.establish_connection();
+    pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseLog>> {
+        let mut connection = db.establish_connection().await;
 
         let logs: Result<Vec<DatabaseLog>, Error> = logs::table
             .select(logs::all_columns)
@@ -150,7 +147,7 @@ impl ERC20Transfers {
             db_erc20_transfers.push(db_transfers)
         }
 
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let chunks = get_chunks(
             db_erc20_transfers.len(),

@@ -1,20 +1,12 @@
-use diesel::prelude::*;
 use ethers::types::{Block, Log, Transaction, TransactionReceipt, H160};
 use field_count::FieldCount;
 
-use crate::{
-    db::schema::{
-        blocks, chains_indexed_state, contracts, contracts_information, logs, methods, receipts,
-        transactions,
-    },
-    utils::{
-        format_address, format_bytes, format_bytes_slice, format_hash, format_nonce, format_number,
-        format_small_number,
-    },
+use crate::utils::{
+    format_address, format_bytes, format_bytes_slice, format_hash, format_nonce, format_number,
+    format_small_number,
 };
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = blocks)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseBlock {
     pub base_fee_per_gas: String,
     pub chain: String,
@@ -137,8 +129,7 @@ pub fn byte4_from_input(input: &String) -> [u8; 4] {
     return byte4;
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = transactions)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseTransaction {
     pub block_hash: String,
     pub block_number: i64,
@@ -225,8 +216,7 @@ impl DatabaseTransaction {
     }
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = receipts)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseReceipt {
     pub contract_address: Option<String>,
     pub cumulative_gas_used: String,
@@ -269,8 +259,7 @@ impl DatabaseReceipt {
     }
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = logs)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseLog {
     pub address: String,
     pub chain: String,
@@ -317,15 +306,13 @@ impl DatabaseLog {
     }
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = methods)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseMethod {
     pub method: String,
     pub name: String,
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = contracts_information)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseContractInformation {
     pub chain: String,
     pub contract: String,
@@ -334,8 +321,7 @@ pub struct DatabaseContractInformation {
     pub verified: bool,
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = contracts)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseContract {
     pub block: i64,
     pub chain: String,
@@ -370,8 +356,7 @@ impl DatabaseContract {
     }
 }
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = chains_indexed_state)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseChainIndexedState {
     pub chain: String,
     pub indexed_blocks_amount: i64,

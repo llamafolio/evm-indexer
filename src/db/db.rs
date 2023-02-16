@@ -2,12 +2,10 @@ use std::cmp::min;
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::prelude::*;
-use diesel::{Connection, PgConnection};
-use diesel_migrations::*;
 use field_count::FieldCount;
 use log::*;
 use redis::Commands;
+use sqlx::postgres::PgPoolOptions;
 
 use crate::chains::chains::Chain;
 
@@ -15,9 +13,6 @@ use super::models::models::{
     DatabaseBlock, DatabaseChainIndexedState, DatabaseContract, DatabaseContractInformation,
     DatabaseLog, DatabaseMethod, DatabaseReceipt, DatabaseTransaction,
 };
-use super::schema::*;
-
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
 pub const MAX_DIESEL_PARAM_SIZE: u16 = u16::MAX;
 
@@ -32,8 +27,7 @@ impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
-        // TODO: restore migrations
-        //connection.run_pending_migrations(MIGRATIONS).unwrap();
+        // TODO: db migrations
 
         let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
 
@@ -44,15 +38,18 @@ impl Database {
         })
     }
 
-    pub fn establish_connection(&self) -> PgConnection {
-        let connection =
-            PgConnection::establish(&self.db_url).expect("Unable to connect to the database");
+    pub async fn establish_connection(&self) -> sqlx::Pool<sqlx::Postgres> {
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect("postgres://postgres:password@localhost/test")
+            .await
+            .expect("Unable to connect to the database");
 
-        return connection;
+        return pool;
     }
 
     pub async fn update_indexed_blocks(&self) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let blocks: HashSet<i64> = blocks::dsl::blocks
             .select(blocks::number)
@@ -68,7 +65,7 @@ impl Database {
     }
 
     pub async fn get_contracts_missing_parsed(&self) -> Result<Vec<DatabaseContract>> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let contracts = contracts::dsl::contracts
             .select(contracts::all_columns)
@@ -137,7 +134,7 @@ impl Database {
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         diesel::insert_into(blocks::dsl::blocks)
             .values(blocks)
@@ -149,7 +146,7 @@ impl Database {
     }
 
     async fn store_transactions(&self, transactions: &Vec<DatabaseTransaction>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(transactions.len(), DatabaseTransaction::field_count());
 
@@ -165,7 +162,7 @@ impl Database {
     }
 
     async fn store_transactions_receipts(&self, receipts: &Vec<DatabaseReceipt>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(receipts.len(), DatabaseReceipt::field_count());
 
@@ -181,7 +178,7 @@ impl Database {
     }
 
     async fn store_transactions_logs(&self, logs: &Vec<DatabaseLog>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(logs.len(), DatabaseLog::field_count());
 
@@ -197,7 +194,7 @@ impl Database {
     }
 
     async fn store_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
@@ -216,7 +213,7 @@ impl Database {
         &self,
         contracts_information: &Vec<DatabaseContractInformation>,
     ) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(
             contracts_information.len(),
@@ -235,7 +232,7 @@ impl Database {
     }
 
     pub async fn store_methods(&self, methods: &Vec<DatabaseMethod>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(methods.len(), DatabaseMethod::field_count());
 
@@ -273,7 +270,7 @@ impl Database {
         &self,
         chain_state: &DatabaseChainIndexedState,
     ) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         diesel::insert_into(chains_indexed_state::table)
             .values(chain_state)
@@ -287,7 +284,7 @@ impl Database {
     }
 
     pub async fn update_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let mut connection = self.establish_connection();
+        let mut connection = self.establish_connection().await;
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 

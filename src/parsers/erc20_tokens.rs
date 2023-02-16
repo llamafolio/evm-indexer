@@ -2,13 +2,9 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     chains::chains::{get_chain, get_chains},
-    db::{
-        db::{get_chunks, Database},
-        schema::{erc20_tokens, erc20_transfers},
-    },
+    db::db::{get_chunks, Database},
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error, sql_query};
 use ethabi::Address;
 use ethers::{
     prelude::abigen,
@@ -22,8 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
-#[diesel(table_name = erc20_tokens)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseErc20Token {
     pub address: String,
     pub chain: String,
@@ -52,8 +47,8 @@ abigen!(
 );
 
 impl ERC20Tokens {
-    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let mut connection = db.establish_connection();
+    pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
+        let mut connection = db.establish_connection().await;
 
         let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
             .select(erc20_transfers::all_columns)
@@ -109,7 +104,7 @@ impl ERC20Tokens {
                     Err(_) => continue,
                 }
 
-                let mut connection = db.establish_connection();
+                let mut connection = db.establish_connection().await;
 
                 let mut query = String::from(
                     "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
@@ -172,7 +167,7 @@ impl ERC20Tokens {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let unique_tokens: Vec<(String, String)> = transfers
             .into_iter()

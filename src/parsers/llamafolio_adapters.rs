@@ -1,19 +1,14 @@
 use crate::{
     chains::chains::get_chains,
-    db::{
-        db::{get_chunks, Database},
-        schema::contracts_adapters,
-    },
+    db::db::{get_chunks, Database},
 };
 use anyhow::Result;
-use diesel::prelude::*;
 use field_count::FieldCount;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = contracts_adapters)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseContractAdapter {
     pub adapter_id: String,
     pub chain: String,
@@ -86,7 +81,7 @@ impl LlamafolioParser {
         db: &Database,
         adapters: &Vec<DatabaseContractAdapter>,
     ) -> Result<()> {
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let chunks = get_chunks(adapters.len(), DatabaseContractAdapter::field_count());
 

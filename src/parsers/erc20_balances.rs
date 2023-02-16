@@ -1,15 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    db::{
-        db::{get_chunks, Database},
-        schema::{erc20_balances, erc20_transfers},
-    },
+    db::db::{get_chunks, Database},
     parsers::erc20_tokens::ERC20Tokens,
     utils::format_address,
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error, sql_query};
 use ethers::{
     types::{H160, U256},
     utils::format_units,
@@ -20,8 +16,7 @@ use jsonrpsee::tracing::info;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
-#[diesel(table_name = erc20_balances)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseErc20Balance {
     pub address: String,
     pub balance: f64,
@@ -33,8 +28,8 @@ pub struct DatabaseErc20Balance {
 pub struct ERC20Balances {}
 
 impl ERC20Balances {
-    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let mut connection = db.establish_connection();
+    pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
+        let mut connection = db.establish_connection().await;
 
         let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
             .select(erc20_transfers::all_columns)
@@ -53,7 +48,7 @@ impl ERC20Balances {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let zero_address = format_address(H160::zero());
 
@@ -356,12 +351,12 @@ impl ERC20Balances {
         Ok(())
     }
 
-    pub fn get_current_balances(
+    pub async fn get_current_balances(
         self: &ERC20Balances,
         db: &Database,
         balances: &Vec<(String, String, String)>,
     ) -> Vec<DatabaseErc20Balance> {
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let mut query =
             String::from("SELECT * FROM erc20_balances WHERE (address, token, chain) IN ( VALUES");
@@ -381,12 +376,12 @@ impl ERC20Balances {
         return results;
     }
 
-    pub fn get_tokens(
+    pub async fn get_tokens(
         self: &ERC20Balances,
         db: &Database,
         tokens: &Vec<(String, String)>,
     ) -> Vec<DatabaseErc20Token> {
-        let mut connection = db.establish_connection();
+        let mut connection = db.establish_connection().await;
 
         let mut query =
             String::from("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ");
