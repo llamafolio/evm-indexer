@@ -8,7 +8,7 @@ use ethers::types::Bytes;
 use field_count::FieldCount;
 use log::info;
 
-#[derive(Debug, Clone, FieldCount)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Transfer {
     pub chain: String,
     pub erc20_balances_parsed: bool,

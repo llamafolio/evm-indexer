@@ -13,10 +13,11 @@ use ethers::{
 use field_count::FieldCount;
 use futures::future::join_all;
 use jsonrpsee::tracing::info;
+use sqlx::QueryBuilder;
 
 use super::{erc20_tokens::DatabaseErc20Token, erc20_transfers::DatabaseErc20Transfer};
 
-#[derive(Debug, Clone, FieldCount)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Balance {
     pub address: String,
     pub balance: f64,
@@ -29,19 +30,15 @@ pub struct ERC20Balances {}
 
 impl ERC20Balances {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
-        let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
-            .select(erc20_transfers::all_columns)
-            .filter(
-                erc20_transfers::erc20_balances_parsed
-                    .is_null()
-                    .or(erc20_transfers::erc20_balances_parsed.eq(false)),
-            )
-            .limit(10000)
-            .load::<DatabaseErc20Transfer>(&mut connection);
+        let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
+            "SELECT * FROM erc20_transfers WHERE erc20_balances_parsed = NULL OR erc20_balances_parsed false LIMIT 10000",
+        )
+        .fetch_all(&connection)
+        .await;
 
-        match transfers {
+        match rows {
             Ok(transfers) => Ok(transfers),
             Err(_) => Ok(Vec::new()),
         }
@@ -228,22 +225,23 @@ impl ERC20Balances {
 
         let total_new_balances = new_balances.len();
 
-        let mut query =
-            String::from("UPSERT INTO erc20_balances (address, balance, chain, token) VALUES");
+        let mut query_builder =
+            QueryBuilder::new("UPSERT INTO erc20_balances (address, balance, chain, token) ");
 
-        for balance in new_balances {
-            let value = format!(
-                " ('{}', '{}', '{}', '{}'),",
-                balance.address, balance.balance, balance.chain, balance.token
-            );
-            query.push_str(&value);
-        }
-
-        // Remove the last comma of the value list.
-        query.pop();
+        query_builder.push_values(&new_balances, |mut row, balance| {
+            row.push_bind(balance.address.clone())
+                .push_bind(balance.balance)
+                .push_bind(balance.chain.clone())
+                .push_bind(balance.token.clone());
+        });
 
         if total_new_balances > 0 {
-            sql_query(query).execute(&mut connection).unwrap();
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
+                .expect("Unable to store transactions into database");
         }
 
         if parsed_transfers.len() > 0 {

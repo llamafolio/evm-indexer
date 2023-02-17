@@ -7,6 +7,7 @@ use field_count::FieldCount;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::QueryBuilder;
 
 #[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseContractAdapter {
@@ -81,15 +82,25 @@ impl LlamafolioParser {
         db: &Database,
         adapters: &Vec<DatabaseContractAdapter>,
     ) -> Result<()> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
         let chunks = get_chunks(adapters.len(), DatabaseContractAdapter::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(contracts_adapters::dsl::contracts_adapters)
-                .values(&adapters[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder =
+                QueryBuilder::new("INSERT INTO contracts_adapters(adapter_id, chain, address) ");
+
+            query_builder.push_values(&adapters[start..end], |mut row, contract_adapters| {
+                row.push_bind(contract_adapters.adapter_id.clone())
+                    .push_bind(contract_adapters.chain.clone())
+                    .push_bind(contract_adapters.address.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store contract adapters into database");
         }
 
