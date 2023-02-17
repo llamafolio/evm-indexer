@@ -7,6 +7,7 @@ use ethabi::{ethereum_types::H256, ParamType};
 use ethers::types::Bytes;
 use field_count::FieldCount;
 use log::info;
+use sqlx::QueryBuilder;
 
 #[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Transfer {
@@ -143,7 +144,7 @@ impl ERC20Transfers {
             db_erc20_transfers.push(db_transfers)
         }
 
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
         let chunks = get_chunks(
             db_erc20_transfers.len(),
@@ -151,10 +152,29 @@ impl ERC20Transfers {
         );
 
         for (start, end) in chunks {
-            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                .values(&db_erc20_transfers[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder =
+                QueryBuilder::new("INSERT INTO erc20_transfers(chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+
+            query_builder.push_values(
+                &db_erc20_transfers[start..end],
+                |mut row, erc20_transfer| {
+                    row.push_bind(erc20_transfer.chain.clone())
+                        .push_bind(erc20_transfer.erc20_balances_parsed)
+                        .push_bind(erc20_transfer.erc20_tokens_parsed)
+                        .push_bind(erc20_transfer.from_address.clone())
+                        .push_bind(erc20_transfer.hash.clone())
+                        .push_bind(erc20_transfer.log_index.clone())
+                        .push_bind(erc20_transfer.to_address.clone())
+                        .push_bind(erc20_transfer.token.clone())
+                        .push_bind(erc20_transfer.value.clone());
+                },
+            );
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store erc20 transfers into database");
         }
 
@@ -166,12 +186,24 @@ impl ERC20Transfers {
         let log_chunks = get_chunks(db_parsed_logs.len(), DatabaseLog::field_count());
 
         for (start, end) in log_chunks {
-            diesel::insert_into(logs::dsl::logs)
-                .values(&db_parsed_logs[start..end])
-                .on_conflict((logs::hash, logs::log_index))
-                .do_update()
-                .set(logs::erc20_transfers_parsed.eq(true))
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new("UPSERT INTO logs(address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
+
+            query_builder.push_values(&db_parsed_logs[start..end], |mut row, log| {
+                row.push_bind(log.address.clone())
+                    .push_bind(log.chain.clone())
+                    .push_bind(log.data.clone())
+                    .push_bind(log.erc20_transfers_parsed.clone())
+                    .push_bind(log.hash.clone())
+                    .push_bind(log.log_index.clone())
+                    .push_bind(log.removed.clone())
+                    .push_bind(log.topics.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to update parsed logs into database");
         }
 
