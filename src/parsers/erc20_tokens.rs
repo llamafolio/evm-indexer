@@ -48,19 +48,15 @@ abigen!(
 
 impl ERC20Tokens {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
-        let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
-            .select(erc20_transfers::all_columns)
-            .filter(
-                erc20_transfers::erc20_tokens_parsed
-                    .is_null()
-                    .or(erc20_transfers::erc20_tokens_parsed.eq(false)),
-            )
-            .limit(500)
-            .load::<DatabaseErc20Transfer>(&mut connection);
+        let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
+            "SELECT * FROM erc20_transfers WHERE erc20_tokens_parsed = NULL OR erc20_tokens_parsed false LIMIT 500",
+        )
+        .fetch_all(&connection)
+        .await;
 
-        match transfers {
+        match rows {
             Ok(transfers) => Ok(transfers),
             Err(_) => Ok(Vec::new()),
         }

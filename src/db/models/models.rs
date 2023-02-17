@@ -259,7 +259,7 @@ impl DatabaseReceipt {
     }
 }
 
-#[derive(Debug, Clone, FieldCount)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseLog {
     pub address: String,
     pub chain: String,

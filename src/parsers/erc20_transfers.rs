@@ -25,19 +25,15 @@ pub struct ERC20Transfers {}
 
 impl ERC20Transfers {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseLog>> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
-        let logs: Result<Vec<DatabaseLog>, Error> = logs::table
-            .select(logs::all_columns)
-            .filter(
-                logs::erc20_transfers_parsed
-                    .is_null()
-                    .or(logs::erc20_transfers_parsed.eq(false)),
-            )
-            .limit(50000)
-            .load::<DatabaseLog>(&mut connection);
+        let rows = sqlx::query_as::<_, DatabaseLog>(
+            "SELECT * FROM logs WHERE erc20_transfers_parsed = NULL OR erc20_transfers_parsed false LIMIT 50000",
+        )
+        .fetch_all(&connection)
+        .await;
 
-        match logs {
+        match rows {
             Ok(logs) => Ok(logs),
             Err(_) => Ok(Vec::new()),
         }

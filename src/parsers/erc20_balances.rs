@@ -221,7 +221,7 @@ impl ERC20Balances {
             parsed_transfers.push(transfer.to_owned());
         }
 
-        let new_balances = balances.values();
+        let new_balances: Vec<DatabaseErc20Balance> = balances.into_values().collect();
 
         let total_new_balances = new_balances.len();
 
