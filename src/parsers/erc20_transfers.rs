@@ -146,38 +146,40 @@ impl ERC20Transfers {
 
         let connection = db.get_connection();
 
-        let chunks = get_chunks(
-            db_erc20_transfers.len(),
-            DatabaseErc20Transfer::field_count(),
-        );
-
-        for (start, end) in chunks {
-            let mut query_builder =
-                QueryBuilder::new("INSERT INTO erc20_transfers (chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
-
-            query_builder.push_values(
-                &db_erc20_transfers[start..end],
-                |mut row, erc20_transfer| {
-                    row.push_bind(erc20_transfer.chain.clone())
-                        .push_bind(erc20_transfer.erc20_balances_parsed)
-                        .push_bind(erc20_transfer.erc20_tokens_parsed)
-                        .push_bind(erc20_transfer.from_address.clone())
-                        .push_bind(erc20_transfer.hash.clone())
-                        .push_bind(erc20_transfer.log_index.clone())
-                        .push_bind(erc20_transfer.to_address.clone())
-                        .push_bind(erc20_transfer.token.clone())
-                        .push_bind(erc20_transfer.value.clone());
-                },
+        if db_erc20_transfers.len() > 0 {
+            let chunks = get_chunks(
+                db_erc20_transfers.len(),
+                DatabaseErc20Transfer::field_count(),
             );
 
-            query_builder.push("ON CONFLICT (address, chain) DO NOTHING");
+            for (start, end) in chunks {
+                let mut query_builder =
+            QueryBuilder::new("INSERT INTO erc20_transfers (chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
 
-            let query = query_builder.build();
+                query_builder.push_values(
+                    &db_erc20_transfers[start..end],
+                    |mut row, erc20_transfer| {
+                        row.push_bind(erc20_transfer.chain.clone())
+                            .push_bind(erc20_transfer.erc20_balances_parsed)
+                            .push_bind(erc20_transfer.erc20_tokens_parsed)
+                            .push_bind(erc20_transfer.from_address.clone())
+                            .push_bind(erc20_transfer.hash.clone())
+                            .push_bind(erc20_transfer.log_index.clone())
+                            .push_bind(erc20_transfer.to_address.clone())
+                            .push_bind(erc20_transfer.token.clone())
+                            .push_bind(erc20_transfer.value.clone());
+                    },
+                );
 
-            query
-                .execute(connection)
-                .await
-                .expect("Unable to store erc20 transfers into database");
+                query_builder.push("ON CONFLICT (address, chain) DO NOTHING");
+
+                let query = query_builder.build();
+
+                query
+                    .execute(connection)
+                    .await
+                    .expect("Unable to store erc20 transfers into database");
+            }
         }
 
         info!(
@@ -185,28 +187,30 @@ impl ERC20Transfers {
             db_erc20_transfers.len()
         );
 
-        let log_chunks = get_chunks(db_parsed_logs.len(), DatabaseLog::field_count());
+        if db_parsed_logs.len() > 0 {
+            let chunks = get_chunks(db_parsed_logs.len(), DatabaseLog::field_count());
 
-        for (start, end) in log_chunks {
-            let mut query_builder = QueryBuilder::new("UPSERT INTO logs(address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
+            for (start, end) in chunks {
+                let mut query_builder = QueryBuilder::new("UPSERT INTO logs(address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
 
-            query_builder.push_values(&db_parsed_logs[start..end], |mut row, log| {
-                row.push_bind(log.address.clone())
-                    .push_bind(log.chain.clone())
-                    .push_bind(log.data.clone())
-                    .push_bind(log.erc20_transfers_parsed.clone())
-                    .push_bind(log.hash.clone())
-                    .push_bind(log.log_index.clone())
-                    .push_bind(log.removed.clone())
-                    .push_bind(log.topics.clone());
-            });
+                query_builder.push_values(&db_parsed_logs[start..end], |mut row, log| {
+                    row.push_bind(log.address.clone())
+                        .push_bind(log.chain.clone())
+                        .push_bind(log.data.clone())
+                        .push_bind(log.erc20_transfers_parsed.clone())
+                        .push_bind(log.hash.clone())
+                        .push_bind(log.log_index.clone())
+                        .push_bind(log.removed.clone())
+                        .push_bind(log.topics.clone());
+                });
 
-            let query = query_builder.build();
+                let query = query_builder.build();
 
-            query
-                .execute(connection)
-                .await
-                .expect("Unable to update parsed logs into database");
+                query
+                    .execute(connection)
+                    .await
+                    .expect("Unable to update parsed logs into database");
+            }
         }
 
         Ok(())
