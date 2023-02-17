@@ -1,5 +1,5 @@
-use std::cmp::min;
 use std::collections::HashSet;
+use std::{cmp::min, time::Duration};
 
 use anyhow::Result;
 use field_count::FieldCount;
@@ -33,7 +33,9 @@ impl Database {
 
         let mut connect_options: PgConnectOptions = db_url.parse().unwrap();
 
+        connect_options.disable_statement_logging();
         connect_options.log_statements(LevelFilter::Info);
+        connect_options.log_slow_statements(LevelFilter::Info, Duration::default());
 
         let db_conn = PgPoolOptions::new()
             .max_connections(5)
