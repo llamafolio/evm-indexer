@@ -171,7 +171,7 @@ impl ERC20Transfers {
                     },
                 );
 
-                query_builder.push("ON CONFLICT (address, chain) DO NOTHING");
+                query_builder.push("ON CONFLICT (hash, log_index) DO NOTHING");
 
                 let query = query_builder.build();
 
