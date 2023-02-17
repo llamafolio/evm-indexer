@@ -88,13 +88,15 @@ impl LlamafolioParser {
 
         for (start, end) in chunks {
             let mut query_builder =
-                QueryBuilder::new("INSERT INTO contracts_adapters(adapter_id, chain, address) ");
+                QueryBuilder::new("INSERT INTO contracts_adapters (adapter_id, chain, address) ");
 
             query_builder.push_values(&adapters[start..end], |mut row, contract_adapters| {
                 row.push_bind(contract_adapters.adapter_id.clone())
                     .push_bind(contract_adapters.chain.clone())
                     .push_bind(contract_adapters.address.clone());
             });
+
+            query_builder.push("ON CONFLICT (hash, log_index) DO NOTHING");
 
             let query = query_builder.build();
 

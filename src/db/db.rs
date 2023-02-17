@@ -143,7 +143,7 @@ impl Database {
         let chunks = get_chunks(blocks.len(), DatabaseBlock::field_count());
 
         for (start, end) in chunks {
-            let mut query_builder = QueryBuilder::new("INSERT INTO blocks(base_fee_per_gas, chain, difficulty, extra_data, gas_limit, gas_used, block_hash, logs_bloom, miner, mix_hash, nonce, number, parent_hash, receipts_root, sha3_uncles, size, state_root, timestamp, total_difficulty, transactions, uncles) ");
+            let mut query_builder = QueryBuilder::new("INSERT INTO blocks (base_fee_per_gas, chain, difficulty, extra_data, gas_limit, gas_used, block_hash, logs_bloom, miner, mix_hash, nonce, number, parent_hash, receipts_root, sha3_uncles, size, state_root, timestamp, total_difficulty, transactions, uncles) ");
 
             query_builder.push_values(&blocks[start..end], |mut row, block| {
                 row.push_bind(block.base_fee_per_gas.clone())
@@ -169,6 +169,8 @@ impl Database {
                     .push_bind(block.uncles.clone());
             });
 
+            query_builder.push("ON CONFLICT (block_hash) DO NOTHING");
+
             let query = query_builder.build();
 
             query
@@ -186,7 +188,7 @@ impl Database {
         let chunks = get_chunks(transactions.len(), DatabaseTransaction::field_count());
 
         for (start, end) in chunks {
-            let mut query_builder = QueryBuilder::new("INSERT INTO transactions(block_hash, block_number, chain, from_address, gas, gas_price, max_priority_fee_per_gas, max_fee_per_gas, hash, input, method, nonce, timestamp, to_address, transaction_index, transaction_type, value) ");
+            let mut query_builder = QueryBuilder::new("INSERT INTO transactions (block_hash, block_number, chain, from_address, gas, gas_price, max_priority_fee_per_gas, max_fee_per_gas, hash, input, method, nonce, timestamp, to_address, transaction_index, transaction_type, value) ");
 
             query_builder.push_values(&transactions[start..end], |mut row, transaction| {
                 row.push_bind(transaction.block_hash.clone())
@@ -208,6 +210,8 @@ impl Database {
                     .push_bind(transaction.value.clone());
             });
 
+            query_builder.push("ON CONFLICT (hash) DO NOTHING");
+
             let query = query_builder.build();
 
             query
@@ -225,7 +229,7 @@ impl Database {
         let chunks = get_chunks(receipts.len(), DatabaseReceipt::field_count());
 
         for (start, end) in chunks {
-            let mut query_builder = QueryBuilder::new("INSERT INTO receipts(contract_address, cumulative_gas_used, effective_gas_price, gas_used, hash, status) ");
+            let mut query_builder = QueryBuilder::new("INSERT INTO receipts (contract_address, cumulative_gas_used, effective_gas_price, gas_used, hash, status) ");
 
             query_builder.push_values(&receipts[start..end], |mut row, receipt| {
                 row.push_bind(receipt.contract_address.clone())
@@ -235,6 +239,8 @@ impl Database {
                     .push_bind(receipt.hash.clone())
                     .push_bind(receipt.status.clone());
             });
+
+            query_builder.push("ON CONFLICT (hash) DO NOTHING");
 
             let query = query_builder.build();
 
@@ -253,7 +259,7 @@ impl Database {
         let chunks = get_chunks(logs.len(), DatabaseLog::field_count());
 
         for (start, end) in chunks {
-            let mut query_builder = QueryBuilder::new("INSERT INTO logs(address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
+            let mut query_builder = QueryBuilder::new("INSERT INTO logs (address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
 
             query_builder.push_values(&logs[start..end], |mut row, log| {
                 row.push_bind(log.address.clone())
@@ -265,6 +271,8 @@ impl Database {
                     .push_bind(log.removed.clone())
                     .push_bind(log.topics.clone());
             });
+
+            query_builder.push("ON CONFLICT (hash, log_index) DO NOTHING");
 
             let query = query_builder.build();
 
@@ -284,7 +292,7 @@ impl Database {
 
         for (start, end) in chunks {
             let mut query_builder = QueryBuilder::new(
-                "INSERT INTO contracts(block, chain, contract, creator, hash, parsed, verified) ",
+                "INSERT INTO contracts (block, chain, contract, creator, hash, parsed, verified) ",
             );
 
             query_builder.push_values(&contracts[start..end], |mut row, contract| {
@@ -296,6 +304,8 @@ impl Database {
                     .push_bind(contract.parsed)
                     .push_bind(contract.verified);
             });
+
+            query_builder.push("ON CONFLICT (contract, chain) DO NOTHING");
 
             let query = query_builder.build();
 
@@ -321,7 +331,7 @@ impl Database {
 
         for (start, end) in chunks {
             let mut query_builder = QueryBuilder::new(
-                "INSERT INTO contracts_information(chain, contract, abi, name, verified) ",
+                "INSERT INTO contracts_information (chain, contract, abi, name, verified) ",
             );
 
             query_builder.push_values(
@@ -334,6 +344,8 @@ impl Database {
                         .push_bind(contract_information.verified.clone());
                 },
             );
+
+            query_builder.push("ON CONFLICT (contract, chain) DO NOTHING");
 
             let query = query_builder.build();
 
@@ -352,12 +364,14 @@ impl Database {
         let chunks = get_chunks(methods.len(), DatabaseMethod::field_count());
 
         for (start, end) in chunks {
-            let mut query_builder = QueryBuilder::new("INSERT INTO methods(method, name) ");
+            let mut query_builder = QueryBuilder::new("INSERT INTO methods (method, name) ");
 
             query_builder.push_values(&methods[start..end], |mut row, method| {
                 row.push_bind(method.method.clone())
                     .push_bind(method.name.clone());
             });
+
+            query_builder.push("ON CONFLICT (method) DO NOTHING");
 
             let query = query_builder.build();
 
