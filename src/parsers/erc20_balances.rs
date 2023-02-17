@@ -83,7 +83,7 @@ impl ERC20Balances {
             .into_iter()
             .collect();
 
-        let tokens_data = self.get_tokens(db, &tokens);
+        let tokens_data = self.get_tokens(db, &tokens).await;
 
         info!(
             "ERC20Balances: updating balances for {} senders and {} receivers from {} total tokens {} tokens with data",
@@ -111,7 +111,7 @@ impl ERC20Balances {
 
         let balances_ids: Vec<(String, String, String)> = unique_balances.into_iter().collect();
 
-        let stored_balances = self.get_current_balances(db, &balances_ids);
+        let stored_balances = self.get_current_balances(db, &balances_ids).await;
 
         info!(
             "ERC20Balances: fetched {} balances to update",

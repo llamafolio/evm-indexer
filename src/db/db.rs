@@ -5,7 +5,7 @@ use anyhow::Result;
 use field_count::FieldCount;
 use log::*;
 use redis::Commands;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, QueryBuilder};
 
 use crate::chains::chains::Chain;
 
@@ -41,7 +41,7 @@ impl Database {
     pub async fn establish_connection(&self) -> sqlx::Pool<sqlx::Postgres> {
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .connect("postgres://postgres:password@localhost/test")
+            .connect(&self.db_url)
             .await
             .expect("Unable to connect to the database");
 
@@ -49,15 +49,9 @@ impl Database {
     }
 
     pub async fn update_indexed_blocks(&self) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
-        let blocks: HashSet<i64> = blocks::dsl::blocks
-            .select(blocks::number)
-            .filter(blocks::chain.eq(self.chain.name.clone()))
-            .load::<i64>(&mut connection)
-            .unwrap()
-            .into_iter()
-            .collect();
+        let blocks: HashSet<i64> = HashSet::new();
 
         self.store_indexed_blocks(&blocks).await.unwrap();
 
@@ -65,15 +59,15 @@ impl Database {
     }
 
     pub async fn get_contracts_missing_parsed(&self) -> Result<Vec<DatabaseContract>> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
-        let contracts = contracts::dsl::contracts
-            .select(contracts::all_columns)
-            .filter(contracts::parsed.eq(false))
-            .limit(500)
-            .load::<DatabaseContract>(&mut connection);
+        let rows = sqlx::query_as::<_, DatabaseContract>(
+            "SELECT * FROM contracts WHERE parsed = true LIMIT 500",
+        )
+        .fetch_all(&connection)
+        .await;
 
-        match contracts {
+        match rows {
             Ok(contracts) => Ok(contracts),
             Err(_) => Ok(Vec::new()),
         }
@@ -134,27 +128,81 @@ impl Database {
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
-        diesel::insert_into(blocks::dsl::blocks)
-            .values(blocks)
-            .on_conflict_do_nothing()
-            .execute(&mut connection)
-            .expect("Unable to store blocks into database");
+        let chunks = get_chunks(blocks.len(), DatabaseBlock::field_count());
+
+        for (start, end) in chunks {
+            let mut query_builder = QueryBuilder::new("INSERT INTO blocks(base_fee_per_gas, chain, difficulty, extra_data, gas_limit, gas_used, block_hash, logs_bloom, miner, mix_hash, nonce, number, parent_hash, receipts_root, sha3_uncles, size, state_root, timestamp, total_difficulty, transactions, uncles) ");
+
+            query_builder.push_values(&blocks[start..end], |mut row, block| {
+                row.push_bind(block.base_fee_per_gas.clone())
+                    .push_bind(block.chain.clone())
+                    .push_bind(block.difficulty.clone())
+                    .push_bind(block.extra_data.clone())
+                    .push_bind(block.gas_limit.clone())
+                    .push_bind(block.gas_used.clone())
+                    .push_bind(block.block_hash.clone())
+                    .push_bind(block.logs_bloom.clone())
+                    .push_bind(block.miner.clone())
+                    .push_bind(block.mix_hash.clone())
+                    .push_bind(block.nonce.clone())
+                    .push_bind(block.number)
+                    .push_bind(block.parent_hash.clone())
+                    .push_bind(block.receipts_root.clone())
+                    .push_bind(block.sha3_uncles.clone())
+                    .push_bind(block.size)
+                    .push_bind(block.state_root.clone())
+                    .push_bind(block.timestamp.clone())
+                    .push_bind(block.total_difficulty.clone())
+                    .push_bind(block.transactions)
+                    .push_bind(block.uncles.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
+                .expect("Unable to store blocks into database");
+        }
 
         Ok(())
     }
 
     async fn store_transactions(&self, transactions: &Vec<DatabaseTransaction>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(transactions.len(), DatabaseTransaction::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(transactions::dsl::transactions)
-                .values(&transactions[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new("INSERT INTO transactions(block_hash, block_number, chain, from_address, gas, gas_price, max_priority_fee_per_gas, max_fee_per_gas, hash, input, method, nonce, timestamp, to_address, transaction_index, transaction_type, value) ");
+
+            query_builder.push_values(&transactions[start..end], |mut row, transaction| {
+                row.push_bind(transaction.block_hash.clone())
+                    .push_bind(transaction.block_number)
+                    .push_bind(transaction.chain.clone())
+                    .push_bind(transaction.from_address.clone())
+                    .push_bind(transaction.gas.clone())
+                    .push_bind(transaction.gas_price.clone())
+                    .push_bind(transaction.max_priority_fee_per_gas.clone())
+                    .push_bind(transaction.max_fee_per_gas.clone())
+                    .push_bind(transaction.hash.clone())
+                    .push_bind(transaction.input.clone())
+                    .push_bind(transaction.method.clone())
+                    .push_bind(transaction.nonce.clone())
+                    .push_bind(transaction.timestamp.clone())
+                    .push_bind(transaction.to_address.clone())
+                    .push_bind(transaction.transaction_index)
+                    .push_bind(transaction.transaction_type)
+                    .push_bind(transaction.value.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store transactions into database");
         }
 
@@ -162,15 +210,27 @@ impl Database {
     }
 
     async fn store_transactions_receipts(&self, receipts: &Vec<DatabaseReceipt>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(receipts.len(), DatabaseReceipt::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(receipts::dsl::receipts)
-                .values(&receipts[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new("INSERT INTO receipts(contract_address, cumulative_gas_used, effective_gas_price, gas_used, hash, status) ");
+
+            query_builder.push_values(&receipts[start..end], |mut row, receipt| {
+                row.push_bind(receipt.contract_address.clone())
+                    .push_bind(receipt.cumulative_gas_used.clone())
+                    .push_bind(receipt.effective_gas_price.clone())
+                    .push_bind(receipt.gas_used.clone())
+                    .push_bind(receipt.hash.clone())
+                    .push_bind(receipt.status.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store receipts into database");
         }
 
@@ -178,15 +238,29 @@ impl Database {
     }
 
     async fn store_transactions_logs(&self, logs: &Vec<DatabaseLog>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(logs.len(), DatabaseLog::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(logs::dsl::logs)
-                .values(&logs[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new("INSERT INTO logs(address, chain, data, erc20_transfers_parsed, hash, log_index, removed, topics) ");
+
+            query_builder.push_values(&logs[start..end], |mut row, log| {
+                row.push_bind(log.address.clone())
+                    .push_bind(log.chain.clone())
+                    .push_bind(log.data.clone())
+                    .push_bind(log.erc20_transfers_parsed.clone())
+                    .push_bind(log.hash.clone())
+                    .push_bind(log.log_index.clone())
+                    .push_bind(log.removed.clone())
+                    .push_bind(log.topics.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store logs into database");
         }
 
@@ -194,15 +268,30 @@ impl Database {
     }
 
     async fn store_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(contracts::dsl::contracts)
-                .values(&contracts[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new(
+                "INSERT INTO contracts(block, chain, contract, creator, hash, parsed, verified) ",
+            );
+
+            query_builder.push_values(&contracts[start..end], |mut row, contract| {
+                row.push_bind(contract.block.clone())
+                    .push_bind(contract.chain.clone())
+                    .push_bind(contract.contract.clone())
+                    .push_bind(contract.creator.clone())
+                    .push_bind(contract.hash.clone())
+                    .push_bind(contract.parsed)
+                    .push_bind(contract.verified);
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store contracts into database");
         }
 
@@ -213,7 +302,7 @@ impl Database {
         &self,
         contracts_information: &Vec<DatabaseContractInformation>,
     ) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(
             contracts_information.len(),
@@ -221,10 +310,26 @@ impl Database {
         );
 
         for (start, end) in chunks {
-            diesel::insert_into(contracts_information::dsl::contracts_information)
-                .values(&contracts_information[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new(
+                "INSERT INTO contracts_information(chain, contract, abi, name, verified) ",
+            );
+
+            query_builder.push_values(
+                &contracts_information[start..end],
+                |mut row, contract_information| {
+                    row.push_bind(contract_information.chain.clone())
+                        .push_bind(contract_information.contract.clone())
+                        .push_bind(contract_information.abi.clone())
+                        .push_bind(contract_information.name.clone())
+                        .push_bind(contract_information.verified.clone());
+                },
+            );
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store contracts information into database");
         }
 
@@ -232,15 +337,23 @@ impl Database {
     }
 
     pub async fn store_methods(&self, methods: &Vec<DatabaseMethod>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(methods.len(), DatabaseMethod::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(methods::dsl::methods)
-                .values(&methods[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new("INSERT INTO methods(method, name) ");
+
+            query_builder.push_values(&methods[start..end], |mut row, method| {
+                row.push_bind(method.method.clone())
+                    .push_bind(method.name.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to store methods into database");
         }
 

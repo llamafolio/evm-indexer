@@ -321,7 +321,7 @@ pub struct DatabaseContractInformation {
     pub verified: bool,
 }
 
-#[derive(Debug, Clone, FieldCount)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseContract {
     pub block: i64,
     pub chain: String,
