@@ -31,14 +31,9 @@ impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
-        let mut connect_options = PgConnectOptions::new().host(&db_url);
+        let mut connect_options: PgConnectOptions = db_url.parse().unwrap();
 
         connect_options.log_statements(LevelFilter::Info);
-
-        connect_options
-            .connect()
-            .await
-            .expect("Unable to connect to the database");
 
         let db_conn = PgPoolOptions::new()
             .max_connections(5)
