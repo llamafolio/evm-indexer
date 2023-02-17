@@ -396,7 +396,7 @@ impl Database {
         let connection = self.get_connection();
 
         let query = format!(
-            "UPSERT INTO chains_indexed_state(chain, indexed_blocks_amount) ({}, {})",
+            "UPSERT INTO chains_indexed_state (chain, indexed_blocks_amount) VALUES ('{}', {})",
             chain_state.chain.clone(),
             chain_state.indexed_blocks_amount
         );
