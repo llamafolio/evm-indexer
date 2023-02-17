@@ -1,5 +1,5 @@
+use std::cmp::min;
 use std::collections::HashSet;
-use std::{cmp::min, time::Duration};
 
 use anyhow::Result;
 use field_count::FieldCount;
