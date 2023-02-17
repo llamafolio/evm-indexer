@@ -45,7 +45,7 @@ impl ERC20Balances {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
         let zero_address = format_address(H160::zero());
 
@@ -248,13 +248,30 @@ impl ERC20Balances {
             let chunks = get_chunks(parsed_transfers.len(), DatabaseErc20Transfer::field_count());
 
             for (start, end) in chunks {
-                diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                    .values(&parsed_transfers[start..end])
-                    .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-                    .do_update()
-                    .set(erc20_transfers::erc20_balances_parsed.eq(true))
-                    .execute(&mut connection)
-                    .expect("Unable to update parsed erc20 balances into database");
+                let mut query_builder =
+                QueryBuilder::new("UPSERT INTO erc20_transfers(chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+
+                query_builder.push_values(
+                    &parsed_transfers[start..end],
+                    |mut row, erc20_transfer| {
+                        row.push_bind(erc20_transfer.chain.clone())
+                            .push_bind(erc20_transfer.erc20_balances_parsed)
+                            .push_bind(erc20_transfer.erc20_tokens_parsed)
+                            .push_bind(erc20_transfer.from_address.clone())
+                            .push_bind(erc20_transfer.hash.clone())
+                            .push_bind(erc20_transfer.log_index.clone())
+                            .push_bind(erc20_transfer.to_address.clone())
+                            .push_bind(erc20_transfer.token.clone())
+                            .push_bind(erc20_transfer.value.clone());
+                    },
+                );
+
+                let query = query_builder.build();
+
+                query
+                    .execute(&connection)
+                    .await
+                    .expect("Unable to update erc20 transfers into database");
             }
         }
 
@@ -291,9 +308,11 @@ impl ERC20Balances {
 
                 let tokens_amount = tokens.len();
 
-                let mut query = String::from(
-                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
+                let mut query_builder = QueryBuilder::new(
+                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) ",
                 );
+
+                let mut tokens_data = vec![];
 
                 for token in tokens {
                     let name = match token.name {
@@ -322,22 +341,22 @@ impl ERC20Balances {
                         None => String::from("NULL"),
                     };
 
-                    let value = format!(
-                        " ('{}', '{}', '{}', {}, {}),",
+                    tokens_data.push((
                         token.address,
                         token.chain,
                         token.decimals.unwrap(),
                         name,
-                        symbol
-                    );
-
-                    query.push_str(&value);
+                        symbol,
+                    ));
                 }
 
-                query.pop();
-
                 if tokens_amount > 0 {
-                    sql_query(query).execute(&mut connection).unwrap();
+                    let query = query_builder.build();
+
+                    query
+                        .execute(&connection)
+                        .await
+                        .expect("Unable to store erc20 tokens into database");
                 }
 
                 info!(
@@ -354,7 +373,7 @@ impl ERC20Balances {
         db: &Database,
         balances: &Vec<(String, String, String)>,
     ) -> Vec<DatabaseErc20Balance> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
         let mut query =
             String::from("SELECT * FROM erc20_balances WHERE (address, token, chain) IN ( VALUES");
@@ -367,11 +386,18 @@ impl ERC20Balances {
         query.pop();
         query.push_str(")");
 
-        let results: Vec<DatabaseErc20Balance> = sql_query(query)
-            .load::<DatabaseErc20Balance>(&mut connection)
-            .unwrap();
+        if balances.len() > 0 {
+            let rows = sqlx::query_as::<_, DatabaseErc20Balance>(&query)
+                .fetch_all(&connection)
+                .await;
 
-        return results;
+            match rows {
+                Ok(transfers) => return transfers,
+                Err(_) => return Vec::new(),
+            };
+        }
+
+        return Vec::new();
     }
 
     pub async fn get_tokens(
@@ -379,7 +405,7 @@ impl ERC20Balances {
         db: &Database,
         tokens: &Vec<(String, String)>,
     ) -> Vec<DatabaseErc20Token> {
-        let mut connection = db.establish_connection().await;
+        let connection = db.establish_connection().await;
 
         let mut query =
             String::from("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ");
@@ -393,11 +419,14 @@ impl ERC20Balances {
         query.push_str(")");
 
         if tokens.len() > 0 {
-            let results: Vec<DatabaseErc20Token> = sql_query(query)
-                .load::<DatabaseErc20Token>(&mut connection)
-                .unwrap();
+            let rows = sqlx::query_as::<_, DatabaseErc20Token>(&query)
+                .fetch_all(&connection)
+                .await;
 
-            return results;
+            match rows {
+                Ok(transfers) => return transfers,
+                Err(_) => return Vec::new(),
+            };
         }
 
         return Vec::new();

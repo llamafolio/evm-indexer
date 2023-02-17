@@ -19,7 +19,7 @@ use sqlx::QueryBuilder;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
-#[derive(Debug, Clone, FieldCount)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Token {
     pub address: String,
     pub chain: String,
