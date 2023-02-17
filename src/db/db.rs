@@ -36,7 +36,7 @@ impl Database {
         connect_options.disable_statement_logging();
 
         let db_conn = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(100)
             .connect_with(connect_options)
             .await
             .expect("Unable to connect to the database");
