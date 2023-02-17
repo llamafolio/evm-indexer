@@ -64,7 +64,7 @@ async fn main() {
                 parser.parse_extenal(&db).await.unwrap();
 
                 loop {
-                    let data = parser.fetch(&db).unwrap();
+                    let data = parser.fetch(&db).await.unwrap();
 
                     info!("ERC20Tokens: Fetched {} transfers to parse.", data.len());
 
@@ -85,7 +85,7 @@ async fn main() {
                 loop {
                     let parser = ERC20Balances {};
 
-                    let data = parser.fetch(&db).unwrap();
+                    let data = parser.fetch(&db).await.unwrap();
 
                     info!("ERC20Balances: Fetched {} transfers to parse.", data.len());
 
@@ -102,7 +102,7 @@ async fn main() {
     loop {
         let erc20_transfers_parser = ERC20Transfers {};
 
-        let logs = erc20_transfers_parser.fetch(&db).unwrap();
+        let logs = erc20_transfers_parser.fetch(&db).await.unwrap();
 
         info!("ERC20Transfers: Fetched {} logs to parse.", logs.len());
 

@@ -1,19 +1,15 @@
 use crate::{
     chains::chains::get_chains,
-    db::{
-        db::{get_chunks, Database},
-        schema::contracts_adapters,
-    },
+    db::db::{get_chunks, Database},
 };
 use anyhow::Result;
-use diesel::prelude::*;
 use field_count::FieldCount;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::QueryBuilder;
 
-#[derive(Queryable, Insertable, Debug, Clone, FieldCount)]
-#[diesel(table_name = contracts_adapters)]
+#[derive(Debug, Clone, FieldCount)]
 pub struct DatabaseContractAdapter {
     pub adapter_id: String,
     pub chain: String,
@@ -86,15 +82,25 @@ impl LlamafolioParser {
         db: &Database,
         adapters: &Vec<DatabaseContractAdapter>,
     ) -> Result<()> {
-        let mut connection = db.establish_connection();
+        let connection = db.get_connection();
 
         let chunks = get_chunks(adapters.len(), DatabaseContractAdapter::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(contracts_adapters::dsl::contracts_adapters)
-                .values(&adapters[start..end])
-                .on_conflict_do_nothing()
-                .execute(&mut connection)
+            let mut query_builder =
+                QueryBuilder::new("INSERT INTO contracts_adapters(adapter_id, chain, address) ");
+
+            query_builder.push_values(&adapters[start..end], |mut row, contract_adapters| {
+                row.push_bind(contract_adapters.adapter_id.clone())
+                    .push_bind(contract_adapters.chain.clone())
+                    .push_bind(contract_adapters.address.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(connection)
+                .await
                 .expect("Unable to store contract adapters into database");
         }
 

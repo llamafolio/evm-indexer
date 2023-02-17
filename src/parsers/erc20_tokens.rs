@@ -2,13 +2,9 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     chains::chains::{get_chain, get_chains},
-    db::{
-        db::{get_chunks, Database},
-        schema::{erc20_tokens, erc20_transfers},
-    },
+    db::db::{get_chunks, Database},
 };
 use anyhow::Result;
-use diesel::{prelude::*, result::Error, sql_query};
 use ethabi::Address;
 use ethers::{
     prelude::abigen,
@@ -19,11 +15,11 @@ use futures::future::join_all;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::QueryBuilder;
 
 use super::erc20_transfers::DatabaseErc20Transfer;
 
-#[derive(Selectable, Queryable, Insertable, Debug, Clone, FieldCount, QueryableByName)]
-#[diesel(table_name = erc20_tokens)]
+#[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Token {
     pub address: String,
     pub chain: String,
@@ -52,20 +48,16 @@ abigen!(
 );
 
 impl ERC20Tokens {
-    pub fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let mut connection = db.establish_connection();
+    pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
+        let connection = db.get_connection();
 
-        let transfers: Result<Vec<DatabaseErc20Transfer>, Error> = erc20_transfers::table
-            .select(erc20_transfers::all_columns)
-            .filter(
-                erc20_transfers::erc20_tokens_parsed
-                    .is_null()
-                    .or(erc20_transfers::erc20_tokens_parsed.eq(false)),
-            )
-            .limit(500)
-            .load::<DatabaseErc20Transfer>(&mut connection);
+        let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
+            "SELECT * FROM erc20_transfers WHERE erc20_tokens_parsed = NULL OR erc20_tokens_parsed false LIMIT 500",
+        )
+        .fetch_all(connection)
+        .await;
 
-        match transfers {
+        match rows {
             Ok(transfers) => Ok(transfers),
             Err(_) => Ok(Vec::new()),
         }
@@ -109,13 +101,15 @@ impl ERC20Tokens {
                     Err(_) => continue,
                 }
 
-                let mut connection = db.establish_connection();
+                let connection = db.get_connection();
 
-                let mut query = String::from(
-                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
+                let mut query_builder = QueryBuilder::new(
+                    "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) ",
                 );
 
                 let tokens_amount = tokens.len();
+
+                let mut tokens_data = vec![];
 
                 for token in tokens {
                     let name = match token.name {
@@ -144,22 +138,33 @@ impl ERC20Tokens {
                         None => String::from("NULL"),
                     };
 
-                    let value = format!(
-                        " ('{}', '{}', {}, {}, {}),",
+                    tokens_data.push((
                         token.address,
                         token.chain,
                         token.decimals.unwrap(),
                         name,
-                        symbol
-                    );
-
-                    query.push_str(&value);
+                        symbol,
+                    ));
                 }
 
-                query.pop();
+                query_builder.push_values(
+                    &tokens_data,
+                    |mut row, (address, chain, decimals, name, symbol)| {
+                        row.push_bind(address)
+                            .push_bind(chain)
+                            .push_bind(decimals)
+                            .push_bind(name)
+                            .push_bind(symbol);
+                    },
+                );
 
                 if tokens_amount > 0 {
-                    sql_query(query).execute(&mut connection).unwrap();
+                    let query = query_builder.build();
+
+                    query
+                        .execute(connection)
+                        .await
+                        .expect("Unable to store erc20 balances into database");
                 }
 
                 info!(
@@ -172,7 +177,7 @@ impl ERC20Tokens {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let mut connection = db.establish_connection();
+        let connection = db.get_connection();
 
         let unique_tokens: Vec<(String, String)> = transfers
             .into_iter()
@@ -194,11 +199,12 @@ impl ERC20Tokens {
             .map(|token| token.unwrap())
             .collect();
 
-        let mut query = String::from(
-            "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) VALUES",
-        );
+        let mut query_builder =
+            QueryBuilder::new("UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) ");
 
         let tokens_amount = db_tokens.len();
+
+        let mut tokens_data = vec![];
 
         for token in db_tokens {
             let name = match token.name {
@@ -227,24 +233,33 @@ impl ERC20Tokens {
                 None => String::from("NULL"),
             };
 
-            let value = format!(
-                " ('{}', '{}', {}, {}, {}),",
+            tokens_data.push((
                 token.address,
                 token.chain,
                 token.decimals.unwrap(),
                 name,
-                symbol
-            );
-
-            query.push_str(&value);
+                symbol,
+            ));
         }
 
-        query.pop();
+        query_builder.push_values(
+            &tokens_data,
+            |mut row, (address, chain, decimals, name, symbol)| {
+                row.push_bind(address)
+                    .push_bind(chain)
+                    .push_bind(decimals)
+                    .push_bind(name)
+                    .push_bind(symbol);
+            },
+        );
 
         if tokens_amount > 0 {
-            sql_query(query)
-                .execute(&mut connection)
-                .expect("Unable to store erc20 tokens data");
+            let query = query_builder.build();
+
+            query
+                .execute(connection)
+                .await
+                .expect("Unable to store erc20 balances into database");
         }
 
         info!(
@@ -255,13 +270,27 @@ impl ERC20Tokens {
         let transfers_chunks = get_chunks(transfers.len(), DatabaseErc20Transfer::field_count());
 
         for (start, end) in transfers_chunks {
-            diesel::insert_into(erc20_transfers::dsl::erc20_transfers)
-                .values(&transfers[start..end])
-                .on_conflict((erc20_transfers::hash, erc20_transfers::log_index))
-                .do_update()
-                .set(erc20_transfers::erc20_tokens_parsed.eq(true))
-                .execute(&mut connection)
-                .expect("Unable to update parsed erc20 transfers into database");
+            let mut query_builder =
+                QueryBuilder::new("UPSERT INTO erc20_transfers(chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+
+            query_builder.push_values(&transfers[start..end], |mut row, erc20_transfer| {
+                row.push_bind(erc20_transfer.chain.clone())
+                    .push_bind(erc20_transfer.erc20_balances_parsed)
+                    .push_bind(erc20_transfer.erc20_tokens_parsed)
+                    .push_bind(erc20_transfer.from_address.clone())
+                    .push_bind(erc20_transfer.hash.clone())
+                    .push_bind(erc20_transfer.log_index.clone())
+                    .push_bind(erc20_transfer.to_address.clone())
+                    .push_bind(erc20_transfer.token.clone())
+                    .push_bind(erc20_transfer.value.clone());
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(connection)
+                .await
+                .expect("Unable to update erc20 transfers into database");
         }
 
         Ok(())

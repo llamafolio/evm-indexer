@@ -258,7 +258,10 @@ async fn subscribe_heads(chain: Chain, db: &Database, rpc: &Rpc, config: &EVMInd
 
     match wss {
         Some(wss) => {
-            let mut sub = wss.eth_subscribe().subscribe_new_heads().await.unwrap();
+            let mut sub = match wss.eth_subscribe().subscribe_new_heads().await {
+                Ok(sub) => sub,
+                Err(_) => return,
+            };
 
             loop {
                 let new_block = sub.next().await;
