@@ -3,9 +3,10 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use field_count::FieldCount;
+use futures::TryStreamExt;
 use log::*;
 use redis::Commands;
-use sqlx::{postgres::PgPoolOptions, QueryBuilder};
+use sqlx::{postgres::PgPoolOptions, QueryBuilder, Row};
 
 use crate::chains::chains::Chain;
 
@@ -18,40 +19,49 @@ pub const MAX_DIESEL_PARAM_SIZE: u16 = u16::MAX;
 
 #[derive(Debug, Clone)]
 pub struct Database {
-    pub db_url: String,
     pub chain: Chain,
     pub redis: redis::Client,
+    pub db_conn: sqlx::Pool<sqlx::Postgres>,
 }
 
 impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
+        let db_conn = PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&db_url)
+            .await
+            .expect("Unable to connect to the database");
+
         // TODO: db migrations
 
         let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
 
         Ok(Self {
-            db_url,
             chain,
             redis,
+            db_conn,
         })
     }
 
-    pub async fn establish_connection(&self) -> sqlx::Pool<sqlx::Postgres> {
-        let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&self.db_url)
-            .await
-            .expect("Unable to connect to the database");
-
-        return pool;
+    pub fn get_connection(&self) -> &sqlx::Pool<sqlx::Postgres> {
+        return &self.db_conn;
     }
 
     pub async fn update_indexed_blocks(&self) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
-        let blocks: HashSet<i64> = HashSet::new();
+        let mut blocks: HashSet<i64> = HashSet::new();
+
+        let mut rows = sqlx::query("SELECT number FROM blocks WHERE chain = $1")
+            .bind(self.chain.name.clone())
+            .fetch(connection);
+
+        while let Some(row) = rows.try_next().await.unwrap() {
+            let number: i64 = row.try_get("number")?;
+            blocks.insert(number);
+        }
 
         self.store_indexed_blocks(&blocks).await.unwrap();
 
@@ -59,12 +69,12 @@ impl Database {
     }
 
     pub async fn get_contracts_missing_parsed(&self) -> Result<Vec<DatabaseContract>> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseContract>(
             "SELECT * FROM contracts WHERE parsed = true LIMIT 500",
         )
-        .fetch_all(&connection)
+        .fetch_all(connection)
         .await;
 
         match rows {
@@ -128,7 +138,7 @@ impl Database {
     }
 
     async fn store_blocks(&self, blocks: &Vec<DatabaseBlock>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(blocks.len(), DatabaseBlock::field_count());
 
@@ -162,7 +172,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store blocks into database");
         }
@@ -171,7 +181,7 @@ impl Database {
     }
 
     async fn store_transactions(&self, transactions: &Vec<DatabaseTransaction>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(transactions.len(), DatabaseTransaction::field_count());
 
@@ -201,7 +211,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store transactions into database");
         }
@@ -210,7 +220,7 @@ impl Database {
     }
 
     async fn store_transactions_receipts(&self, receipts: &Vec<DatabaseReceipt>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(receipts.len(), DatabaseReceipt::field_count());
 
@@ -229,7 +239,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store receipts into database");
         }
@@ -238,7 +248,7 @@ impl Database {
     }
 
     async fn store_transactions_logs(&self, logs: &Vec<DatabaseLog>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(logs.len(), DatabaseLog::field_count());
 
@@ -259,7 +269,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store logs into database");
         }
@@ -268,7 +278,7 @@ impl Database {
     }
 
     async fn store_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
@@ -290,7 +300,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store contracts into database");
         }
@@ -302,7 +312,7 @@ impl Database {
         &self,
         contracts_information: &Vec<DatabaseContractInformation>,
     ) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(
             contracts_information.len(),
@@ -328,7 +338,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store contracts information into database");
         }
@@ -337,7 +347,7 @@ impl Database {
     }
 
     pub async fn store_methods(&self, methods: &Vec<DatabaseMethod>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(methods.len(), DatabaseMethod::field_count());
 
@@ -352,7 +362,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store methods into database");
         }
@@ -383,7 +393,7 @@ impl Database {
         &self,
         chain_state: &DatabaseChainIndexedState,
     ) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         QueryBuilder::new(
             "UPSERT INTO chains_indexed_state(chain, indexed_blocks_amount) ($1, $2)",
@@ -391,7 +401,7 @@ impl Database {
         .push_bind(chain_state.chain.clone())
         .push_bind(chain_state.indexed_blocks_amount)
         .build()
-        .execute(&connection)
+        .execute(connection)
         .await
         .expect("Unable to update indexed blocks number");
 
@@ -399,7 +409,7 @@ impl Database {
     }
 
     pub async fn update_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let connection = self.establish_connection().await;
+        let connection = self.get_connection();
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
@@ -421,7 +431,7 @@ impl Database {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to update contracts into database");
         }

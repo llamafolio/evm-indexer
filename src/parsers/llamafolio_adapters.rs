@@ -82,7 +82,7 @@ impl LlamafolioParser {
         db: &Database,
         adapters: &Vec<DatabaseContractAdapter>,
     ) -> Result<()> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let chunks = get_chunks(adapters.len(), DatabaseContractAdapter::field_count());
 
@@ -99,7 +99,7 @@ impl LlamafolioParser {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store contract adapters into database");
         }

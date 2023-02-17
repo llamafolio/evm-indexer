@@ -49,12 +49,12 @@ abigen!(
 
 impl ERC20Tokens {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
             "SELECT * FROM erc20_transfers WHERE erc20_tokens_parsed = NULL OR erc20_tokens_parsed false LIMIT 500",
         )
-        .fetch_all(&connection)
+        .fetch_all(connection)
         .await;
 
         match rows {
@@ -101,7 +101,7 @@ impl ERC20Tokens {
                     Err(_) => continue,
                 }
 
-                let connection = db.establish_connection().await;
+                let connection = db.get_connection();
 
                 let mut query_builder = QueryBuilder::new(
                     "UPSERT INTO erc20_tokens (address, chain, decimals, name, symbol) ",
@@ -162,7 +162,7 @@ impl ERC20Tokens {
                     let query = query_builder.build();
 
                     query
-                        .execute(&connection)
+                        .execute(connection)
                         .await
                         .expect("Unable to store erc20 balances into database");
                 }
@@ -177,7 +177,7 @@ impl ERC20Tokens {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let unique_tokens: Vec<(String, String)> = transfers
             .into_iter()
@@ -257,7 +257,7 @@ impl ERC20Tokens {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store erc20 balances into database");
         }
@@ -288,7 +288,7 @@ impl ERC20Tokens {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to update erc20 transfers into database");
         }

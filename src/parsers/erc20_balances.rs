@@ -30,12 +30,12 @@ pub struct ERC20Balances {}
 
 impl ERC20Balances {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseErc20Transfer>> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
             "SELECT * FROM erc20_transfers WHERE erc20_balances_parsed = NULL OR erc20_balances_parsed false LIMIT 10000",
         )
-        .fetch_all(&connection)
+        .fetch_all(connection)
         .await;
 
         match rows {
@@ -45,7 +45,7 @@ impl ERC20Balances {
     }
 
     pub async fn parse(&self, db: &Database, transfers: &Vec<DatabaseErc20Transfer>) -> Result<()> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let zero_address = format_address(H160::zero());
 
@@ -239,7 +239,7 @@ impl ERC20Balances {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store transactions into database");
         }
@@ -269,7 +269,7 @@ impl ERC20Balances {
                 let query = query_builder.build();
 
                 query
-                    .execute(&connection)
+                    .execute(connection)
                     .await
                     .expect("Unable to update erc20 transfers into database");
             }
@@ -354,7 +354,7 @@ impl ERC20Balances {
                     let query = query_builder.build();
 
                     query
-                        .execute(&connection)
+                        .execute(connection)
                         .await
                         .expect("Unable to store erc20 tokens into database");
                 }
@@ -373,7 +373,7 @@ impl ERC20Balances {
         db: &Database,
         balances: &Vec<(String, String, String)>,
     ) -> Vec<DatabaseErc20Balance> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let mut query =
             String::from("SELECT * FROM erc20_balances WHERE (address, token, chain) IN ( VALUES");
@@ -388,7 +388,7 @@ impl ERC20Balances {
 
         if balances.len() > 0 {
             let rows = sqlx::query_as::<_, DatabaseErc20Balance>(&query)
-                .fetch_all(&connection)
+                .fetch_all(connection)
                 .await;
 
             match rows {
@@ -405,7 +405,7 @@ impl ERC20Balances {
         db: &Database,
         tokens: &Vec<(String, String)>,
     ) -> Vec<DatabaseErc20Token> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let mut query =
             String::from("SELECT * FROM erc20_tokens WHERE (address, chain) IN ( VALUES ");
@@ -420,7 +420,7 @@ impl ERC20Balances {
 
         if tokens.len() > 0 {
             let rows = sqlx::query_as::<_, DatabaseErc20Token>(&query)
-                .fetch_all(&connection)
+                .fetch_all(connection)
                 .await;
 
             match rows {

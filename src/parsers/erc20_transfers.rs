@@ -26,12 +26,12 @@ pub struct ERC20Transfers {}
 
 impl ERC20Transfers {
     pub async fn fetch(&self, db: &Database) -> Result<Vec<DatabaseLog>> {
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseLog>(
             "SELECT * FROM logs WHERE erc20_transfers_parsed = NULL OR erc20_transfers_parsed false LIMIT 50000",
         )
-        .fetch_all(&connection)
+        .fetch_all(connection)
         .await;
 
         match rows {
@@ -144,7 +144,7 @@ impl ERC20Transfers {
             db_erc20_transfers.push(db_transfers)
         }
 
-        let connection = db.establish_connection().await;
+        let connection = db.get_connection();
 
         let chunks = get_chunks(
             db_erc20_transfers.len(),
@@ -173,7 +173,7 @@ impl ERC20Transfers {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to store erc20 transfers into database");
         }
@@ -202,7 +202,7 @@ impl ERC20Transfers {
             let query = query_builder.build();
 
             query
-                .execute(&connection)
+                .execute(connection)
                 .await
                 .expect("Unable to update parsed logs into database");
         }
