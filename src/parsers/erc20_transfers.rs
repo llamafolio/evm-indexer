@@ -154,7 +154,7 @@ impl ERC20Transfers {
 
             for (start, end) in chunks {
                 let mut query_builder =
-            QueryBuilder::new("INSERT INTO erc20_transfers (chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+            QueryBuilder::new("UPSERT INTO erc20_transfers (chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
 
                 query_builder.push_values(
                     &db_erc20_transfers[start..end],
@@ -170,8 +170,6 @@ impl ERC20Transfers {
                             .push_bind(erc20_transfer.value.clone());
                     },
                 );
-
-                query_builder.push("ON CONFLICT (hash, log_index) DO NOTHING");
 
                 let query = query_builder.build();
 
