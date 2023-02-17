@@ -52,7 +52,7 @@ impl ERC20Tokens {
         let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
-            "SELECT * FROM erc20_transfers WHERE erc20_tokens_parsed = NULL OR erc20_tokens_parsed false LIMIT 500",
+            "SELECT * FROM erc20_transfers WHERE erc20_tokens_parsed = NULL OR erc20_tokens_parsed = false LIMIT 500",
         )
         .fetch_all(connection)
         .await;
