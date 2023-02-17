@@ -350,6 +350,17 @@ impl ERC20Balances {
                     ));
                 }
 
+                query_builder.push_values(
+                    &tokens_data,
+                    |mut row, (address, chain, decimals, name, symbol)| {
+                        row.push_bind(address)
+                            .push_bind(chain)
+                            .push_bind(decimals)
+                            .push_bind(name)
+                            .push_bind(symbol);
+                    },
+                );
+
                 if tokens_amount > 0 {
                     let query = query_builder.build();
 
