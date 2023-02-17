@@ -395,15 +395,17 @@ impl Database {
     ) -> Result<()> {
         let connection = self.get_connection();
 
-        QueryBuilder::new(
-            "UPSERT INTO chains_indexed_state(chain, indexed_blocks_amount) ($1, $2)",
-        )
-        .push_bind(chain_state.chain.clone())
-        .push_bind(chain_state.indexed_blocks_amount)
-        .build()
-        .execute(connection)
-        .await
-        .expect("Unable to update indexed blocks number");
+        let query = format!(
+            "UPSERT INTO chains_indexed_state(chain, indexed_blocks_amount) ({}, {})",
+            chain_state.chain.clone(),
+            chain_state.indexed_blocks_amount
+        );
+
+        QueryBuilder::new(query)
+            .build()
+            .execute(connection)
+            .await
+            .expect("Unable to update indexed blocks number");
 
         Ok(())
     }
