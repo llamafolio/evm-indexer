@@ -383,31 +383,46 @@ impl Database {
         &self,
         chain_state: &DatabaseChainIndexedState,
     ) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
-        diesel::insert_into(chains_indexed_state::table)
-            .values(chain_state)
-            .on_conflict(chains_indexed_state::dsl::chain)
-            .do_update()
-            .set(chains_indexed_state::indexed_blocks_amount.eq(chain_state.indexed_blocks_amount))
-            .execute(&mut connection)
-            .expect("Unable to update indexed blocks number");
+        QueryBuilder::new(
+            "UPSERT INTO chains_indexed_state(chain, indexed_blocks_amount) ($1, $2)",
+        )
+        .push_bind(chain_state.chain.clone())
+        .push_bind(chain_state.indexed_blocks_amount)
+        .build()
+        .execute(&connection)
+        .await
+        .expect("Unable to update indexed blocks number");
 
         Ok(())
     }
 
     pub async fn update_contracts(&self, contracts: &Vec<DatabaseContract>) -> Result<()> {
-        let mut connection = self.establish_connection().await;
+        let connection = self.establish_connection().await;
 
         let chunks = get_chunks(contracts.len(), DatabaseContract::field_count());
 
         for (start, end) in chunks {
-            diesel::insert_into(contracts::dsl::contracts)
-                .values(&contracts[start..end])
-                .on_conflict((contracts::contract, contracts::chain))
-                .do_update()
-                .set(contracts::parsed.eq(true))
-                .execute(&mut connection)
+            let mut query_builder = QueryBuilder::new(
+                "UPSERT INTO contracts(block, chain, contract, creator, hash, parsed, verified) ",
+            );
+
+            query_builder.push_values(&contracts[start..end], |mut row, contract| {
+                row.push_bind(contract.block.clone())
+                    .push_bind(contract.chain.clone())
+                    .push_bind(contract.contract.clone())
+                    .push_bind(contract.creator.clone())
+                    .push_bind(contract.hash.clone())
+                    .push_bind(contract.parsed)
+                    .push_bind(contract.verified);
+            });
+
+            let query = query_builder.build();
+
+            query
+                .execute(&connection)
+                .await
                 .expect("Unable to update contracts into database");
         }
 
