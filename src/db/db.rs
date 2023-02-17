@@ -8,7 +8,7 @@ use log::*;
 use redis::Commands;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
-    ConnectOptions, PgPool, QueryBuilder, Row,
+    ConnectOptions, QueryBuilder, Row,
 };
 
 use crate::chains::chains::Chain;
@@ -35,7 +35,14 @@ impl Database {
 
         connect_options.log_statements(LevelFilter::Info);
 
-        let db_conn = PgPool::connect_with(connect_options)
+        connect_options
+            .connect()
+            .await
+            .expect("Unable to connect to the database");
+
+        let db_conn = PgPoolOptions::new()
+            .max_connections(5)
+            .connect_with(connect_options)
             .await
             .expect("Unable to connect to the database");
 
