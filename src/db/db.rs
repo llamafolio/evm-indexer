@@ -6,7 +6,10 @@ use field_count::FieldCount;
 use futures::TryStreamExt;
 use log::*;
 use redis::Commands;
-use sqlx::{postgres::PgPoolOptions, QueryBuilder, Row};
+use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions},
+    ConnectOptions, PgPool, QueryBuilder, Row,
+};
 
 use crate::chains::chains::Chain;
 
@@ -28,9 +31,11 @@ impl Database {
     pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
-        let db_conn = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&db_url)
+        let mut connect_options = PgConnectOptions::new().host(&db_url);
+
+        connect_options.log_statements(LevelFilter::Info);
+
+        let db_conn = PgPool::connect_with(connect_options)
             .await
             .expect("Unable to connect to the database");
 
