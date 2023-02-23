@@ -1,5 +1,4 @@
-use std::cmp::min;
-use std::collections::HashSet;
+use std::{cmp::min, collections::HashSet};
 
 use anyhow::Result;
 use field_count::FieldCount;
@@ -93,14 +92,23 @@ impl Database {
     pub async fn get_indexed_blocks(&self) -> Result<HashSet<i64>> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let blocks: HashSet<i64> =
-            match connection.get::<String, String>(self.chain.name.to_string()) {
+        let keys: Vec<String> = connection
+            .keys(format!("{}*", self.chain.name.to_string()))
+            .unwrap();
+
+        let mut blocks: HashSet<i64> = HashSet::new();
+
+        for key in keys {
+            let chunk_blocks: HashSet<i64> = match connection.get::<String, String>(key) {
                 Ok(blocks) => match serde_json::from_str(&blocks) {
                     Ok(deserialized) => deserialized,
-                    Err(_) => HashSet::new(),
+                    Err(_) => continue,
                 },
-                Err(_) => HashSet::new(),
+                Err(_) => continue,
             };
+
+            blocks.extend(&chunk_blocks);
+        }
 
         Ok(blocks)
     }
@@ -380,12 +388,21 @@ impl Database {
     pub async fn store_indexed_blocks(&self, blocks: &HashSet<i64>) -> Result<()> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let serialized = serde_json::to_string(blocks).unwrap();
+        let blocks_vec: Vec<&i64> = blocks.into_iter().collect();
 
-        let _ = match connection.set(self.chain.name.to_string(), serialized) {
-            Ok(res) => res,
-            Err(err) => println!("{}", err),
-        };
+        let chunks = blocks_vec.chunks(100);
+
+        for (i, chunk) in chunks.enumerate() {
+            let chunk_vec: Vec<&i64> = chunk.to_vec();
+
+            let serialized = serde_json::to_string(&chunk_vec).unwrap();
+
+            let _ =
+                match connection.set(format!("{}-{}", self.chain.name.to_owned(), i), serialized) {
+                    Ok(res) => res,
+                    Err(err) => println!("{}", err),
+                };
+        }
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
