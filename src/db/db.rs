@@ -382,10 +382,8 @@ impl Database {
 
         let raw_blocks = serde_json::to_string(blocks).unwrap();
 
-        let serialized = raw_blocks.as_bytes();
-
         let _ = indexed_blocks_db
-            .put(self.chain.name.to_string(), serialized)
+            .put(self.chain.name.to_string(), raw_blocks)
             .unwrap();
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
