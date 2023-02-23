@@ -37,9 +37,6 @@ pub struct EVMIndexerArgs {
     )]
     pub recalculate_indexed_blocks: bool,
 
-    #[arg(long, help = "Websocket to fetch blocks from.")]
-    pub websocket: String,
-
     #[arg(long, help = "Comma separated list of rpcs to use to fetch blocks.")]
     pub rpcs: String,
 }
@@ -53,7 +50,6 @@ pub struct EVMIndexerConfig {
     pub chain: Chain,
     pub batch_size: usize,
     pub reset: bool,
-    pub websocket: String,
     pub rpcs: Vec<String>,
     pub recalc_blocks_indexer: bool,
 }
@@ -80,7 +76,6 @@ impl EVMIndexerConfig {
             chain,
             batch_size: args.batch_size,
             reset: args.reset,
-            websocket: args.websocket,
             rpcs,
             recalc_blocks_indexer: args.recalculate_indexed_blocks,
         }

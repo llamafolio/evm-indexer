@@ -13,10 +13,9 @@ use evm_indexer::{
     },
     rpc::rpc::Rpc,
 };
-use futures::{future::join_all, StreamExt};
+use futures::future::join_all;
 use log::*;
 use simple_logger::SimpleLogger;
-use web3::{transports::WebSocket, Web3};
 
 #[tokio::main()]
 async fn main() {
@@ -56,29 +55,10 @@ async fn main() {
     }
 
     if !config.reset {
-        let mut finished_initial_sync = false;
-
         loop {
             sync_chain(&rpc, &db, &mut config).await;
 
-            if !finished_initial_sync {
-                tokio::spawn({
-                    let db = db.clone();
-                    let rpc = rpc.clone();
-                    let chain = config.chain.clone();
-                    let config = config.clone();
-
-                    async move {
-                        loop {
-                            subscribe_heads(chain, &db, &rpc, &config).await;
-                            sleep(Duration::from_secs(10))
-                        }
-                    }
-                });
-            }
-            finished_initial_sync = true;
-
-            sleep(Duration::from_secs(5))
+            sleep(Duration::from_millis(500))
         }
     } else {
         db.delete_indexed_blocks().await.unwrap();
@@ -245,77 +225,5 @@ async fn fetch_block(
             ));
         }
         None => return None,
-    }
-}
-
-async fn subscribe_heads(chain: Chain, db: &Database, rpc: &Rpc, config: &EVMIndexerConfig) {
-    let wss = match WebSocket::new(&config.websocket.clone()).await {
-        Ok(ws) => Some(Web3::new(ws)),
-        Err(_) => None,
-    };
-
-    info!("Initializing new blocks listener");
-
-    match wss {
-        Some(wss) => {
-            let mut sub = match wss.eth_subscribe().subscribe_new_heads().await {
-                Ok(sub) => sub,
-                Err(_) => return,
-            };
-
-            loop {
-                let new_block = sub.next().await;
-                match new_block {
-                    Some(block_header) => match block_header {
-                        Ok(block_header) => {
-                            let block_number = block_header.number.unwrap().as_u64() as i64;
-                            info!(
-                                "New block with height {:?} for chain {}",
-                                block_number, chain.name
-                            );
-
-                            tokio::spawn({
-                                let rpc = rpc.clone();
-                                let db = db.clone();
-
-                                async move {
-                                    let block_data = fetch_block(&rpc, &block_number, &chain).await;
-
-                                    match block_data {
-                                        Some((
-                                            db_block,
-                                            db_transactions,
-                                            db_receipts,
-                                            db_logs,
-                                            db_contracts,
-                                        )) => {
-                                            db.store_data(
-                                                &vec![db_block],
-                                                &db_transactions,
-                                                &db_receipts,
-                                                &db_logs,
-                                                &db_contracts,
-                                            )
-                                            .await;
-
-                                            let mut indexed_blocks =
-                                                db.get_indexed_blocks().await.unwrap();
-
-                                            indexed_blocks.insert(block_number);
-
-                                            db.store_indexed_blocks(&indexed_blocks).await.unwrap();
-                                        }
-                                        None => (),
-                                    }
-                                }
-                            });
-                        }
-                        Err(_) => continue,
-                    },
-                    None => continue,
-                }
-            }
-        }
-        None => return,
     }
 }

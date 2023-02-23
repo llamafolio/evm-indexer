@@ -24,7 +24,6 @@ serde = "1"
 serde_json = "1"
 sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres" ] }
 tokio = { version = "1", features = ["full"] }
-web3 = "0.18"
 
 [dependencies.simple_logger]
 version = "4.0.0"
