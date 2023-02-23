@@ -382,9 +382,10 @@ impl Database {
 
         let serialized = serde_json::to_string(blocks).unwrap();
 
-        let _: () = connection
-            .set(self.chain.name.to_string(), serialized)
-            .unwrap();
+        let _ = match connection.set(self.chain.name.to_string(), serialized) {
+            Ok(res) => res,
+            Err(err) => println!("{}", err),
+        };
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
