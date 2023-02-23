@@ -69,7 +69,7 @@ async fn main() {
 
     info!("Starting EVM ABI fetcher");
 
-    let db = Database::new(config.db_url.clone(), config.redis_url.clone(), ETHEREUM)
+    let db = Database::new(config.db_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 

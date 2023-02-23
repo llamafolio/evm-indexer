@@ -41,13 +41,9 @@ async fn main() {
         .await
         .expect("Unable to start RPC client.");
 
-    let db = Database::new(
-        config.db_url.clone(),
-        config.redis_url.clone(),
-        config.chain.clone(),
-    )
-    .await
-    .expect("Unable to start DB connection.");
+    let db = Database::new(config.db_url.clone(), config.chain.clone())
+        .await
+        .expect("Unable to start DB connection.");
 
     if config.recalc_blocks_indexer {
         info!("Updating state of indexed tokens.");

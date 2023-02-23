@@ -30,7 +30,6 @@ pub struct EVMParserArgs {
 #[derive(Debug, Clone)]
 pub struct EVMParserConfig {
     pub db_url: String,
-    pub redis_url: String,
     pub debug: bool,
     pub llamafolio_adapter: bool,
     pub erc20_tokens: bool,
@@ -43,7 +42,6 @@ impl EVMParserConfig {
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
-            redis_url: std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
             debug: args.debug,
             llamafolio_adapter: args.llamafolio_adapters,
             erc20_tokens: args.erc20_tokens,
