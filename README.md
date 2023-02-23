@@ -14,7 +14,6 @@ You can track the indexer in action from https://dashboard.kindynos.mx or use it
 - [Rust](https://www.rust-lang.org/tools/install)
 - [CockroachDB](https://www.cockroachlabs.com/) (or any other PostgreSQL compatible DB)
 - [Redis](https://redis.io/) (used to store the indexed blocks state)
-- [Docker](https://www.docker.com/) (Optional for the Hasura Cloud deploy)
 
 ## Available Chains
 
