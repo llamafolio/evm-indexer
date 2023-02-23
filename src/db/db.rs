@@ -390,7 +390,7 @@ impl Database {
 
         let blocks_vec: Vec<&i64> = blocks.into_iter().collect();
 
-        let chunks = blocks_vec.chunks(100);
+        let chunks = blocks_vec.chunks(10_000_000);
 
         for (i, chunk) in chunks.enumerate() {
             let chunk_vec: Vec<&i64> = chunk.to_vec();
