@@ -17,6 +17,7 @@ pub struct EVMAbiFetcherArgs {
 #[derive(Debug, Clone)]
 pub struct EVMAbiFetcherConfig {
     pub db_url: String,
+    pub redis_url: String,
     pub debug: bool,
     pub api_source_tokens: HashMap<String, String>,
 }
@@ -38,6 +39,7 @@ impl EVMAbiFetcherConfig {
 
         Self {
             db_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set."),
+            redis_url: std::env::var("REDIS_URL").expect("REDIS_URL must be set."),
             debug: args.debug,
             api_source_tokens,
         }

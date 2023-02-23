@@ -29,7 +29,7 @@ async fn main() {
 
     info!("Starting EVM Parser.");
 
-    let db = Database::new(config.db_url, ETHEREUM)
+    let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
 

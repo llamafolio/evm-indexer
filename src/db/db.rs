@@ -5,7 +5,7 @@ use anyhow::Result;
 use field_count::FieldCount;
 use futures::TryStreamExt;
 use log::*;
-use rocksdb::DB;
+use redis::Commands;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     ConnectOptions, QueryBuilder, Row,
@@ -20,16 +20,15 @@ use super::models::models::{
 
 pub const MAX_DIESEL_PARAM_SIZE: u16 = u16::MAX;
 
-pub const INDEXED_BLOCKS_DB: &'static str = "./indexed_blocks";
-
 #[derive(Debug, Clone)]
 pub struct Database {
     pub chain: Chain,
+    pub redis: redis::Client,
     pub db_conn: sqlx::Pool<sqlx::Postgres>,
 }
 
 impl Database {
-    pub async fn new(db_url: String, chain: Chain) -> Result<Self> {
+    pub async fn new(db_url: String, redis_url: String, chain: Chain) -> Result<Self> {
         info!("Starting EVM database service");
 
         let mut connect_options: PgConnectOptions = db_url.parse().unwrap();
@@ -44,7 +43,13 @@ impl Database {
 
         // TODO: db migrations
 
-        Ok(Self { chain, db_conn })
+        let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
+
+        Ok(Self {
+            chain,
+            redis,
+            db_conn,
+        })
     }
 
     pub fn get_connection(&self) -> &sqlx::Pool<sqlx::Postgres> {
@@ -86,21 +91,16 @@ impl Database {
     }
 
     pub async fn get_indexed_blocks(&self) -> Result<HashSet<i64>> {
-        let indexed_blocks_db = DB::open_default(INDEXED_BLOCKS_DB).unwrap();
+        let mut connection = self.redis.get_connection().unwrap();
 
-        let blocks: HashSet<i64> = match indexed_blocks_db.get(self.chain.name.to_string()) {
-            Ok(blocks) => match blocks {
-                Some(serialized) => {
-                    let raw_data = String::from_utf8(serialized).unwrap();
-                    match serde_json::from_str(&raw_data) {
-                        Ok(blocks) => blocks,
-                        Err(_) => HashSet::new(),
-                    }
-                }
-                None => HashSet::new(),
-            },
-            Err(_) => HashSet::new(),
-        };
+        let blocks: HashSet<i64> =
+            match connection.get::<String, String>(self.chain.name.to_string()) {
+                Ok(blocks) => match serde_json::from_str(&blocks) {
+                    Ok(deserialized) => deserialized,
+                    Err(_) => HashSet::new(),
+                },
+                Err(_) => HashSet::new(),
+            };
 
         Ok(blocks)
     }
@@ -378,15 +378,14 @@ impl Database {
     }
 
     pub async fn store_indexed_blocks(&self, blocks: &HashSet<i64>) -> Result<()> {
-        let indexed_blocks_db = DB::open_default(INDEXED_BLOCKS_DB).unwrap();
+        let mut connection = self.redis.get_connection().unwrap();
 
-        let raw_blocks = serde_json::to_string(blocks).unwrap();
+        let serialized = serde_json::to_string(blocks).unwrap();
 
-        let serialized = raw_blocks.as_bytes();
-
-        let _ = indexed_blocks_db
-            .put(self.chain.name.to_string(), serialized)
-            .unwrap();
+        let _ = match connection.set(self.chain.name.to_string(), serialized) {
+            Ok(res) => res,
+            Err(err) => println!("{}", err),
+        };
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
@@ -451,11 +450,9 @@ impl Database {
     }
 
     pub async fn delete_indexed_blocks(&self) -> Result<()> {
-        let indexed_blocks_db = DB::open_default(INDEXED_BLOCKS_DB).unwrap();
+        let mut connection = self.redis.get_connection().unwrap();
 
-        let _: () = indexed_blocks_db
-            .delete(self.chain.name.to_string())
-            .unwrap();
+        let _: () = connection.del(self.chain.name.to_string()).unwrap();
 
         Ok(())
     }
