@@ -113,7 +113,7 @@ impl Database {
         self.store_indexed_blocks(&blocks).await.unwrap();
 
         let blocks: HashSet<i64> = connection
-            .hvals::<String, HashSet<i64>>(self.chain.name.to_string())
+            .smembers::<String, HashSet<i64>>(self.chain.name.to_string())
             .unwrap();
 
         Ok(blocks)
@@ -394,14 +394,10 @@ impl Database {
     pub async fn store_indexed_blocks(&self, blocks: &HashSet<i64>) -> Result<()> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let block_slice: Vec<(usize, &i64)> = blocks
-            .into_iter()
-            .enumerate()
-            .map(|(i, block)| (i, block))
-            .collect();
+        let block_slice: Vec<&i64> = blocks.into_iter().collect();
 
         let _: () = connection
-            .hset_multiple(self.chain.name.to_owned(), &block_slice[..])
+            .sadd(self.chain.name.to_owned(), &block_slice[..])
             .unwrap();
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
