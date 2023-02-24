@@ -110,6 +110,12 @@ impl Database {
             blocks.extend(&chunk_blocks);
         }
 
+        self.store_indexed_blocks(&blocks).await.unwrap();
+
+        let blocks: HashSet<i64> = connection
+            .hvals::<String, HashSet<i64>>(self.chain.name.to_string())
+            .unwrap();
+
         Ok(blocks)
     }
 
@@ -388,21 +394,15 @@ impl Database {
     pub async fn store_indexed_blocks(&self, blocks: &HashSet<i64>) -> Result<()> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let blocks_vec: Vec<&i64> = blocks.into_iter().collect();
+        let block_slice: Vec<(usize, &i64)> = blocks
+            .into_iter()
+            .enumerate()
+            .map(|(i, block)| (i, block))
+            .collect();
 
-        let chunks = blocks_vec.chunks(10_000_000);
-
-        for (i, chunk) in chunks.enumerate() {
-            let chunk_vec: Vec<&i64> = chunk.to_vec();
-
-            let serialized = serde_json::to_string(&chunk_vec).unwrap();
-
-            let _ =
-                match connection.set(format!("{}-{}", self.chain.name.to_owned(), i), serialized) {
-                    Ok(res) => res,
-                    Err(err) => println!("{}", err),
-                };
-        }
+        let _: () = connection
+            .hset_multiple(self.chain.name.to_owned(), &block_slice[..])
+            .unwrap();
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
