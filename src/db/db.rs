@@ -92,7 +92,7 @@ impl Database {
     pub async fn get_indexed_blocks(&self) -> Result<HashSet<i64>> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let keys: Vec<String> = connection
+        /* let keys: Vec<String> = connection
             .keys(format!("{}*", self.chain.name.to_string()))
             .unwrap();
 
@@ -110,7 +110,7 @@ impl Database {
             blocks.extend(&chunk_blocks);
         }
 
-        self.store_indexed_blocks(&blocks).await.unwrap();
+        self.store_indexed_blocks(&blocks).await.unwrap(); */
 
         let blocks: HashSet<i64> = connection
             .smembers::<String, HashSet<i64>>(self.chain.name.to_string())
