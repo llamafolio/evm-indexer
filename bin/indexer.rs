@@ -55,10 +55,27 @@ async fn main() {
     }
 
     if !config.reset {
-        let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+        let indexed_blocks = db.get_indexed_blocks().await.unwrap();
+
+        let last_block = rpc.get_last_block().await.unwrap();
+
+        let full_block_range = HashSet::<i64>::from_iter(config.start_block..last_block);
 
         loop {
-            sync_chain(&rpc, &db, &mut config, &mut indexed_blocks).await;
+            let missing_blocks: Vec<&i64> = full_block_range
+                .symmetric_difference(&indexed_blocks)
+                .collect::<HashSet<&i64>>()
+                .into_iter()
+                .collect();
+
+            sync_chain(
+                &rpc,
+                &db,
+                &mut config,
+                &mut indexed_blocks.clone(),
+                &missing_blocks,
+            )
+            .await;
 
             sleep(Duration::from_millis(500))
         }
@@ -72,38 +89,20 @@ async fn sync_chain(
     db: &Database,
     config: &EVMIndexerConfig,
     indexed_blocks: &mut HashSet<i64>,
+    missing_blocks: &Vec<&i64>,
 ) {
-    println!("Starting sync_chain");
-
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
         indexed_blocks_amount: indexed_blocks.len() as i64,
     };
 
-    let last_block = rpc.get_last_block().await.unwrap();
-    println!("Fetched last_block");
-
-    let full_block_range = HashSet::<i64>::from_iter(config.start_block..last_block);
-    println!("Created full_block_range");
-
-    let indexed_blocks_cloned = indexed_blocks.to_owned();
-
-    let missing_blocks: Vec<&i64> = full_block_range
-        .symmetric_difference(&indexed_blocks_cloned)
-        .collect::<HashSet<&i64>>()
-        .into_iter()
-        .collect();
-    println!("Calculate missing_blocks");
-
     db.update_indexed_blocks_number(&db_state).await.unwrap();
-    println!("Stored update_indexed_blocks_number");
 
     let total_missing_blocks = missing_blocks.len();
 
     info!("Syncing {} blocks.", total_missing_blocks);
 
     let missing_blocks_chunks = missing_blocks.chunks(config.batch_size);
-    println!("Chunks missing_blocks_chunks");
 
     for missing_blocks_chunk in missing_blocks_chunks {
         let mut work = vec![];
