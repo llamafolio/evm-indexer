@@ -50,7 +50,7 @@ async fn main() {
     .expect("Unable to start DB connection.");
 
     if config.recalc_blocks_indexer {
-        info!("Updating state of indexed tokens.");
+        info!("Updating state of indexed blocks.");
         db.update_indexed_blocks().await.unwrap();
     }
 
