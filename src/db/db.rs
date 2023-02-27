@@ -88,8 +88,8 @@ impl Database {
     pub async fn get_indexed_blocks(&self) -> Result<HashSet<i64>> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let blocks: Vec<i64> = connection
-            .smembers::<String, Vec<i64>>(self.chain.name.to_owned())
+        let blocks: HashSet<i64> = connection
+            .smembers::<String, HashSet<i64>>(self.chain.name.to_owned())
             .unwrap();
 
         Ok(blocks)
