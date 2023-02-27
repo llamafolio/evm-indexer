@@ -70,7 +70,7 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
 
     let full_block_range = config.start_block..last_block;
 
-    let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+    let indexed_blocks = db.get_indexed_blocks().await.unwrap();
 
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
@@ -127,11 +127,9 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
         )
         .await;
 
-        for block in db_blocks.into_iter() {
-            indexed_blocks.insert(block.number);
-        }
+        let new_indexed_blocks: Vec<i64> = db_blocks.iter().map(|block| block.number).collect();
 
-        db.store_indexed_blocks(&indexed_blocks).await.unwrap();
+        db.store_indexed_blocks(&new_indexed_blocks).await.unwrap();
     }
 }
 
