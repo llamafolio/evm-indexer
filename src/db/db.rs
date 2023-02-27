@@ -56,7 +56,7 @@ impl Database {
     pub async fn update_indexed_blocks(&self) -> Result<()> {
         let connection = self.get_connection();
 
-        let mut blocks: Vec<i64> = Vec::new();
+        let mut redis = self.redis.get_connection().unwrap();
 
         let mut rows = sqlx::query("SELECT number FROM blocks WHERE chain = $1")
             .bind(self.chain.name.clone())
@@ -64,10 +64,8 @@ impl Database {
 
         while let Some(row) = rows.try_next().await.unwrap() {
             let number: i64 = row.try_get("number").unwrap();
-            blocks.push(number);
+            let (): _ = redis.sadd(self.chain.name, number).unwrap();
         }
-
-        self.store_indexed_blocks(&blocks).await.unwrap();
 
         Ok(())
     }
