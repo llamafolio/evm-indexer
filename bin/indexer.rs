@@ -1,4 +1,4 @@
-use std::{thread::sleep, time::Duration};
+use std::{collections::HashSet, thread::sleep, time::Duration};
 
 use dotenv::dotenv;
 use evm_indexer::{
@@ -55,8 +55,10 @@ async fn main() {
     }
 
     if !config.reset {
+        let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+
         loop {
-            sync_chain(&rpc, &db, &mut config).await;
+            sync_chain(&rpc, &db, &mut config, &mut indexed_blocks).await;
 
             sleep(Duration::from_millis(500))
         }
@@ -65,12 +67,15 @@ async fn main() {
     }
 }
 
-async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
+async fn sync_chain(
+    rpc: &Rpc,
+    db: &Database,
+    config: &EVMIndexerConfig,
+    indexed_blocks: &mut HashSet<i64>,
+) {
     let last_block = rpc.get_last_block().await.unwrap();
 
     let full_block_range = config.start_block..last_block;
-
-    let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
 
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
