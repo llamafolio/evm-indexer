@@ -65,7 +65,7 @@ impl Database {
             .fetch(connection);
 
         while let Some(row) = rows.try_next().await.unwrap() {
-            let number: i64 = row.try_get("number")?;
+            let number: i64 = row.try_get("number").unwrap();
             blocks.push(number);
         }
 
