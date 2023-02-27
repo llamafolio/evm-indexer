@@ -66,7 +66,10 @@ async fn main() {
 }
 
 async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
+    println!("Starting sync_chain");
+
     let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+    println!("Fetched indexed_blocks");
 
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
@@ -74,8 +77,10 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
     };
 
     let last_block = rpc.get_last_block().await.unwrap();
+    println!("Fetched last_block");
 
     let full_block_range = HashSet::<i64>::from_iter(config.start_block..last_block);
+    println!("Created full_block_range");
 
     let indexed_blocks_cloned = indexed_blocks.to_owned();
 
@@ -84,14 +89,17 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
         .collect::<HashSet<&i64>>()
         .into_iter()
         .collect();
+    println!("Calculate missing_blocks");
 
     db.update_indexed_blocks_number(&db_state).await.unwrap();
+    println!("Stored update_indexed_blocks_number");
 
     let total_missing_blocks = missing_blocks.len();
 
     info!("Syncing {} blocks.", total_missing_blocks);
 
     let missing_blocks_chunks = missing_blocks.chunks(config.batch_size);
+    println!("Chunks missing_blocks_chunks");
 
     for missing_blocks_chunk in missing_blocks_chunks {
         let mut work = vec![];
