@@ -367,7 +367,11 @@ impl Database {
         Ok(())
     }
 
-    pub async fn store_indexed_blocks(&self, blocks: &Vec<i64>) -> Result<()> {
+    pub async fn store_indexed_blocks(
+        &self,
+        blocks: &Vec<i64>,
+        indexed_blocks_amount: i64,
+    ) -> Result<()> {
         let mut connection = self.redis.get_connection().unwrap();
 
         let chunks = blocks.chunks(1_000_000);
@@ -376,11 +380,9 @@ impl Database {
             let _: () = connection.sadd(self.chain.name, chunk).unwrap();
         }
 
-        let total_blocks = self.get_indexed_blocks().await.unwrap();
-
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
-            indexed_blocks_amount: total_blocks.len() as i64,
+            indexed_blocks_amount,
         })
         .await
         .unwrap();
