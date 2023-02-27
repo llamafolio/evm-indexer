@@ -55,10 +55,8 @@ async fn main() {
     }
 
     if !config.reset {
-        let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
-
         loop {
-            sync_chain(&rpc, &db, &mut config, &mut indexed_blocks).await;
+            sync_chain(&rpc, &db, &mut config).await;
 
             sleep(Duration::from_millis(500))
         }
@@ -67,27 +65,27 @@ async fn main() {
     }
 }
 
-async fn sync_chain(
-    rpc: &Rpc,
-    db: &Database,
-    config: &EVMIndexerConfig,
-    indexed_blocks: &mut HashSet<i64>,
-) {
-    let last_block = rpc.get_last_block().await.unwrap();
-
-    let full_block_range = config.start_block..last_block;
+async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
+    let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
 
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
         indexed_blocks_amount: indexed_blocks.len() as i64,
     };
 
-    db.update_indexed_blocks_number(&db_state).await.unwrap();
+    let last_block = rpc.get_last_block().await.unwrap();
 
-    let missing_blocks: Vec<i64> = full_block_range
+    let full_block_range = HashSet::<i64>::from_iter(config.start_block..last_block);
+
+    let indexed_blocks_cloned = indexed_blocks.to_owned();
+
+    let missing_blocks: Vec<&i64> = full_block_range
+        .symmetric_difference(&indexed_blocks_cloned)
+        .collect::<HashSet<&i64>>()
         .into_iter()
-        .filter(|block| !indexed_blocks.contains(block))
         .collect();
+
+    db.update_indexed_blocks_number(&db_state).await.unwrap();
 
     let total_missing_blocks = missing_blocks.len();
 
