@@ -40,8 +40,6 @@ impl Database {
             .await
             .expect("Unable to connect to the database");
 
-        // TODO: db migrations
-
         let redis = redis::Client::open(redis_url).expect("Unable to connect with Redis server");
 
         Ok(Self {
