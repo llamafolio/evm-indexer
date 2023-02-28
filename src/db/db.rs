@@ -377,7 +377,9 @@ impl Database {
         let chunks = blocks.chunks(30_000_000);
 
         for (i, chunk) in chunks.enumerate() {
-            let serialized = serde_json::to_string(&chunk).unwrap();
+            let chunk_vec = chunk.to_vec();
+
+            let serialized = serde_json::to_string(&chunk_vec).unwrap();
 
             let _: () = connection
                 .set(format!("{}-{}", self.chain.name.to_owned(), i), serialized)

@@ -54,10 +54,8 @@ async fn main() {
     }
 
     if !config.reset {
-        let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
-
         loop {
-            sync_chain(&rpc, &db, &mut config, &mut indexed_blocks).await;
+            sync_chain(&rpc, &db, &mut config).await;
 
             sleep(Duration::from_millis(500))
         }
@@ -66,12 +64,9 @@ async fn main() {
     }
 }
 
-async fn sync_chain(
-    rpc: &Rpc,
-    db: &Database,
-    config: &EVMIndexerConfig,
-    indexed_blocks: &mut HashSet<i64>,
-) {
+async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
+    let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
         indexed_blocks_amount: indexed_blocks.len() as i64,
