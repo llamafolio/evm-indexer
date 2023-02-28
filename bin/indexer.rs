@@ -54,8 +54,10 @@ async fn main() {
     }
 
     if !config.reset {
+        let mut indexed_blocks = db.get_indexed_blocks().await.unwrap();
+
         loop {
-            sync_chain(&rpc, &db, &mut config).await;
+            sync_chain(&rpc, &db, &mut config, &mut indexed_blocks).await;
 
             sleep(Duration::from_millis(500))
         }
@@ -64,9 +66,12 @@ async fn main() {
     }
 }
 
-async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
-    let indexed_blocks = db.get_indexed_blocks().await.unwrap();
-
+async fn sync_chain(
+    rpc: &Rpc,
+    db: &Database,
+    config: &EVMIndexerConfig,
+    indexed_blocks: &mut HashSet<i64>,
+) {
     let db_state = DatabaseChainIndexedState {
         chain: config.chain.name.to_string(),
         indexed_blocks_amount: indexed_blocks.len() as i64,
@@ -78,11 +83,7 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
 
     let full_block_range = HashSet::<i64>::from_iter(config.start_block..last_block);
 
-    let missing_blocks: Vec<&i64> = full_block_range
-        .symmetric_difference(&indexed_blocks)
-        .collect::<HashSet<&i64>>()
-        .into_iter()
-        .collect();
+    let missing_blocks: Vec<i64> = (&full_block_range - &indexed_blocks).into_iter().collect();
 
     let total_missing_blocks = missing_blocks.len();
 
@@ -127,11 +128,13 @@ async fn sync_chain(rpc: &Rpc, db: &Database, config: &EVMIndexerConfig) {
         )
         .await;
 
-        let new_indexed_blocks: Vec<i64> = db_blocks.iter().map(|block| block.number).collect();
+        for block in db_blocks.into_iter() {
+            indexed_blocks.insert(block.number);
+        }
 
-        let new_total_blocks = indexed_blocks.len() + new_indexed_blocks.len();
+        let indexed_blocks_vector: Vec<i64> = indexed_blocks.clone().into_iter().collect();
 
-        db.store_indexed_blocks(&new_indexed_blocks, new_total_blocks as i64)
+        db.store_indexed_blocks(&indexed_blocks_vector)
             .await
             .unwrap();
     }

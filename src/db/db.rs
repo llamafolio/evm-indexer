@@ -56,16 +56,20 @@ impl Database {
     pub async fn update_indexed_blocks(&self) -> Result<()> {
         let connection = self.get_connection();
 
-        let mut redis = self.redis.get_connection().unwrap();
+        let mut blocks: HashSet<i64> = HashSet::new();
 
         let mut rows = sqlx::query("SELECT number FROM blocks WHERE chain = $1")
             .bind(self.chain.name.clone())
             .fetch(connection);
 
         while let Some(row) = rows.try_next().await.unwrap() {
-            let number: i64 = row.try_get("number").unwrap();
-            let (): _ = redis.sadd(self.chain.name, number).unwrap();
+            let number: i64 = row.try_get("number")?;
+            blocks.insert(number);
         }
+
+        let blocks_vec: Vec<i64> = blocks.into_iter().collect();
+
+        self.store_indexed_blocks(&blocks_vec).await.unwrap();
 
         Ok(())
     }
@@ -367,22 +371,22 @@ impl Database {
         Ok(())
     }
 
-    pub async fn store_indexed_blocks(
-        &self,
-        blocks: &Vec<i64>,
-        indexed_blocks_amount: i64,
-    ) -> Result<()> {
+    pub async fn store_indexed_blocks(&self, blocks: &Vec<i64>) -> Result<()> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let chunks = blocks.chunks(1_000_000);
+        let chunks = blocks.chunks(30_000_000);
 
-        for chunk in chunks {
-            let _: () = connection.sadd(self.chain.name, chunk).unwrap();
+        for (i, chunk) in chunks.enumerate() {
+            let serialized = serde_json::to_string(&chunk).unwrap();
+
+            let _: () = connection
+                .set(format!("{}-{}", self.chain.name.to_owned(), i), serialized)
+                .unwrap();
         }
 
         self.update_indexed_blocks_number(&DatabaseChainIndexedState {
             chain: self.chain.name.to_string(),
-            indexed_blocks_amount,
+            indexed_blocks_amount: blocks.len() as i64,
         })
         .await
         .unwrap();
