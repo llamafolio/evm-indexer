@@ -92,9 +92,23 @@ impl Database {
     pub async fn get_indexed_blocks(&self) -> Result<HashSet<i64>> {
         let mut connection = self.redis.get_connection().unwrap();
 
-        let blocks: HashSet<i64> = connection
-            .smembers::<String, HashSet<i64>>(self.chain.name.to_owned())
+        let keys: Vec<String> = connection
+            .keys(format!("{}*", self.chain.name.to_string()))
             .unwrap();
+
+        let mut blocks: HashSet<i64> = HashSet::new();
+
+        for key in keys {
+            let chunk_blocks: HashSet<i64> = match connection.get::<String, String>(key) {
+                Ok(blocks) => match serde_json::from_str(&blocks) {
+                    Ok(deserialized) => deserialized,
+                    Err(_) => continue,
+                },
+                Err(_) => continue,
+            };
+
+            blocks.extend(&chunk_blocks);
+        }
 
         Ok(blocks)
     }
