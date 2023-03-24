@@ -36,10 +36,7 @@ impl LlamafolioParser {
         for (chainname, _) in get_chains() {
             info!("Fetching adapter IDs for {}", chainname);
 
-            let uri = format!(
-                "https://js3czchveb.execute-api.eu-central-1.amazonaws.com/adapters/{}",
-                chainname
-            );
+            let uri = format!("https://api.llamafolio.com/adapters/{}", chainname);
 
             let client = Client::new();
 
