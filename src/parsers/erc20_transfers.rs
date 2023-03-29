@@ -29,7 +29,7 @@ impl ERC20Transfers {
         let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseLog>(
-            "SELECT * FROM logs WHERE erc20_transfers_parsed = NULL OR erc20_transfers_parsed = false LIMIT 50000",
+            "SELECT * FROM logs WHERE erc20_transfers_parsed = NULL OR erc20_transfers_parsed = false LIMIT 500",
         )
         .fetch_all(connection)
         .await;
