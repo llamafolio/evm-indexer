@@ -52,7 +52,7 @@ impl ERC20Tokens {
         let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
-            "SELECT * FROM erc20_transfers WHERE NOT EXISTS (SELECT 1 FROM erc20_tokens token WHERE transfer.chain = token.chain AND transfer.token = token.address) LIMIT 500",
+            "SELECT * FROM erc20_transfers transfer WHERE NOT EXISTS (SELECT 1 FROM erc20_tokens token WHERE transfer.chain = token.chain AND transfer.token = token.address) LIMIT 500",
         )
         .fetch_all(connection)
         .await;
