@@ -33,7 +33,7 @@ impl ERC20Balances {
         let connection = db.get_connection();
 
         let rows = sqlx::query_as::<_, DatabaseErc20Transfer>(
-            "SELECT * FROM erc20_transfers WHERE erc20_balances_parsed = NULL OR erc20_balances_parsed = false LIMIT 10000",
+            "SELECT * FROM erc20_transfers WHERE NOT EXISTS (SELECT 1 FROM erc20_balances token WHERE transfer.chain = token.chain AND transfer.token = token.address) LIMIT 10000",
         )
         .fetch_all(connection)
         .await;
@@ -249,14 +249,12 @@ impl ERC20Balances {
 
             for (start, end) in chunks {
                 let mut query_builder =
-                QueryBuilder::new("UPSERT INTO erc20_transfers(chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+                QueryBuilder::new("UPSERT INTO erc20_transfers(chain, from_address, hash, log_index, to_address, token, value) ");
 
                 query_builder.push_values(
                     &parsed_transfers[start..end],
                     |mut row, erc20_transfer| {
                         row.push_bind(erc20_transfer.chain.clone())
-                            .push_bind(erc20_transfer.erc20_balances_parsed)
-                            .push_bind(erc20_transfer.erc20_tokens_parsed)
                             .push_bind(erc20_transfer.from_address.clone())
                             .push_bind(erc20_transfer.hash.clone())
                             .push_bind(erc20_transfer.log_index.clone())

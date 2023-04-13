@@ -12,8 +12,6 @@ use sqlx::QueryBuilder;
 #[derive(Debug, Clone, FieldCount, sqlx::FromRow)]
 pub struct DatabaseErc20Transfer {
     pub chain: String,
-    pub erc20_balances_parsed: bool,
-    pub erc20_tokens_parsed: bool,
     pub from_address: String,
     pub hash: String,
     pub log_index: i64,
@@ -137,8 +135,6 @@ impl ERC20Transfers {
                 from_address,
                 to_address,
                 value,
-                erc20_tokens_parsed: false,
-                erc20_balances_parsed: false,
             };
 
             db_erc20_transfers.push(db_transfers)
@@ -154,14 +150,12 @@ impl ERC20Transfers {
 
             for (start, end) in chunks {
                 let mut query_builder =
-            QueryBuilder::new("UPSERT INTO erc20_transfers (chain, erc20_balances_parsed, erc20_tokens_parsed, from_address, hash, log_index, to_address, token, value) ");
+            QueryBuilder::new("UPSERT INTO erc20_transfers (chain, from_address, hash, log_index, to_address, token, value) ");
 
                 query_builder.push_values(
                     &db_erc20_transfers[start..end],
                     |mut row, erc20_transfer| {
                         row.push_bind(erc20_transfer.chain.clone())
-                            .push_bind(erc20_transfer.erc20_balances_parsed)
-                            .push_bind(erc20_transfer.erc20_tokens_parsed)
                             .push_bind(erc20_transfer.from_address.clone())
                             .push_bind(erc20_transfer.hash.clone())
                             .push_bind(erc20_transfer.log_index.clone())
