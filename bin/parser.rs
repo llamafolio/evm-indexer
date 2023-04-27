@@ -7,7 +7,6 @@ use evm_indexer::{
     db::db::Database,
     parsers::{
         erc20_balances::ERC20Balances, erc20_tokens::ERC20Tokens, erc20_transfers::ERC20Transfers,
-        llamafolio_adapters::LlamafolioParser,
     },
 };
 use log::*;
@@ -32,27 +31,6 @@ async fn main() {
     let db = Database::new(config.db_url, config.redis_url.clone(), ETHEREUM)
         .await
         .expect("Unable to start DB connection.");
-
-    if config.llamafolio_adapter {
-        info!("Starting the LlamaFolio adapters fetcher.");
-
-        tokio::spawn({
-            let db = db.clone();
-            async move {
-                loop {
-                    let llamafolio_adapters = LlamafolioParser {};
-
-                    let adapters = llamafolio_adapters.fetch().await.unwrap();
-
-                    info!("Llamafolio Adapters: Fetched {} adapters.", adapters.len());
-
-                    llamafolio_adapters.parse(&db, &adapters).await.unwrap();
-
-                    sleep(Duration::from_secs(1800))
-                }
-            }
-        });
-    }
 
     if config.erc20_tokens {
         info!("Starting the ERC20 Tokens parser.");
